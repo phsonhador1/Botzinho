@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,12 +19,35 @@ var services = new ServiceCollection()
 
 var interactionService = new InteractionService(client);
 
+// Lista de status que vão ficar rotacionando
+string[] statusList = new[]
+{
+    "nukando canais...",
+    "limpando o chat",
+    "/nuke para limpar",
+    "pronto para destruir",
+    "aguardando ordens..."
+};
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModuleAsync<NukeModule>(services);
     await interactionService.RegisterCommandsGloballyAsync();
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
+
+    // Inicia a rotação de status
+    _ = Task.Run(async () =>
+    {
+        int i = 0;
+        while (true)
+        {
+            await client.SetStatusAsync(UserStatus.DoNotDisturb);
+            await client.SetGameAsync(statusList[i], type: ActivityType.Playing);
+            i = (i + 1) % statusList.Length;
+            await Task.Delay(TimeSpan.FromSeconds(15));
+        }
+    });
 };
 client.InteractionCreated += async interaction =>
 {
@@ -63,7 +86,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         await channel.DeleteAsync();
 
         var embed = new EmbedBuilder()
-            .WithDescription($"'canal nukado por {Context.User.Username}'")
+            .WithDescription($"canal nukado por {Context.User.Username}")
             .WithColor(new Discord.Color(0x2B2D31))
             .Build();
 
