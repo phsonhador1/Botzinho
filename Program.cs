@@ -22,11 +22,8 @@ var interactionService = new InteractionService(client);
 // Lista de status que vão ficar rotacionando
 string[] statusList = new[]
 {
-    "nukando canais...",
-    "limpando o chat",
-    "/nuke para limpar",
-    "pronto para destruir",
-    "aguardando ordens..."
+    "Epstein Store",
+    
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
@@ -43,7 +40,7 @@ client.Ready += async () =>
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], type: ActivityType.Playing);
+            await client.SetGameAsync(statusList[i], type: ActivityType.Streaming);
             i = (i + 1) % statusList.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
