@@ -8,7 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
+
+
 var client = new DiscordSocketClient(new DiscordSocketConfig
+
 {
     GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages
 });
@@ -18,6 +21,7 @@ var services = new ServiceCollection()
     .BuildServiceProvider();
 
 var interactionService = new InteractionService(client);
+var adminModule = new Botzinho.Admins.AdminModule(client);
 
 // Lista de status que vão ficar rotacionando
 string[] statusList = new[]
