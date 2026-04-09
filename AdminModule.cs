@@ -2,7 +2,9 @@ using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Botzinho.Admins
@@ -12,12 +14,14 @@ namespace Botzinho.Admins
         private readonly DiscordSocketClient _client;
         public static Dictionary<ulong, NukeConfig> Configs = new();
         private static Dictionary<ulong, (ulong channelId, ulong messageId)> PainelMessages = new();
+        private static readonly string ConfigPath = "nuke_configs.json";
 
         public AdminModule(DiscordSocketClient client)
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
             _client.SelectMenuExecuted += HandleSelectMenu;
+            CarregarConfigs();
         }
 
         public class NukeConfig
@@ -27,6 +31,38 @@ namespace Botzinho.Admins
             public List<ulong> MembrosPermitidos { get; set; } = new();
             public List<ulong> UsuariosBloqueados { get; set; } = new();
             public List<ulong> CargosBloqueados { get; set; } = new();
+        }
+
+        private static void SalvarConfigs()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(Configs.ToDictionary(
+                    k => k.Key.ToString(),
+                    v => v.Value
+                ), new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(ConfigPath, json);
+            }
+            catch (Exception ex) { Console.WriteLine($"Erro ao salvar configs: {ex.Message}"); }
+        }
+
+        private static void CarregarConfigs()
+        {
+            try
+            {
+                if (!File.Exists(ConfigPath)) return;
+                var json = File.ReadAllText(ConfigPath);
+                var data = JsonSerializer.Deserialize<Dictionary<string, NukeConfig>>(json);
+                if (data != null)
+                {
+                    Configs = data.ToDictionary(
+                        k => ulong.Parse(k.Key),
+                        v => v.Value
+                    );
+                    Console.WriteLine($"Configs carregadas: {Configs.Count} servidores");
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"Erro ao carregar configs: {ex.Message}"); }
         }
 
         private NukeConfig GetConfig(ulong guildId)
@@ -160,6 +196,7 @@ namespace Botzinho.Admins
                     {
                         case "toggle":
                             config.Ativado = !config.Ativado;
+                            SalvarConfigs();
                             await component.RespondAsync($"✅ Sistema de nuke **{(config.Ativado ? "ativado" : "desativado")}**!", ephemeral: true);
                             await AtualizarPainel(guild);
                             break;
@@ -250,12 +287,14 @@ namespace Botzinho.Admins
                     var roleId = ulong.Parse(component.Data.Values.First());
                     if (!config.CargosPermitidos.Contains(roleId)) { config.CargosPermitidos.Add(roleId); await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_remove_role":
                     config.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo removido!", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
@@ -263,12 +302,14 @@ namespace Botzinho.Admins
                     var memberId = ulong.Parse(component.Data.Values.First());
                     if (!config.MembrosPermitidos.Contains(memberId)) { config.MembrosPermitidos.Add(memberId); await component.RespondAsync($"✅ Membro <@{memberId}> adicionado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_remove_member":
                     config.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Membro removido!", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
@@ -276,12 +317,14 @@ namespace Botzinho.Admins
                     var blockId = ulong.Parse(component.Data.Values.First());
                     if (!config.UsuariosBloqueados.Contains(blockId)) { config.UsuariosBloqueados.Add(blockId); await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_unblock_user":
                     config.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Usuário desbloqueado!", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
@@ -289,12 +332,14 @@ namespace Botzinho.Admins
                     var blockRoleId = ulong.Parse(component.Data.Values.First());
                     if (!config.CargosBloqueados.Contains(blockRoleId)) { config.CargosBloqueados.Add(blockRoleId); await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_unblock_role":
                     config.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo desbloqueado!", ephemeral: true);
+                    SalvarConfigs();
                     await AtualizarPainel(guild);
                     break;
             }
