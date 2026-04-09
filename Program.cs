@@ -30,6 +30,7 @@ client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModuleAsync<NukeModule>(services);
+    await interactionService.AddModuleAsync<NukeConfigModule>(services);
     await interactionService.RegisterCommandsGloballyAsync();
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
@@ -57,6 +58,28 @@ var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 await Task.Delay(Timeout.Infinite);
+
+public class NukeConfigModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("nukeconfig", "Configura permissões do /nuke")]
+    public async Task NukeConfigAsync()
+    {
+        var user = (SocketGuildUser)Context.User;
+
+        if (!AdminModule.PodeUsarEconfigStatic(user))
+        {
+            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+            return;
+        }
+
+        var embed = AdminModule.CriarEmbedPainelStatic(Context.Guild as SocketGuild);
+        var components = AdminModule.CriarMenuPainelStatic();
+
+        await RespondAsync(embed: embed, components: components);
+        var msg = await GetOriginalResponseAsync();
+        AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
+    }
+}
 
 public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 {
