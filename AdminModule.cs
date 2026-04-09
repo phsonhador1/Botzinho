@@ -13,7 +13,6 @@ namespace Botzinho.Admins
         private readonly DiscordSocketClient _client;
         public static Dictionary<ulong, NukeConfig> Configs = new();
         private static Dictionary<ulong, (ulong channelId, ulong messageId)> PainelMessages = new();
-        private static readonly string DbPath = "Data Source=botzinho.db";
 
         public AdminModule(DiscordSocketClient client)
         {
@@ -33,15 +32,26 @@ namespace Botzinho.Admins
             public List<ulong> CargosBloqueados { get; set; } = new();
         }
 
+        private static string GetConnectionString()
+        {
+            var url = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
+            if (string.IsNullOrEmpty(url))
+                throw new Exception("DATABASE_URL não configurado!");
+
+            var uri = new Uri(url);
+            var userInfo = uri.UserInfo.Split(':');
+            return $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        }
+
         private static void InicializarDB()
         {
-            using var conn = new SqliteConnection(DbPath);
+            using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
-            var cmd = conn.CreateCommand();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS nuke_config (
                     guild_id TEXT PRIMARY KEY,
-                    ativado INTEGER DEFAULT 0
+                    ativado BOOLEAN DEFAULT FALSE
                 );
                 CREATE TABLE IF NOT EXISTS nuke_cargos_permitidos (
                     guild_id TEXT,
@@ -65,7 +75,7 @@ namespace Botzinho.Admins
                 );
             ";
             cmd.ExecuteNonQuery();
-            Console.WriteLine("Banco SQLite inicializado.");
+            Console.WriteLine("Banco PostgreSQL inicializado.");
         }
 
         private static void SalvarConfig(ulong guildId)
@@ -73,17 +83,19 @@ namespace Botzinho.Admins
             if (!Configs.TryGetValue(guildId, out var config)) return;
             var gid = guildId.ToString();
 
-            using var conn = new SqliteConnection(DbPath);
+            using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var transaction = conn.BeginTransaction();
 
             try
             {
-                var cmd = conn.CreateCommand();
-                cmd.CommandText = "INSERT OR REPLACE INTO nuke_config (guild_id, ativado) VALUES ($gid, $ativado)";
-                cmd.Parameters.AddWithValue("$gid", gid);
-                cmd.Parameters.AddWithValue("$ativado", config.Ativado ? 1 : 0);
-                cmd.ExecuteNonQuery();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "INSERT INTO nuke_config (guild_id, ativado) VALUES (@gid, @ativado) ON CONFLICT (guild_id) DO UPDATE SET ativado = @ativado";
+                    cmd.Parameters.AddWithValue("@gid", gid);
+                    cmd.Parameters.AddWithValue("@ativado", config.Ativado);
+                    cmd.ExecuteNonQuery();
+                }
 
                 LimparEInserir(conn, "nuke_cargos_permitidos", "cargo_id", gid, config.CargosPermitidos);
                 LimparEInserir(conn, "nuke_membros_permitidos", "membro_id", gid, config.MembrosPermitidos);
@@ -100,19 +112,21 @@ namespace Botzinho.Admins
             }
         }
 
-        private static void LimparEInserir(SqliteConnection conn, string tabela, string coluna, string guildId, List<ulong> ids)
+        private static void LimparEInserir(NpgsqlConnection conn, string tabela, string coluna, string guildId, List<ulong> ids)
         {
-            var del = conn.CreateCommand();
-            del.CommandText = $"DELETE FROM {tabela} WHERE guild_id = $gid";
-            del.Parameters.AddWithValue("$gid", guildId);
-            del.ExecuteNonQuery();
+            using (var del = conn.CreateCommand())
+            {
+                del.CommandText = $"DELETE FROM {tabela} WHERE guild_id = @gid";
+                del.Parameters.AddWithValue("@gid", guildId);
+                del.ExecuteNonQuery();
+            }
 
             foreach (var id in ids)
             {
-                var ins = conn.CreateCommand();
-                ins.CommandText = $"INSERT INTO {tabela} (guild_id, {coluna}) VALUES ($gid, $id)";
-                ins.Parameters.AddWithValue("$gid", guildId);
-                ins.Parameters.AddWithValue("$id", id.ToString());
+                using var ins = conn.CreateCommand();
+                ins.CommandText = $"INSERT INTO {tabela} (guild_id, {coluna}) VALUES (@gid, @id)";
+                ins.Parameters.AddWithValue("@gid", guildId);
+                ins.Parameters.AddWithValue("@id", id.ToString());
                 ins.ExecuteNonQuery();
             }
         }
@@ -121,16 +135,16 @@ namespace Botzinho.Admins
         {
             try
             {
-                using var conn = new SqliteConnection(DbPath);
+                using var conn = new NpgsqlConnection(GetConnectionString());
                 conn.Open();
 
-                var cmd = conn.CreateCommand();
+                using var cmd = conn.CreateCommand();
                 cmd.CommandText = "SELECT guild_id, ativado FROM nuke_config";
                 using var reader = cmd.ExecuteReader();
 
                 var guildIds = new List<(ulong id, bool ativado)>();
                 while (reader.Read())
-                    guildIds.Add((ulong.Parse(reader.GetString(0)), reader.GetInt32(1) == 1));
+                    guildIds.Add((ulong.Parse(reader.GetString(0)), reader.GetBoolean(1)));
                 reader.Close();
 
                 foreach (var (guildId, ativado) in guildIds)
@@ -151,12 +165,12 @@ namespace Botzinho.Admins
             catch (Exception ex) { Console.WriteLine($"Erro ao carregar configs: {ex.Message}"); }
         }
 
-        private static List<ulong> CarregarLista(SqliteConnection conn, string tabela, string coluna, string guildId)
+        private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId)
         {
             var list = new List<ulong>();
-            var cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT {coluna} FROM {tabela} WHERE guild_id = $gid";
-            cmd.Parameters.AddWithValue("$gid", guildId);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT {coluna} FROM {tabela} WHERE guild_id = @gid";
+            cmd.Parameters.AddWithValue("@gid", guildId);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 list.Add(ulong.Parse(reader.GetString(0)));
