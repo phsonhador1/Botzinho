@@ -95,7 +95,7 @@ namespace Botzinho.Admins
                 .WithAuthor($"Nuke Config | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
-                    "• 🛡️ **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
+                    "•  **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
                     "   ○ Configure quem pode usar o comando `/nuke` no seu servidor. " +
                     "Ative ou desative conforme necessário, restrinja o uso a cargos ou membros específicos, " +
                     "ou bloqueie usuários/cargos. Utilize o **menu abaixo** para configurar.\n" +
@@ -165,7 +165,7 @@ namespace Botzinho.Admins
             {
                 if (!user.GuildPermissions.Administrator)
                 {
-                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para usar isso.");
+                    await msg.Channel.SendMessageAsync("❌ kkkkkkkkkkk Você não pode usar isso otario.");
                     return;
                 }
 
