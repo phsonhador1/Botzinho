@@ -20,12 +20,14 @@ namespace Botzinho.Admins
         // =========================================
         private static readonly List<ulong> UsuariosPermitidosConfig = new()
         {
-            123456789012345678 // seu ID
+            1472642376970404002
+            
+            // seu ID
         };
 
         private static readonly List<ulong> CargosPermitidosConfig = new()
         {
-            123456789012345678 // ID do cargo permitido
+            1487245316439670804 // ID do cargo permitido
         };
 
         public AdminModule(DiscordSocketClient client)
