@@ -1,10 +1,9 @@
 using Discord;
 using Discord.WebSocket;
+using Npgsql;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Botzinho.Admins
@@ -14,13 +13,14 @@ namespace Botzinho.Admins
         private readonly DiscordSocketClient _client;
         public static Dictionary<ulong, NukeConfig> Configs = new();
         private static Dictionary<ulong, (ulong channelId, ulong messageId)> PainelMessages = new();
-        private static readonly string ConfigPath = "nuke_configs.json";
+        private static readonly string ConnStr = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
 
         public AdminModule(DiscordSocketClient client)
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
             _client.SelectMenuExecuted += HandleSelectMenu;
+            InicializarDB();
             CarregarConfigs();
         }
 
@@ -33,36 +33,150 @@ namespace Botzinho.Admins
             public List<ulong> CargosBloqueados { get; set; } = new();
         }
 
-        private static void SalvarConfigs()
+        private static string GetConnectionString()
         {
+            var url = ConnStr;
+            if (url.StartsWith("postgresql://") || url.StartsWith("postgres://"))
+            {
+                var uri = new Uri(url);
+                var userInfo = uri.UserInfo.Split(':');
+                return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+            }
+            return url;
+        }
+
+        private static void InicializarDB()
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                CREATE TABLE IF NOT EXISTS nuke_config (
+                    guild_id TEXT PRIMARY KEY,
+                    ativado BOOLEAN DEFAULT FALSE
+                );
+                CREATE TABLE IF NOT EXISTS nuke_cargos_permitidos (
+                    guild_id TEXT,
+                    cargo_id TEXT,
+                    PRIMARY KEY (guild_id, cargo_id)
+                );
+                CREATE TABLE IF NOT EXISTS nuke_membros_permitidos (
+                    guild_id TEXT,
+                    membro_id TEXT,
+                    PRIMARY KEY (guild_id, membro_id)
+                );
+                CREATE TABLE IF NOT EXISTS nuke_usuarios_bloqueados (
+                    guild_id TEXT,
+                    usuario_id TEXT,
+                    PRIMARY KEY (guild_id, usuario_id)
+                );
+                CREATE TABLE IF NOT EXISTS nuke_cargos_bloqueados (
+                    guild_id TEXT,
+                    cargo_id TEXT,
+                    PRIMARY KEY (guild_id, cargo_id)
+                );
+            ";
+            cmd.ExecuteNonQuery();
+            Console.WriteLine("Banco PostgreSQL inicializado.");
+        }
+
+        private static void SalvarConfig(ulong guildId)
+        {
+            if (!Configs.TryGetValue(guildId, out var config)) return;
+            var gid = guildId.ToString();
+
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var transaction = conn.BeginTransaction();
+
             try
             {
-                var json = JsonSerializer.Serialize(Configs.ToDictionary(
-                    k => k.Key.ToString(),
-                    v => v.Value
-                ), new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(ConfigPath, json);
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "INSERT INTO nuke_config (guild_id, ativado) VALUES (@gid, @ativado) ON CONFLICT (guild_id) DO UPDATE SET ativado = @ativado";
+                    cmd.Parameters.AddWithValue("@gid", gid);
+                    cmd.Parameters.AddWithValue("@ativado", config.Ativado);
+                    cmd.ExecuteNonQuery();
+                }
+
+                LimparEInserir(conn, "nuke_cargos_permitidos", "cargo_id", gid, config.CargosPermitidos);
+                LimparEInserir(conn, "nuke_membros_permitidos", "membro_id", gid, config.MembrosPermitidos);
+                LimparEInserir(conn, "nuke_usuarios_bloqueados", "usuario_id", gid, config.UsuariosBloqueados);
+                LimparEInserir(conn, "nuke_cargos_bloqueados", "cargo_id", gid, config.CargosBloqueados);
+
+                transaction.Commit();
+                Console.WriteLine($"Config salva para guild {guildId}");
             }
-            catch (Exception ex) { Console.WriteLine($"Erro ao salvar configs: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                Console.WriteLine($"Erro ao salvar config: {ex.Message}");
+            }
+        }
+
+        private static void LimparEInserir(NpgsqlConnection conn, string tabela, string coluna, string guildId, List<ulong> ids)
+        {
+            using (var del = conn.CreateCommand())
+            {
+                del.CommandText = $"DELETE FROM {tabela} WHERE guild_id = @gid";
+                del.Parameters.AddWithValue("@gid", guildId);
+                del.ExecuteNonQuery();
+            }
+
+            foreach (var id in ids)
+            {
+                using var ins = conn.CreateCommand();
+                ins.CommandText = $"INSERT INTO {tabela} (guild_id, {coluna}) VALUES (@gid, @id)";
+                ins.Parameters.AddWithValue("@gid", guildId);
+                ins.Parameters.AddWithValue("@id", id.ToString());
+                ins.ExecuteNonQuery();
+            }
         }
 
         private static void CarregarConfigs()
         {
             try
             {
-                if (!File.Exists(ConfigPath)) return;
-                var json = File.ReadAllText(ConfigPath);
-                var data = JsonSerializer.Deserialize<Dictionary<string, NukeConfig>>(json);
-                if (data != null)
+                using var conn = new NpgsqlConnection(GetConnectionString());
+                conn.Open();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT guild_id, ativado FROM nuke_config";
+                using var reader = cmd.ExecuteReader();
+
+                var guildIds = new List<(ulong id, bool ativado)>();
+                while (reader.Read())
+                    guildIds.Add((ulong.Parse(reader.GetString(0)), reader.GetBoolean(1)));
+                reader.Close();
+
+                foreach (var (guildId, ativado) in guildIds)
                 {
-                    Configs = data.ToDictionary(
-                        k => ulong.Parse(k.Key),
-                        v => v.Value
-                    );
-                    Console.WriteLine($"Configs carregadas: {Configs.Count} servidores");
+                    var config = new NukeConfig
+                    {
+                        Ativado = ativado,
+                        CargosPermitidos = CarregarLista(conn, "nuke_cargos_permitidos", "cargo_id", guildId.ToString()),
+                        MembrosPermitidos = CarregarLista(conn, "nuke_membros_permitidos", "membro_id", guildId.ToString()),
+                        UsuariosBloqueados = CarregarLista(conn, "nuke_usuarios_bloqueados", "usuario_id", guildId.ToString()),
+                        CargosBloqueados = CarregarLista(conn, "nuke_cargos_bloqueados", "cargo_id", guildId.ToString())
+                    };
+                    Configs[guildId] = config;
                 }
+
+                Console.WriteLine($"Configs carregadas: {Configs.Count} servidores");
             }
             catch (Exception ex) { Console.WriteLine($"Erro ao carregar configs: {ex.Message}"); }
+        }
+
+        private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId)
+        {
+            var list = new List<ulong>();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT {coluna} FROM {tabela} WHERE guild_id = @gid";
+            cmd.Parameters.AddWithValue("@gid", guildId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                list.Add(ulong.Parse(reader.GetString(0)));
+            return list;
         }
 
         private NukeConfig GetConfig(ulong guildId)
@@ -95,7 +209,7 @@ namespace Botzinho.Admins
                 .WithAuthor($"Nuke Config | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
-                    "•  **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
+                    "• 🛡️ **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
                     "   ○ Configure quem pode usar o comando `/nuke` no seu servidor. " +
                     "Ative ou desative conforme necessário, restrinja o uso a cargos ou membros específicos, " +
                     "ou bloqueie usuários/cargos. Utilize o **menu abaixo** para configurar.\n" +
@@ -165,7 +279,7 @@ namespace Botzinho.Admins
             {
                 if (!user.GuildPermissions.Administrator)
                 {
-                    await msg.Channel.SendMessageAsync("❌ kkkkkkkkkkk Você não pode usar isso otario.");
+                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para usar isso.");
                     return;
                 }
 
@@ -196,7 +310,7 @@ namespace Botzinho.Admins
                     {
                         case "toggle":
                             config.Ativado = !config.Ativado;
-                            SalvarConfigs();
+                            SalvarConfig(guild.Id);
                             await component.RespondAsync($"✅ Sistema de nuke **{(config.Ativado ? "ativado" : "desativado")}**!", ephemeral: true);
                             await AtualizarPainel(guild);
                             break;
@@ -287,14 +401,14 @@ namespace Botzinho.Admins
                     var roleId = ulong.Parse(component.Data.Values.First());
                     if (!config.CargosPermitidos.Contains(roleId)) { config.CargosPermitidos.Add(roleId); await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_remove_role":
                     config.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo removido!", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
@@ -302,14 +416,14 @@ namespace Botzinho.Admins
                     var memberId = ulong.Parse(component.Data.Values.First());
                     if (!config.MembrosPermitidos.Contains(memberId)) { config.MembrosPermitidos.Add(memberId); await component.RespondAsync($"✅ Membro <@{memberId}> adicionado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_remove_member":
                     config.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Membro removido!", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
@@ -317,14 +431,14 @@ namespace Botzinho.Admins
                     var blockId = ulong.Parse(component.Data.Values.First());
                     if (!config.UsuariosBloqueados.Contains(blockId)) { config.UsuariosBloqueados.Add(blockId); await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_unblock_user":
                     config.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Usuário desbloqueado!", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
@@ -332,14 +446,14 @@ namespace Botzinho.Admins
                     var blockRoleId = ulong.Parse(component.Data.Values.First());
                     if (!config.CargosBloqueados.Contains(blockRoleId)) { config.CargosBloqueados.Add(blockRoleId); await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
 
                 case "nuke_unblock_role":
                     config.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo desbloqueado!", ephemeral: true);
-                    SalvarConfigs();
+                    SalvarConfig(guild.Id);
                     await AtualizarPainel(guild);
                     break;
             }
