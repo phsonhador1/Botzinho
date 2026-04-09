@@ -32,16 +32,19 @@ namespace Botzinho.Admins
             public List<ulong> CargosBloqueados { get; set; } = new();
         }
 
-        private static string GetConnectionString()
-        {
-            var url = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
-            if (string.IsNullOrEmpty(url))
-                throw new Exception("DATABASE_URL não configurado!");
+       private static string GetConnectionString()
+{
+    var host = Environment.GetEnvironmentVariable("PGHOST") ?? "";
+    var port = Environment.GetEnvironmentVariable("PGPORT") ?? "5432";
+    var user = Environment.GetEnvironmentVariable("PGUSER") ?? "";
+    var pass = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "";
+    var db = Environment.GetEnvironmentVariable("PGDATABASE") ?? "";
 
-            var uri = new Uri(url);
-            var userInfo = uri.UserInfo.Split(':');
-            return $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-        }
+    if (string.IsNullOrEmpty(host))
+        throw new Exception("Variáveis do banco não configuradas!");
+
+    return $"Host={host};Port={port};Database={db};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
+}
 
         private static void InicializarDB()
         {
