@@ -316,7 +316,7 @@ namespace Botzinho.Admins
             var menu = new SelectMenuBuilder()
                 .WithCustomId("nuke_config_menu")
                 .WithPlaceholder("Selecione a opção desejada para configurar.")
-                .AddOption("Ativar", "toggle", "Ative o sistema de nuke.", new Emoji("🛡️"))
+                .AddOption("🟢 Ativar", "toggle", "Ative o sistema de nuke.")
                 .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos que podem usar o /nuke.", new Emoji("➕"))
                 .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos permitidos.", new Emoji("➖"))
                 .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros que podem usar o /nuke.", new Emoji("👤"))
