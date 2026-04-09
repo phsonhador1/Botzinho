@@ -32,19 +32,10 @@ namespace Botzinho.Admins
             public List<ulong> CargosBloqueados { get; set; } = new();
         }
 
-       private static string GetConnectionString()
-{
-    var host = Environment.GetEnvironmentVariable("PGHOST") ?? "";
-    var port = Environment.GetEnvironmentVariable("PGPORT") ?? "5432";
-    var user = Environment.GetEnvironmentVariable("PGUSER") ?? "";
-    var pass = Environment.GetEnvironmentVariable("PGPASSWORD") ?? "";
-    var db = Environment.GetEnvironmentVariable("PGDATABASE") ?? "";
-
-    if (string.IsNullOrEmpty(host))
-        throw new Exception("Variáveis do banco não configuradas!");
-
-    return $"Host={host};Port={port};Database={db};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
-}
+        private static string GetConnectionString()
+        {
+            return "Host=shuttle.proxy.rlwy.net;Port=54220;Database=railway;Username=postgres;Password=uxmOfkOGeiSrvHfxpttOBrgcCXXWiyPK;SSL Mode=Require;Trust Server Certificate=true";
+        }
 
         private static void InicializarDB()
         {
