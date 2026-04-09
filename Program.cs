@@ -66,7 +66,9 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         var user = (SocketGuildUser)Context.User;
         var guildId = Context.Guild.Id;
 
-        if (Botzinho.Admins.AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
+        AdminModule.RecarregarConfig(guildId);
+
+        if (AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
         {
             if (config.UsuariosBloqueados.Contains(user.Id) ||
                 config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
