@@ -7,11 +7,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-
+using Botzinho.Admins;
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
-
 {
     GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent
 });
@@ -21,14 +19,11 @@ var services = new ServiceCollection()
     .BuildServiceProvider();
 
 var interactionService = new InteractionService(client);
-var adminModule = new Botzinho.Admins.AdminModule(client);
+var adminModule = new AdminModule(client);
 
-
-// Lista de status que vão ficar rotacionando
 string[] statusList = new[]
 {
     "Epstein Store",
-    
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
@@ -38,14 +33,13 @@ client.Ready += async () =>
     await interactionService.RegisterCommandsGloballyAsync();
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
-    // Inicia a rotação de status
     _ = Task.Run(async () =>
     {
         int i = 0;
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], type: ActivityType.Streaming);
+            await client.SetGameAsync(statusList[i], "https://twitch.tv/seucanal", ActivityType.Streaming);
             i = (i + 1) % statusList.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
