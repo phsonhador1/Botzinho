@@ -159,6 +159,39 @@ namespace Botzinho.Admins
             catch (Exception ex) { Console.WriteLine($"Erro ao carregar configs: {ex.Message}"); }
         }
 
+        public static void RecarregarConfig(ulong guildId)
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(GetConnectionString());
+                conn.Open();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT guild_id, ativado FROM nuke_config WHERE guild_id = @gid";
+                cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+                using var reader = cmd.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    var gid = guildId.ToString();
+                    var ativado = reader.GetBoolean(1);
+                    reader.Close();
+
+                    var config = new NukeConfig
+                    {
+                        Ativado = ativado,
+                        CargosPermitidos = CarregarLista(conn, "nuke_cargos_permitidos", "cargo_id", gid),
+                        MembrosPermitidos = CarregarLista(conn, "nuke_membros_permitidos", "membro_id", gid),
+                        UsuariosBloqueados = CarregarLista(conn, "nuke_usuarios_bloqueados", "usuario_id", gid),
+                        CargosBloqueados = CarregarLista(conn, "nuke_cargos_bloqueados", "cargo_id", gid)
+                    };
+                    Configs[guildId] = config;
+                    Console.WriteLine($"Config recarregada para guild {guildId}");
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"Erro ao recarregar config: {ex.Message}"); }
+        }
+
         private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId)
         {
             var list = new List<ulong>();
@@ -180,6 +213,7 @@ namespace Botzinho.Admins
 
         private Embed CriarEmbedPainel(SocketGuild guild)
         {
+            RecarregarConfig(guild.Id);
             var config = GetConfig(guild.Id);
             var botUser = guild.CurrentUser;
 
