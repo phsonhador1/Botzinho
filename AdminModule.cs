@@ -119,9 +119,8 @@ namespace Botzinho.Admins
                     return;
                 }
 
-                // eban @usuario <dias> <motivo>
-                var mentions = msg.MentionedUsers;
-                if (mentions.Count == 0)
+                var texto = msg.Content.Substring("eban".Length).Trim();
+                if (string.IsNullOrEmpty(texto))
                 {
                     var helpEmbed = new EmbedBuilder()
                         .WithTitle("🔨 Como usar o eban")
@@ -138,15 +137,34 @@ namespace Botzinho.Admins
                     return;
                 }
 
-                var alvo = msg.MentionedUsers.First();
-                var alvoGuild = user.Guild.GetUser(alvo.Id);
+                SocketGuildUser alvoGuild = null;
+
+                // Tenta por menção real
+                if (msg.MentionedUsers.Count > 0)
+                {
+                    var alvo = msg.MentionedUsers.First();
+                    alvoGuild = user.Guild.GetUser(alvo.Id);
+                    texto = texto.Substring(texto.IndexOf('>') + 1).Trim();
+                }
+                else
+                {
+                    // Tenta por nome/username digitado
+                    var partes = texto.Split(' ');
+                    var nome = partes[0].TrimStart('@');
+                    texto = partes.Length > 1 ? string.Join(' ', partes.Skip(1)) : "";
+
+                    alvoGuild = user.Guild.Users.FirstOrDefault(u =>
+                        u.Username.Equals(nome, StringComparison.OrdinalIgnoreCase) ||
+                        u.DisplayName.Equals(nome, StringComparison.OrdinalIgnoreCase) ||
+                        $"{u.Username}_{u.Discriminator}".Equals(nome, StringComparison.OrdinalIgnoreCase));
+                }
 
                 if (alvoGuild == null)
                 {
-                    await msg.Channel.SendMessageAsync("❌ Usuário não encontrado no servidor.");
+                    await msg.Channel.SendMessageAsync("❌ Usuário não encontrado. Tente mencionar com @ ou use o username exato.");
                     return;
                 }
-                if (alvo.Id == user.Id)
+                if (alvoGuild.Id == user.Id)
                 {
                     await msg.Channel.SendMessageAsync("❌ Você não pode se banir.");
                     return;
@@ -162,22 +180,18 @@ namespace Botzinho.Admins
                     return;
                 }
 
-                // Pega o texto depois da menção
-                var textoDepois = msg.Content.Substring(msg.Content.IndexOf('>') + 1).Trim();
-                var partes = textoDepois.Split(' ', 2);
-
                 int dias = 0;
                 string motivo = "Sem motivo informado";
+                var args = texto.Split(' ', 2);
 
-                if (partes.Length >= 1 && int.TryParse(partes[0], out int d))
+                if (args.Length >= 1 && int.TryParse(args[0], out int d))
                 {
                     dias = Math.Clamp(d, 0, 7);
-                    if (partes.Length >= 2)
-                        motivo = partes[1];
+                    if (args.Length >= 2) motivo = args[1];
                 }
-                else if (!string.IsNullOrEmpty(textoDepois))
+                else if (!string.IsNullOrEmpty(texto))
                 {
-                    motivo = textoDepois;
+                    motivo = texto;
                 }
 
                 await user.Guild.AddBanAsync(alvoGuild, pruneDays: dias, reason: motivo);
