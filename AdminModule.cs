@@ -111,6 +111,90 @@ namespace Botzinho.Admins
                 await ((ITextChannel)msg.Channel).ModifyAsync(x => x.Topic = texto);
                 await msg.Channel.SendMessageAsync("✅ Tópico alterado.");
             }
+            else if (content.StartsWith("eban"))
+            {
+                if (!user.GuildPermissions.BanMembers)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para banir.");
+                    return;
+                }
+
+                // eban @usuario <dias> <motivo>
+                var mentions = msg.MentionedUsers;
+                if (mentions.Count == 0)
+                {
+                    var helpEmbed = new EmbedBuilder()
+                        .WithTitle("🔨 Como usar o eban")
+                        .WithDescription(
+                            "```\n" +
+                            "eban @usuario              - Bane sem motivo\n" +
+                            "eban @usuario 7            - Bane e apaga 7 dias de msgs\n" +
+                            "eban @usuario 7 spammando  - Bane com dias e motivo\n" +
+                            "```"
+                        )
+                        .WithColor(new Discord.Color(0xED4245))
+                        .Build();
+                    await msg.Channel.SendMessageAsync(embed: helpEmbed);
+                    return;
+                }
+
+                var alvo = msg.MentionedUsers.First();
+                var alvoGuild = user.Guild.GetUser(alvo.Id);
+
+                if (alvoGuild == null)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Usuário não encontrado no servidor.");
+                    return;
+                }
+                if (alvo.Id == user.Id)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Você não pode se banir.");
+                    return;
+                }
+                if (alvoGuild.Hierarchy >= user.Hierarchy)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Você não pode banir alguém com cargo igual ou superior.");
+                    return;
+                }
+                if (alvoGuild.Hierarchy >= user.Guild.CurrentUser.Hierarchy)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Meu cargo é inferior ao desse usuário.");
+                    return;
+                }
+
+                // Pega o texto depois da menção
+                var textoDepois = msg.Content.Substring(msg.Content.IndexOf('>') + 1).Trim();
+                var partes = textoDepois.Split(' ', 2);
+
+                int dias = 0;
+                string motivo = "Sem motivo informado";
+
+                if (partes.Length >= 1 && int.TryParse(partes[0], out int d))
+                {
+                    dias = Math.Clamp(d, 0, 7);
+                    if (partes.Length >= 2)
+                        motivo = partes[1];
+                }
+                else if (!string.IsNullOrEmpty(textoDepois))
+                {
+                    motivo = textoDepois;
+                }
+
+                await user.Guild.AddBanAsync(alvoGuild, pruneDays: dias, reason: motivo);
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("🔨 Usuário Banido")
+                    .WithDescription(
+                        $"**Usuário:** {alvoGuild.Username} ({alvoGuild.Id})\n" +
+                        $"**Moderador:** {user.Username}\n" +
+                        $"**Dias apagados:** {dias}\n" +
+                        $"**Motivo:** {motivo}")
+                    .WithColor(new Discord.Color(0xED4245))
+                    .WithTimestamp(DateTimeOffset.Now)
+                    .Build();
+
+                await msg.Channel.SendMessageAsync(embed: embed);
+            }
         }
 
         private async Task EnviarPainelNuke(ISocketMessageChannel channel, SocketGuild guild)
