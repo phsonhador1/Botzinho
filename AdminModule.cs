@@ -1,6 +1,6 @@
 using Discord;
 using Discord.WebSocket;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
