@@ -68,31 +68,34 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         AdminModule.RecarregarConfig(guildId);
 
-        if (AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
+        if (!AdminModule.Configs.TryGetValue(guildId, out var config))
         {
-            if (config.UsuariosBloqueados.Contains(user.Id) ||
-                config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
-            {
-                await RespondAsync("❌ Você está bloqueado de usar este comando.", ephemeral: true);
-                return;
-            }
-
-            bool temCargo = config.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
-            bool temMembro = config.MembrosPermitidos.Contains(user.Id);
-
-            if (!temCargo && !temMembro)
-            {
-                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-                return;
-            }
+            await RespondAsync("❌ O sistema de nuke não foi configurado neste servidor.", ephemeral: true);
+            return;
         }
-        else
+
+        if (!config.Ativado)
         {
-            if (!user.GuildPermissions.ManageChannels && !user.GuildPermissions.Administrator)
-            {
-                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-                return;
-            }
+            await RespondAsync("❌ O sistema de nuke está desativado.", ephemeral: true);
+            return;
+        }
+
+        // Bloqueios têm prioridade
+        if (config.UsuariosBloqueados.Contains(user.Id) ||
+            config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
+        {
+            await RespondAsync("❌ Você está bloqueado de usar este comando otario.", ephemeral: true);
+            return;
+        }
+
+        // Mesmo sendo admin, só entra se estiver permitido
+        bool temCargo = config.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
+        bool temMembro = config.MembrosPermitidos.Contains(user.Id);
+
+        if (!temCargo && !temMembro)
+        {
+            await RespondAsync("❌ Opa calma ae, Você não está na lista de cargos ou membros permitidos para usar este comando.", ephemeral: true);
+            return;
         }
 
         await DeferAsync(ephemeral: true);
@@ -113,7 +116,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         await channel.DeleteAsync();
 
         var embed = new EmbedBuilder()
-            .WithDescription($"canal nukado por {Context.User.Username}")
+            .WithDescription($"canal nukado por {Context.User.Mention}")
             .WithColor(new Discord.Color(0x2B2D31))
             .Build();
 
