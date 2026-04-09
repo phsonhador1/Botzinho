@@ -273,7 +273,6 @@ namespace Botzinho.Admins
         private Embed CriarEmbedPainel(SocketGuild guild)
         {
             RecarregarConfig(guild.Id);
-
             var config = GetConfig(guild.Id);
             var botUser = guild.CurrentUser;
 
@@ -281,11 +280,11 @@ namespace Botzinho.Admins
 
             var cargosText = config.CargosPermitidos.Count > 0
                 ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
-                : "Nenhum cargo selecionado";
+                : "Padrão (Gerenciar Canais)";
 
             var membrosText = config.MembrosPermitidos.Count > 0
                 ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
-                : "Nenhum membro selecionado";
+                : "Padrão (Gerenciar Canais)";
 
             var bloqueadosText = config.UsuariosBloqueados.Count > 0
                 ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
@@ -300,14 +299,16 @@ namespace Botzinho.Admins
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
                     "• 🛡️ **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
-                    "   ○ Configure quem pode usar o comando `/nuke` no seu servidor.\n" +
-                    "   ○ O comando `econfig nuke` só pode ser usado por quem você definiu no código do `AdminModule`.\n\n" +
+                    "   ○ Configure quem pode usar o comando `/nuke` no seu servidor. " +
+                    "Ative ou desative conforme necessário, restrinja o uso a cargos ou membros específicos, " +
+                    "ou bloqueie usuários/cargos. Utilize o **menu abaixo** para configurar.\n" +
+                    "   ○ ⚠️ Se nenhum cargo/membro for definido, o comportamento padrão (permissão Gerenciar Canais) será usado.\n\n" +
                     "• 🔧 **Informações sobre o sistema:**\n" +
                     $"   ○ **Status**: {statusText}\n" +
                     $"   ○ **Cargos Permitidos**: {cargosText}\n" +
                     $"   ○ **Membros Permitidos**: {membrosText}\n" +
                     $"   ○ **Usuários Bloqueados**: {bloqueadosText}\n" +
-                    $"   ○ **Cargos Bloqueados**: {cargosBloqText}\n"
+                    $"   ○ **Cargos Bloqueados**: {cargosBloqText}"
                 )
                 .WithFooter($"Servidor de {guild.Name} • Hoje às {DateTime.Now:HH:mm}")
                 .WithColor(new Discord.Color(0x2B2D31))
