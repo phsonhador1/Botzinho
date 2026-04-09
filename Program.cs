@@ -66,9 +66,8 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         var user = (SocketGuildUser)Context.User;
         var guildId = Context.Guild.Id;
 
-        if (AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
+        if (Botzinho.Admins.AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
         {
-            // Bloqueados primeiro
             if (config.UsuariosBloqueados.Contains(user.Id) ||
                 config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
             {
@@ -85,10 +84,13 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
                 return;
             }
         }
-        else if (!user.GuildPermissions.ManageChannels)
+        else
         {
-            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-            return;
+            if (!user.GuildPermissions.ManageChannels && !user.GuildPermissions.Administrator)
+            {
+                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+                return;
+            }
         }
 
         await DeferAsync(ephemeral: true);
