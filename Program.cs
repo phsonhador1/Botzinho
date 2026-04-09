@@ -78,7 +78,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
             bool temCargo = config.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
             bool temMembro = config.MembrosPermitidos.Contains(user.Id);
 
-            if (!temCargo && !temMembro && !user.GuildPermissions.Administrator)
+            if (!temCargo && !temMembro)
             {
                 await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
                 return;
