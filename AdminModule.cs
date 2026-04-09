@@ -276,30 +276,30 @@ namespace Botzinho.Admins
             var config = GetConfig(guild.Id);
             var botUser = guild.CurrentUser;
 
-            var statusText = config.Ativado ? "Ativado" : "Desativado";
+            var statusText = config.Ativado ? "`Ativado`" : "`Desativado`";
 
             var cargosText = config.CargosPermitidos.Count > 0
                 ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
-                : "Padrão (Gerenciar Canais)";
+                : "`Padrão (Gerenciar Canais)`";
 
             var membrosText = config.MembrosPermitidos.Count > 0
                 ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
-                : "Padrão (Gerenciar Canais)";
+                : "`Padrão (Gerenciar Canais)`";
 
             var bloqueadosText = config.UsuariosBloqueados.Count > 0
                 ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
-                : "Nenhum";
+                : "`Nenhum`";
 
             var cargosBloqText = config.CargosBloqueados.Count > 0
                 ? string.Join(", ", config.CargosBloqueados.Select(x => $"<@&{x}>"))
-                : "Nenhum";
+                : "`Nenhum`";
 
             return new EmbedBuilder()
                 .WithAuthor($"Nuke Config | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
                     "• 🛡️ **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
-                    "   ○ Configure quem pode usar o comando `/nuke` no seu servidor. " +
+                    "   ○ Configure quem pode usar o comando  `/nuke`  no seu servidor. " +
                     "Ative ou desative conforme necessário, restrinja o uso a cargos ou membros específicos, " +
                     "ou bloqueie usuários/cargos. Utilize o **menu abaixo** para configurar.\n" +
                     "   ○ ⚠️ Se nenhum cargo/membro for definido, o comportamento padrão (permissão Gerenciar Canais) será usado.\n\n" +
@@ -308,9 +308,10 @@ namespace Botzinho.Admins
                     $"   ○ **Cargos Permitidos**: {cargosText}\n" +
                     $"   ○ **Membros Permitidos**: {membrosText}\n" +
                     $"   ○ **Usuários Bloqueados**: {bloqueadosText}\n" +
-                    $"   ○ **Cargos Bloqueados**: {cargosBloqText}"
+                    $"   ○ **Cargos Bloqueados**: {cargosBloqText}\n\n" +
+                    "🌿 Em caso de dúvidas ou bugs, não hesite em entrar em meu [servidor de suporte](https://discord.gg/SEULINK) para que nossa equipe possa lhe ajudar."
                 )
-                .WithFooter($"Servidor de {guild.Name} • Hoje às {DateTime.Now:HH:mm}")
+                .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name} • Hoje às {DateTime.Now:HH:mm}")
                 .WithColor(new Discord.Color(0x2B2D31))
                 .Build();
         }
@@ -321,7 +322,7 @@ namespace Botzinho.Admins
                 .WithCustomId("nuke_config_menu")
                 .WithPlaceholder("Selecione a opção desejada para configurar.")
                 .AddOption("Ativar", "toggle", "Ative o sistema de nuke.", new Emoji("🛡️"))
-                .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos que podem usar o /nuke.", new Emoji("➕"))
+                .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos que podem usar o `/nuke`.", new Emoji("➕"))
                 .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos permitidos.", new Emoji("➖"))
                 .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros que podem usar o /nuke.", new Emoji("👤"))
                 .AddOption("Remover membros permitidos", "remove_member", "Remova membros permitidos.", new Emoji("🚫"))
