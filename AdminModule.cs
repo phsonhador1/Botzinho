@@ -220,10 +220,10 @@ namespace Botzinho.Admins
             var statusText = config.Ativado ? "Ativado" : "Desativado";
             var cargosText = config.CargosPermitidos.Count > 0
                 ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
-                : "Padrão (Gerenciar Canais)";
+                : "Nenhum Cargo Selecionado.)";
             var membrosText = config.MembrosPermitidos.Count > 0
                 ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
-                : "Padrão (Gerenciar Canais)";
+                : "Nenhum Membro Selecionado.)";
             var bloqueadosText = config.UsuariosBloqueados.Count > 0
                 ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
                 : "Nenhum";
@@ -305,7 +305,7 @@ namespace Botzinho.Admins
             {
                 if (!user.GuildPermissions.Administrator)
                 {
-                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para usar isso.");
+                    await msg.Channel.SendMessageAsync(" kkkkkkkkkkkkkkk você não tem permissão para usar isso otario.");
                     return;
                 }
 
