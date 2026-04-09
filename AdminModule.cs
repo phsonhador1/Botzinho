@@ -51,7 +51,8 @@ namespace Botzinho.Admins
 
         private static string GetConnectionString()
         {
-            return "Host=shuttle.proxy.rlwy.net;Port=54220;Database=railway;Username=postgres;Password=uxmOfkOGeiSrvHfxpttOBrgcCXXWiyPK;SSL Mode=Require;Trust Server Certificate=true";
+            return Environment.GetEnvironmentVariable("DATABASE_URL")
+                ?? throw new Exception("DATABASE_URL não configurado!");
         }
 
         private bool PodeUsarEconfig(SocketGuildUser user)
