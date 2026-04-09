@@ -125,147 +125,16 @@ namespace Botzinho.Admins
 
             var content = msg.Content.ToLower().Trim();
 
-            if (!user.GuildPermissions.Administrator)
-            {
-                if (content.StartsWith("econfig") || content.StartsWith("eban"))
-                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para usar isso.");
-                return;
-            }
-
             if (content == "econfig nuke")
             {
+                if (!user.GuildPermissions.Administrator)
+                {
+                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para usar isso.");
+                    return;
+                }
+
                 var painelMsg = await msg.Channel.SendMessageAsync(embed: CriarEmbedPainel(user.Guild), components: CriarMenuPainel());
                 PainelMessages[user.Guild.Id] = (painelMsg.Channel.Id, painelMsg.Id);
-            }
-            else if (content == "econfig help")
-            {
-                var embed = new EmbedBuilder()
-                    .WithTitle("⚙️ Painel de Configuração")
-                    .WithDescription(
-                        "```\n" +
-                        "econfig help          - Mostra este menu\n" +
-                        "econfig nuke          - Configura permissões do /nuke\n" +
-                        "econfig slowmode <s>  - Define slowmode no canal\n" +
-                        "econfig lock          - Tranca o canal\n" +
-                        "econfig unlock        - Destranca o canal\n" +
-                        "econfig rename <nome> - Renomeia o canal\n" +
-                        "econfig topic <texto> - Muda o tópico do canal\n" +
-                        "```"
-                    )
-                    .WithColor(new Discord.Color(0x2B2D31))
-                    .Build();
-                await msg.Channel.SendMessageAsync(embed: embed);
-            }
-            else if (content.StartsWith("econfig slowmode"))
-            {
-                var parts = content.Split(' ');
-                if (parts.Length >= 3 && int.TryParse(parts[2], out int seconds))
-                {
-                    await ((ITextChannel)msg.Channel).ModifyAsync(x => x.SlowModeInterval = seconds);
-                    await msg.Channel.SendMessageAsync($"✅ Slowmode definido para **{seconds}s**");
-                }
-                else
-                    await msg.Channel.SendMessageAsync("❌ Use: `econfig slowmode <segundos>`");
-            }
-            else if (content == "econfig lock")
-            {
-                var ch = (ITextChannel)msg.Channel;
-                await ch.AddPermissionOverwriteAsync(ch.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Deny));
-                await msg.Channel.SendMessageAsync("🔒 Canal trancado.");
-            }
-            else if (content == "econfig unlock")
-            {
-                var ch = (ITextChannel)msg.Channel;
-                await ch.AddPermissionOverwriteAsync(ch.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Inherit));
-                await msg.Channel.SendMessageAsync("🔓 Canal destrancado.");
-            }
-            else if (content.StartsWith("econfig rename"))
-            {
-                var nome = msg.Content.Substring("econfig rename".Length).Trim();
-                if (string.IsNullOrEmpty(nome)) { await msg.Channel.SendMessageAsync("❌ Use: `econfig rename <nome>`"); return; }
-                await ((ITextChannel)msg.Channel).ModifyAsync(x => x.Name = nome);
-                await msg.Channel.SendMessageAsync($"✅ Canal renomeado para **{nome}**");
-            }
-            else if (content.StartsWith("econfig topic"))
-            {
-                var texto = msg.Content.Substring("econfig topic".Length).Trim();
-                if (string.IsNullOrEmpty(texto)) { await msg.Channel.SendMessageAsync("❌ Use: `econfig topic <texto>`"); return; }
-                await ((ITextChannel)msg.Channel).ModifyAsync(x => x.Topic = texto);
-                await msg.Channel.SendMessageAsync("✅ Tópico alterado.");
-            }
-            else if (content.StartsWith("eban"))
-            {
-                if (!user.GuildPermissions.BanMembers)
-                {
-                    await msg.Channel.SendMessageAsync("❌ Você não tem permissão para banir.");
-                    return;
-                }
-
-                var texto = msg.Content.Substring("eban".Length).Trim();
-                if (string.IsNullOrEmpty(texto))
-                {
-                    var helpEmbed = new EmbedBuilder()
-                        .WithTitle("🔨 Como usar o eban")
-                        .WithDescription(
-                            "```\n" +
-                            "eban @usuario              - Bane sem motivo\n" +
-                            "eban @usuario 7            - Bane e apaga 7 dias de msgs\n" +
-                            "eban @usuario 7 spammando  - Bane com dias e motivo\n" +
-                            "```"
-                        )
-                        .WithColor(new Discord.Color(0xED4245))
-                        .Build();
-                    await msg.Channel.SendMessageAsync(embed: helpEmbed);
-                    return;
-                }
-
-                SocketGuildUser alvoGuild = null;
-
-                if (msg.MentionedUsers.Count > 0)
-                {
-                    var alvo = msg.MentionedUsers.First();
-                    alvoGuild = user.Guild.GetUser(alvo.Id);
-                    texto = texto.Substring(texto.IndexOf('>') + 1).Trim();
-                }
-                else
-                {
-                    var partes = texto.Split(' ');
-                    var nome = partes[0].TrimStart('@');
-                    texto = partes.Length > 1 ? string.Join(' ', partes.Skip(1)) : "";
-
-                    alvoGuild = user.Guild.Users.FirstOrDefault(u =>
-                        u.Username.Equals(nome, StringComparison.OrdinalIgnoreCase) ||
-                        u.DisplayName.Equals(nome, StringComparison.OrdinalIgnoreCase));
-                }
-
-                if (alvoGuild == null) { await msg.Channel.SendMessageAsync("❌ Usuário não encontrado."); return; }
-                if (alvoGuild.Id == user.Id) { await msg.Channel.SendMessageAsync("❌ Você não pode se banir."); return; }
-                if (alvoGuild.Hierarchy >= user.Hierarchy) { await msg.Channel.SendMessageAsync("❌ Cargo igual ou superior ao seu."); return; }
-                if (alvoGuild.Hierarchy >= user.Guild.CurrentUser.Hierarchy) { await msg.Channel.SendMessageAsync("❌ Meu cargo é inferior."); return; }
-
-                int dias = 0;
-                string motivo = "Sem motivo informado";
-                var args = texto.Split(' ', 2);
-                if (args.Length >= 1 && int.TryParse(args[0], out int d))
-                {
-                    dias = Math.Clamp(d, 0, 7);
-                    if (args.Length >= 2) motivo = args[1];
-                }
-                else if (!string.IsNullOrEmpty(texto)) motivo = texto;
-
-                await user.Guild.AddBanAsync(alvoGuild, pruneDays: dias, reason: motivo);
-
-                var embed = new EmbedBuilder()
-                    .WithTitle("🔨 Usuário Banido")
-                    .WithDescription(
-                        $"**Usuário:** {alvoGuild.Username} ({alvoGuild.Id})\n" +
-                        $"**Moderador:** {user.Username}\n" +
-                        $"**Dias apagados:** {dias}\n" +
-                        $"**Motivo:** {motivo}")
-                    .WithColor(new Discord.Color(0xED4245))
-                    .WithTimestamp(DateTimeOffset.Now)
-                    .Build();
-                await msg.Channel.SendMessageAsync(embed: embed);
             }
         }
 
