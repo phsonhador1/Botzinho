@@ -32,6 +32,7 @@ client.Ready += async () =>
     await interactionService.AddModuleAsync<NukeModule>(services);
     await interactionService.AddModuleAsync<NukeConfigModule>(services);
     await interactionService.RegisterCommandsGloballyAsync();
+    await interactionService.AddModuleAsync<Botzinho.Moderation.ModerationModule>(services);
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
