@@ -61,9 +61,36 @@ await Task.Delay(Timeout.Infinite);
 public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
-    [RequireUserPermission(GuildPermission.ManageChannels)]
     public async Task NukeAsync()
     {
+        var user = (SocketGuildUser)Context.User;
+        var guildId = Context.Guild.Id;
+
+        if (AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
+        {
+            // Bloqueados primeiro
+            if (config.UsuariosBloqueados.Contains(user.Id) ||
+                config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
+            {
+                await RespondAsync("❌ Você está bloqueado de usar este comando.", ephemeral: true);
+                return;
+            }
+
+            bool temCargo = config.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
+            bool temMembro = config.MembrosPermitidos.Contains(user.Id);
+
+            if (!temCargo && !temMembro && !user.GuildPermissions.Administrator)
+            {
+                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+                return;
+            }
+        }
+        else if (!user.GuildPermissions.ManageChannels)
+        {
+            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+            return;
+        }
+
         await DeferAsync(ephemeral: true);
 
         var channel = (ITextChannel)Context.Channel;
