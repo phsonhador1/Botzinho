@@ -42,7 +42,7 @@ client.Ready += async () =>
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
             await client.SetGameAsync(statusList[i], "https://twitch.tv/seucanal", ActivityType.Streaming);
             i = (i + 1) % statusList.Length;
-            await Task.Delay(TimeSpan.FromSeconds(15));
+            await Task.Delay(TimeSpan.FromSeconds(5));
         }
     });
 };
