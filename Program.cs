@@ -116,7 +116,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         await channel.DeleteAsync();
 
         var embed = new EmbedBuilder()
-            .WithDescription($"canal nukado por {Context.User.Mention}")
+            .WithDescription($"canal nukado por {Context.User.Username}")
             .WithColor(new Discord.Color(0x2B2D31))
             .Build();
 
