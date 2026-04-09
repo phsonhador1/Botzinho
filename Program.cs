@@ -23,7 +23,8 @@ var adminModule = new AdminModule(client);
 
 string[] statusList = new[]
 {
-    "Epstein Store",
+    "👀 Epstein Store no TOPO 01",
+   "🥸 Aqui é 01, o resto é Copia 🤣"
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
