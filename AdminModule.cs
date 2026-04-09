@@ -315,34 +315,16 @@ namespace Botzinho.Admins
         {
             var menu = new SelectMenuBuilder()
                 .WithCustomId("nuke_config_menu")
-                .WithPlaceholder("Selecione uma opção")
-
-                .AddOption("Ativar / Desativar", "toggle", "Liga ou desliga o sistema",
-                    Emote.Parse("<:emoji_8:1491910229733150781>"))
-
-                .AddOption("Adicionar cargo", "add_role", "Permitir cargo usar o /nuke",
-                    Emote.Parse("<:cargo:123456789012345678>"))
-
-                .AddOption("Remover cargo", "remove_role", "Remover cargo da lista",
-                    Emote.Parse("<:lixeira:123456789012345678>"))
-
-                .AddOption("Adicionar membro", "add_member", "Permitir membro usar o /nuke",
-                    Emote.Parse("<:user:123456789012345678>"))
-
-                .AddOption("Remover membro", "remove_member", "Remover membro da lista",
-                    Emote.Parse("<:remove:123456789012345678>"))
-
-                .AddOption("Bloquear usuário", "block_user", "Impedir uso do comando",
-                    Emote.Parse("<:lock:123456789012345678>"))
-
-                .AddOption("Desbloquear usuário", "unblock_user", "Remover bloqueio",
-                    Emote.Parse("<:unlock:123456789012345678>"))
-
-                .AddOption("Bloquear cargo", "block_role", "Impedir cargo de usar",
-                    Emote.Parse("<:ban:123456789012345678>"))
-
-                .AddOption("Desbloquear cargo", "unblock_role", "Remover bloqueio",
-                    Emote.Parse("<:check:123456789012345678>"));
+                .WithPlaceholder("Selecione a opção desejada para configurar.")
+                .AddOption("Ativar", "toggle", "Ative o sistema de nuke.", new Emoji("🛡️"))
+                .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos que podem usar o /nuke.", new Emoji("➕"))
+                .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos permitidos.", new Emoji("➖"))
+                .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros que podem usar o /nuke.", new Emoji("👤"))
+                .AddOption("Remover membros permitidos", "remove_member", "Remova membros permitidos.", new Emoji("🚫"))
+                .AddOption("Bloquear usuário", "block_user", "Bloqueie um usuário de usar o /nuke.", new Emoji("🔒"))
+                .AddOption("Desbloquear usuário", "unblock_user", "Desbloqueie um usuário.", new Emoji("🔓"))
+                .AddOption("Bloquear cargo", "block_role", "Bloqueie um cargo de usar o /nuke.", new Emoji("⛔"))
+                .AddOption("Desbloquear cargo", "unblock_role", "Desbloqueie um cargo.", new Emoji("✅"));
 
             return new ComponentBuilder()
                 .WithSelectMenu(menu)
