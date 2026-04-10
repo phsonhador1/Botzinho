@@ -27,7 +27,7 @@ string[] statusList = new[]
 {
     "Epstein Store",
     "💜 Estou atualmente em 1 servidor",
-    "💜 Estou Online"
+    "🌸 Online, tomando um cafezinho e pronta pra ajudar"
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
