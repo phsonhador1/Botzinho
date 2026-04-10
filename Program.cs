@@ -41,7 +41,7 @@ client.Ready += async () =>
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], "", ActivityType.Streaming);
+            await client.SetGameAsync(statusList[i], "https://twitch.tv/seucanal", ActivityType.Streaming);
             i = (i + 1) % statusList.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
