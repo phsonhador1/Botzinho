@@ -32,7 +32,14 @@ client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
-    await interactionService.RegisterCommandsGloballyAsync();
+
+    // Limpa comandos duplicados dos guilds
+    foreach (var guild in client.Guilds)
+        await guild.DeleteApplicationCommandsAsync();
+
+    // Registra só global
+    await interactionService.RegisterCommandsGloballyAsync(true);
+
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
