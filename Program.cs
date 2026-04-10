@@ -26,6 +26,8 @@ ModerationHelper.InicializarTabelas();
 string[] statusList = new[]
 {
     "Epstein Store",
+    "💜 Estou atualmente em 1 servidor",
+    "💜 Estou Online"
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
