@@ -12,7 +12,10 @@ using Botzinho.Moderation;
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
-    GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent | GatewayIntents.GuildMembers
+    GatewayIntents = GatewayIntents.Guilds
+        | GatewayIntents.GuildMessages
+        | GatewayIntents.MessageContent
+        | GatewayIntents.GuildMembers
 });
 
 var services = new ServiceCollection()
@@ -21,6 +24,7 @@ var services = new ServiceCollection()
 
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
+
 ModerationHelper.InicializarTabelas();
 
 string[] statusList = new[]
@@ -28,25 +32,35 @@ string[] statusList = new[]
     "Epstein Store",
 };
 
-client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+client.Log += msg =>
+{
+    Console.WriteLine(msg);
+    return Task.CompletedTask;
+};
+
 client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
+
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
     {
         int i = 0;
+
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], "https://twitch.tv/seucanal", ActivityType.Streaming);
+            await client.SetGameAsync(statusList[i], "", ActivityType.Streaming);
+
             i = (i + 1) % statusList.Length;
+
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
     });
 };
+
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
@@ -67,6 +81,8 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
     {
         var user = (SocketGuildUser)Context.User;
 
+        AdminModule.GarantirAcessoInicialConfigServer(Context.Guild);
+
         if (!AdminModule.PodeUsarEconfigStatic(user))
         {
             await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
@@ -85,7 +101,8 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
             .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
 
         var embed = new EmbedBuilder()
-            .WithAuthor($"Config Server | {Context.Guild.CurrentUser.DisplayName}",
+            .WithAuthor(
+                $"Config Server | {Context.Guild.CurrentUser.DisplayName}",
                 Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
             .WithThumbnailUrl(Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
             .WithDescription(
@@ -98,7 +115,10 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
             .WithColor(new Discord.Color(0x2B2D31))
             .Build();
 
-        await RespondAsync(embed: embed, components: new ComponentBuilder().WithSelectMenu(menu).Build());
+        await RespondAsync(
+            embed: embed,
+            components: new ComponentBuilder().WithSelectMenu(menu).Build());
+
         var msg = await GetOriginalResponseAsync();
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
     }
@@ -123,6 +143,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         await DeferAsync(ephemeral: true);
 
         var channel = (ITextChannel)Context.Channel;
+
         var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
         {
             props.Topic = channel.Topic;
@@ -130,9 +151,7 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
             props.Position = channel.Position;
             props.IsNsfw = channel.IsNsfw;
             props.SlowModeInterval = channel.SlowModeInterval;
-            props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(
-                channel.PermissionOverwrites.ToList()
-            );
+            props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(channel.PermissionOverwrites.ToList());
         });
 
         await channel.DeleteAsync();
