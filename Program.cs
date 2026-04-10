@@ -32,7 +32,7 @@ client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
-    await interactionService.RegisterCommandsGloballyAsync();
+    await interactionService.RegisterCommandsToGuildAsync(1490082208528990318);
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
