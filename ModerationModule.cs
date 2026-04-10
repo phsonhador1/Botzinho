@@ -235,7 +235,7 @@ namespace Botzinho.Moderation
             cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
             cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
             var deleted = cmd.ExecuteNonQuery();
-            await RespondAsync($"🗑️ warns de {alvo.Mention} limpos, tá zerado agr ({deleted} removidos)");
+            await RespondAsync($"warns de {alvo.Mention} limpos, tá zerado agr ({deleted} removidos)");
         }
     }
 
@@ -256,7 +256,7 @@ namespace Botzinho.Moderation
             var deletable = messages.Where(m => (DateTimeOffset.UtcNow - m.Timestamp).TotalDays < 14).ToList();
             if (deletable.Count == 0) { await FollowupAsync("❌ nenhuma mensagem pra apagar", ephemeral: true); return; }
             await channel.DeleteMessagesAsync(deletable);
-            await FollowupAsync($"✅ {deletable.Count - 1} mensagens apagadas, sumiu tudo kkkk", ephemeral: true);
+            await FollowupAsync($"✅ {deletable.Count - 1} mensagens apagadas, sumiu tudo kkkkkkk", ephemeral: true);
         }
 
         [SlashCommand("slowmode", "Define slowmode")]
@@ -279,7 +279,7 @@ namespace Botzinho.Moderation
             { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
             var channel = (ITextChannel)Context.Channel;
             await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Deny));
-            await RespondAsync("🔒 canal trancado, ninguém fala mais aqui");
+            await RespondAsync("canal trancado otarios, ninguém fala mais aqui");
         }
 
         [SlashCommand("unlock", "Destranca o canal")]
@@ -290,7 +290,7 @@ namespace Botzinho.Moderation
             { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
             var channel = (ITextChannel)Context.Channel;
             await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Inherit));
-            await RespondAsync("🔓 canal destrancado, podem falar");
+            await RespondAsync("canal destrancado, podem falar");
         }
     }
 }
