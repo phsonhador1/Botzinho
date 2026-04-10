@@ -142,19 +142,29 @@ namespace Botzinho.Moderation
 
     public class WarnModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("warn", "Dá um aviso")]
+        [SlashCommand("avisar", "Dá um aviso")]
         public async Task WarnAsync(
             [Summary("usuario", "Usuário")] SocketGuildUser alvo,
             [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
+
             if (!AdminModule.TemPermissao(Context.Guild.Id, user, "warn"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
-            if (alvo.IsBot) { await RespondAsync("❌ não dá pra avisar bot", ephemeral: true); return; }
+            {
+                await RespondAsync("tu não tem permissão", ephemeral: true);
+                return;
+            }
+
+            if (alvo.IsBot)
+            {
+                await RespondAsync("não dá pra avisar bot", ephemeral: true);
+                return;
+            }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
 
+            // Inserir aviso
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "INSERT INTO warns (guild_id, user_id, moderator_id, motivo) VALUES (@gid, @uid, @mid, @motivo)";
@@ -166,6 +176,7 @@ namespace Botzinho.Moderation
             }
 
             int totalWarns;
+
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT COUNT(*) FROM warns WHERE guild_id = @gid AND user_id = @uid";
@@ -174,15 +185,23 @@ namespace Botzinho.Moderation
                 totalWarns = Convert.ToInt32(cmd.ExecuteScalar());
             }
 
-            await RespondAsync($"⚠️ {alvo.Mention} tomou warn kkk cuidado hein ({totalWarns}/3)\n**Motivo:** {motivo}");
+            await RespondAsync(
+                $"{alvo.Mention} recebeu um aviso\nMotivo: {motivo}\nTotal: {totalWarns}/3"
+            );
 
+            // Auto ban
             if (totalWarns >= 3)
             {
                 try
                 {
-                    try { await alvo.SendMessageAsync($"🔨 tu foi banido de **{Context.Guild.Name}** por acumular 3 warns kkkk"); } catch { }
+                    try
+                    {
+                        await alvo.SendMessageAsync($"você foi banido de {Context.Guild.Name} por acumular 3 avisos");
+                    }
+                    catch { }
+
                     await Context.Guild.AddBanAsync(alvo, reason: "Acumulou 3 avisos.");
-                    await Context.Channel.SendMessageAsync($"🔨 {alvo.Mention} acumulou 3 warns e foi banido automaticamente kkkk vaza");
+                    await Context.Channel.SendMessageAsync($"{alvo.Mention} acumulou 3 avisos e foi banido");
 
                     using var delCmd = conn.CreateCommand();
                     delCmd.CommandText = "DELETE FROM warns WHERE guild_id = @gid AND user_id = @uid";
@@ -190,52 +209,80 @@ namespace Botzinho.Moderation
                     delCmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
                     delCmd.ExecuteNonQuery();
                 }
-                catch (Exception ex) { Console.WriteLine($"Erro no ban automático: {ex.Message}"); }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Erro no ban automático: {ex.Message}");
+                }
             }
         }
 
-        [SlashCommand("warns", "Mostra avisos")]
+        [SlashCommand("avisos", "Mostra avisos")]
         public async Task WarnsAsync([Summary("usuario", "Usuário")] SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
+
             if (!AdminModule.TemPermissao(Context.Guild.Id, user, "warn"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            {
+                await RespondAsync("tu não tem permissão", ephemeral: true);
+                return;
+            }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
+
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT id, moderator_id, motivo, data FROM warns WHERE guild_id = @gid AND user_id = @uid ORDER BY data DESC";
             cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
             cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
+
             using var reader = cmd.ExecuteReader();
-            var warns = new List<string>();
+
+            var avisos = new List<string>();
+
             while (reader.Read())
             {
                 var warnId = reader.GetInt32(0);
                 var modId = reader.GetString(1);
                 var motivo = reader.GetString(2);
                 var data = reader.GetDateTime(3);
-                warns.Add($"`#{warnId}` | <@{modId}> | {motivo} | <t:{((DateTimeOffset)DateTime.SpecifyKind(data, DateTimeKind.Utc)).ToUnixTimeSeconds()}:R>");
+
+                avisos.Add($"#{warnId} | <@{modId}> | {motivo} | <t:{((DateTimeOffset)DateTime.SpecifyKind(data, DateTimeKind.Utc)).ToUnixTimeSeconds()}:R>");
             }
-            if (warns.Count == 0) { await RespondAsync($"✅ {alvo.Mention} tá limpo, sem warns", ephemeral: true); return; }
-            await RespondAsync($"⚠️ **Warns de {alvo.Username}:**\n{string.Join("\n", warns)}\n**Total: {warns.Count}/3**", ephemeral: true);
+
+            if (avisos.Count == 0)
+            {
+                await RespondAsync($"{alvo.Mention} não tem avisos", ephemeral: true);
+                return;
+            }
+
+            await RespondAsync(
+                $"Avisos de {alvo.Username}:\n{string.Join("\n", avisos)}\nTotal: {avisos.Count}/3",
+                ephemeral: true
+            );
         }
 
-        [SlashCommand("clearwarns", "Limpa avisos")]
+        [SlashCommand("limparavisos", "Limpa avisos")]
         public async Task ClearWarnsAsync([Summary("usuario", "Usuário")] SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
+
             if (!AdminModule.TemPermissao(Context.Guild.Id, user, "warn"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            {
+                await RespondAsync("tu não tem permissão", ephemeral: true);
+                return;
+            }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
+
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM warns WHERE guild_id = @gid AND user_id = @uid";
             cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
             cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
+
             var deleted = cmd.ExecuteNonQuery();
-            await RespondAsync($"warns de {alvo.Mention} limpos, tá zerado agr ({deleted} removidos)");
+
+            await RespondAsync($"avisos de {alvo.Mention} foram limpos ({deleted} removidos)");
         }
     }
 
