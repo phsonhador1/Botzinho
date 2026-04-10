@@ -118,6 +118,6 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         await channel.DeleteAsync();
 
-        await newChannel.SendMessageAsync($"'canal nukado por {Context.User.Username}'");
+        await newChannel.SendMessageAsync($"canal nukado por {Context.User.Username}");
     }
 }
