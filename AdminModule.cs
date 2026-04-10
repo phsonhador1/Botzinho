@@ -53,6 +53,12 @@ namespace Botzinho.Admins
             }
         }
 
+        public class PermissionResult
+        {
+            public bool Permitido { get; set; }
+            public string Mensagem { get; set; } = "";
+        }
+
         private static string GetConnectionString()
         {
             return Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -109,31 +115,70 @@ namespace Botzinho.Admins
             return false;
         }
 
-        public static bool TemPermissao(ulong guildId, SocketGuildUser user, string comando)
+        public static PermissionResult VerificarPermissao(ulong guildId, SocketGuildUser user, string comando)
         {
             RecarregarComando(guildId, comando);
 
             if (!Configs.TryGetValue(guildId, out var serverConfig))
-                return false;
+            {
+                return new PermissionResult
+                {
+                    Permitido = false,
+                    Mensagem = $"sistema {comando} desativado"
+                };
+            }
 
             var cmdConfig = serverConfig.GetCommand(comando);
 
-            // Se estiver desativado, ninguém usa. Nem admin.
             if (!cmdConfig.Ativado)
-                return false;
+            {
+                return new PermissionResult
+                {
+                    Permitido = false,
+                    Mensagem = $"sistema {comando} desativado"
+                };
+            }
 
-            // Bloqueados sempre perdem
             if (cmdConfig.UsuariosBloqueados.Contains(user.Id))
-                return false;
+            {
+                return new PermissionResult
+                {
+                    Permitido = false,
+                    Mensagem = $"você foi bloqueado do sistema {comando}"
+                };
+            }
 
             if (cmdConfig.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
-                return false;
+            {
+                return new PermissionResult
+                {
+                    Permitido = false,
+                    Mensagem = $"seu cargo foi bloqueado do sistema {comando}"
+                };
+            }
 
             bool temCargo = cmdConfig.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
             bool temMembro = cmdConfig.MembrosPermitidos.Contains(user.Id);
 
-            // Só usa se estiver na lista de permitidos
-            return temCargo || temMembro;
+            if (!temCargo && !temMembro)
+            {
+                return new PermissionResult
+                {
+                    Permitido = false,
+                    Mensagem = $"você não tem permissão para usar o sistema {comando}"
+                };
+            }
+
+            return new PermissionResult
+            {
+                Permitido = true,
+                Mensagem = "ok"
+            };
+        }
+
+        public static bool TemPermissao(ulong guildId, SocketGuildUser user, string comando)
+        {
+            return VerificarPermissao(guildId, user, comando).Permitido;
         }
 
         private static void InicializarDB()
@@ -518,48 +563,6 @@ namespace Botzinho.Admins
             }
         }
 
-        public static void AdicionarUsuarioConfigServer(ulong guildId, ulong userId)
-        {
-            if (!ConfigServerUsuariosPermitidos.ContainsKey(guildId))
-                ConfigServerUsuariosPermitidos[guildId] = new List<ulong>();
-
-            if (!ConfigServerUsuariosPermitidos[guildId].Contains(userId))
-            {
-                ConfigServerUsuariosPermitidos[guildId].Add(userId);
-                SalvarPermissoesConfigServer(guildId);
-            }
-        }
-
-        public static void RemoverUsuarioConfigServer(ulong guildId, ulong userId)
-        {
-            if (!ConfigServerUsuariosPermitidos.ContainsKey(guildId))
-                return;
-
-            if (ConfigServerUsuariosPermitidos[guildId].Remove(userId))
-                SalvarPermissoesConfigServer(guildId);
-        }
-
-        public static void AdicionarCargoConfigServer(ulong guildId, ulong roleId)
-        {
-            if (!ConfigServerCargosPermitidos.ContainsKey(guildId))
-                ConfigServerCargosPermitidos[guildId] = new List<ulong>();
-
-            if (!ConfigServerCargosPermitidos[guildId].Contains(roleId))
-            {
-                ConfigServerCargosPermitidos[guildId].Add(roleId);
-                SalvarPermissoesConfigServer(guildId);
-            }
-        }
-
-        public static void RemoverCargoConfigServer(ulong guildId, ulong roleId)
-        {
-            if (!ConfigServerCargosPermitidos.ContainsKey(guildId))
-                return;
-
-            if (ConfigServerCargosPermitidos[guildId].Remove(roleId))
-                SalvarPermissoesConfigServer(guildId);
-        }
-
         public static Embed CriarEmbedComando(SocketGuild guild, string comando)
         {
             RecarregarComando(guild.Id, comando);
@@ -747,7 +750,7 @@ namespace Botzinho.Admins
                         SalvarCommandConfig(guild.Id, comando);
 
                         await component.RespondAsync(
-                            $"Sistema /{comando} {(config.Ativado ? "ativado" : "desativado")}.",
+                            $"sistema {comando} {(config.Ativado ? "ativado" : "desativado")}",
                             ephemeral: true);
 
                         await AtualizarPainel(guild, comando);
