@@ -45,7 +45,7 @@ client.Ready += async () =>
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], "https://twitch.tv/botzinho", ActivityType.Streaming);
+            await client.SetGameAsync(statusList[i], type: ActivityType.Playing);
             i = (i + 1) % statusList.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
@@ -58,7 +58,7 @@ client.InteractionCreated += async interaction =>
 };
 
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-    ?? throw new Exception("DISCORD_TOKEN não configurado!");
+    ?? throw new Exception("DISCORD_TOKEN nao configurado!");
 
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
@@ -118,11 +118,6 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         await channel.DeleteAsync();
 
-        var embed = new EmbedBuilder()
-            .WithDescription($"canal nukado por {Context.User.Username}")
-            .WithColor(new Discord.Color(0x2B2D31))
-            .Build();
-
-        await newChannel.SendMessageAsync(embed: embed);
+        await newChannel.SendMessageAsync($"canal nukado por {Context.User.Username}");
     }
 }
