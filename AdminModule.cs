@@ -13,7 +13,9 @@ namespace Botzinho.Admins
         private readonly DiscordSocketClient _client;
         public static Dictionary<ulong, ServerConfig> Configs = new();
         private static Dictionary<ulong, (ulong channelId, ulong messageId)> PainelMessages = new();
+        private static Dictionary<ulong, string> EditandoComando = new();
 
+        // IDs que podem usar /configserver
         private static readonly List<ulong> UsuariosPermitidosConfig = new()
         {
             1472642376970404002
@@ -24,7 +26,6 @@ namespace Botzinho.Admins
             1487245316439670804
         };
 
-        // Sistemas disponíveis
         public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "warn", "clear", "lock" };
 
         public AdminModule(DiscordSocketClient client)
@@ -74,25 +75,25 @@ namespace Botzinho.Admins
             PainelMessages[guildId] = (channelId, messageId);
         }
 
-        // Checa se o usuário pode usar um comando específico
         public static bool TemPermissao(ulong guildId, SocketGuildUser user, string comando)
         {
-            RecarregarConfig(guildId);
+            // Sempre recarrega do banco antes de checar
+            RecarregarComando(guildId, comando);
 
             if (!Configs.TryGetValue(guildId, out var serverConfig))
-                return true; // sem config = comportamento padrão
+                return true;
 
             var cmdConfig = serverConfig.GetCommand(comando);
 
             if (!cmdConfig.Ativado)
-                return true; // sistema desativado = comportamento padrão
+                return true;
 
-            // Bloqueados primeiro
-            if (cmdConfig.UsuariosBloqueados.Contains(user.Id) ||
-                cmdConfig.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
+            if (cmdConfig.UsuariosBloqueados.Contains(user.Id))
                 return false;
 
-            // Só quem está na lista pode usar
+            if (cmdConfig.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
+                return false;
+
             bool temCargo = cmdConfig.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
             bool temMembro = cmdConfig.MembrosPermitidos.Contains(user.Id);
 
@@ -101,43 +102,50 @@ namespace Botzinho.Admins
 
         private static void InicializarDB()
         {
-            using var conn = new NpgsqlConnection(GetConnectionString());
-            conn.Open();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-                CREATE TABLE IF NOT EXISTS command_config (
-                    guild_id TEXT,
-                    comando TEXT,
-                    ativado BOOLEAN DEFAULT FALSE,
-                    PRIMARY KEY (guild_id, comando)
-                );
-                CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
-                    guild_id TEXT,
-                    comando TEXT,
-                    cargo_id TEXT,
-                    PRIMARY KEY (guild_id, comando, cargo_id)
-                );
-                CREATE TABLE IF NOT EXISTS command_membros_permitidos (
-                    guild_id TEXT,
-                    comando TEXT,
-                    membro_id TEXT,
-                    PRIMARY KEY (guild_id, comando, membro_id)
-                );
-                CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
-                    guild_id TEXT,
-                    comando TEXT,
-                    usuario_id TEXT,
-                    PRIMARY KEY (guild_id, comando, usuario_id)
-                );
-                CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
-                    guild_id TEXT,
-                    comando TEXT,
-                    cargo_id TEXT,
-                    PRIMARY KEY (guild_id, comando, cargo_id)
-                );
-            ";
-            cmd.ExecuteNonQuery();
-            Console.WriteLine("Banco PostgreSQL inicializado.");
+            try
+            {
+                using var conn = new NpgsqlConnection(GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS command_config (
+                        guild_id TEXT,
+                        comando TEXT,
+                        ativado BOOLEAN DEFAULT FALSE,
+                        PRIMARY KEY (guild_id, comando)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
+                        guild_id TEXT,
+                        comando TEXT,
+                        cargo_id TEXT,
+                        PRIMARY KEY (guild_id, comando, cargo_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_membros_permitidos (
+                        guild_id TEXT,
+                        comando TEXT,
+                        membro_id TEXT,
+                        PRIMARY KEY (guild_id, comando, membro_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
+                        guild_id TEXT,
+                        comando TEXT,
+                        usuario_id TEXT,
+                        PRIMARY KEY (guild_id, comando, usuario_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
+                        guild_id TEXT,
+                        comando TEXT,
+                        cargo_id TEXT,
+                        PRIMARY KEY (guild_id, comando, cargo_id)
+                    );
+                ";
+                cmd.ExecuteNonQuery();
+                Console.WriteLine("Banco PostgreSQL inicializado.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao inicializar banco: {ex.Message}");
+            }
         }
 
         private static void SalvarCommandConfig(ulong guildId, string comando)
@@ -146,37 +154,40 @@ namespace Botzinho.Admins
             var config = serverConfig.GetCommand(comando);
             var gid = guildId.ToString();
 
-            using var conn = new NpgsqlConnection(GetConnectionString());
-            conn.Open();
-            using var transaction = conn.BeginTransaction();
-
             try
             {
+                using var conn = new NpgsqlConnection(GetConnectionString());
+                conn.Open();
+                using var transaction = conn.BeginTransaction();
+
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "INSERT INTO command_config (guild_id, comando, ativado) VALUES (@gid, @cmd, @ativado) ON CONFLICT (guild_id, comando) DO UPDATE SET ativado = @ativado";
+                    cmd.CommandText = @"
+                        INSERT INTO command_config (guild_id, comando, ativado) 
+                        VALUES (@gid, @cmd, @ativado) 
+                        ON CONFLICT (guild_id, comando) 
+                        DO UPDATE SET ativado = @ativado";
                     cmd.Parameters.AddWithValue("@gid", gid);
                     cmd.Parameters.AddWithValue("@cmd", comando);
                     cmd.Parameters.AddWithValue("@ativado", config.Ativado);
                     cmd.ExecuteNonQuery();
                 }
 
-                LimparEInserir(conn, "command_cargos_permitidos", "cargo_id", gid, comando, config.CargosPermitidos);
-                LimparEInserir(conn, "command_membros_permitidos", "membro_id", gid, comando, config.MembrosPermitidos);
-                LimparEInserir(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando, config.UsuariosBloqueados);
-                LimparEInserir(conn, "command_cargos_bloqueados", "cargo_id", gid, comando, config.CargosBloqueados);
+                SalvarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando, config.CargosPermitidos);
+                SalvarLista(conn, "command_membros_permitidos", "membro_id", gid, comando, config.MembrosPermitidos);
+                SalvarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando, config.UsuariosBloqueados);
+                SalvarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando, config.CargosBloqueados);
 
                 transaction.Commit();
-                Console.WriteLine($"Config de {comando} salva para guild {guildId}");
+                Console.WriteLine($"[DB] Config de /{comando} salva para guild {guildId} (ativado={config.Ativado})");
             }
             catch (Exception ex)
             {
-                transaction.Rollback();
-                Console.WriteLine($"Erro ao salvar config: {ex.Message}");
+                Console.WriteLine($"[DB] Erro ao salvar config de /{comando}: {ex.Message}");
             }
         }
 
-        private static void LimparEInserir(NpgsqlConnection conn, string tabela, string coluna, string guildId, string comando, List<ulong> ids)
+        private static void SalvarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId, string comando, List<ulong> ids)
         {
             using (var del = conn.CreateCommand())
             {
@@ -219,7 +230,7 @@ namespace Botzinho.Admins
                         Configs[guildId] = new ServerConfig();
 
                     var gid = guildId.ToString();
-                    var config = new CommandConfig
+                    Configs[guildId].Commands[comando] = new CommandConfig
                     {
                         Ativado = ativado,
                         CargosPermitidos = CarregarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando),
@@ -227,12 +238,11 @@ namespace Botzinho.Admins
                         UsuariosBloqueados = CarregarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando),
                         CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
                     };
-                    Configs[guildId].Commands[comando] = config;
                 }
 
-                Console.WriteLine($"Configs carregadas: {Configs.Count} servidores");
+                Console.WriteLine($"[DB] Configs carregadas: {Configs.Count} servidores");
             }
-            catch (Exception ex) { Console.WriteLine($"Erro ao carregar configs: {ex.Message}"); }
+            catch (Exception ex) { Console.WriteLine($"[DB] Erro ao carregar configs: {ex.Message}"); }
         }
 
         public static void RecarregarConfig(ulong guildId)
@@ -258,7 +268,7 @@ namespace Botzinho.Admins
                 var gid = guildId.ToString();
                 foreach (var (comando, ativado) in entries)
                 {
-                    var config = new CommandConfig
+                    Configs[guildId].Commands[comando] = new CommandConfig
                     {
                         Ativado = ativado,
                         CargosPermitidos = CarregarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando),
@@ -266,10 +276,42 @@ namespace Botzinho.Admins
                         UsuariosBloqueados = CarregarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando),
                         CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
                     };
-                    Configs[guildId].Commands[comando] = config;
                 }
             }
-            catch (Exception ex) { Console.WriteLine($"Erro ao recarregar config: {ex.Message}"); }
+            catch (Exception ex) { Console.WriteLine($"[DB] Erro ao recarregar: {ex.Message}"); }
+        }
+
+        // Recarrega UM comando específico do banco
+        private static void RecarregarComando(ulong guildId, string comando)
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(GetConnectionString());
+                conn.Open();
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT ativado FROM command_config WHERE guild_id = @gid AND comando = @cmd";
+                cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+                cmd.Parameters.AddWithValue("@cmd", comando);
+                var result = cmd.ExecuteScalar();
+
+                if (!Configs.ContainsKey(guildId))
+                    Configs[guildId] = new ServerConfig();
+
+                if (result != null)
+                {
+                    var gid = guildId.ToString();
+                    Configs[guildId].Commands[comando] = new CommandConfig
+                    {
+                        Ativado = (bool)result,
+                        CargosPermitidos = CarregarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando),
+                        MembrosPermitidos = CarregarLista(conn, "command_membros_permitidos", "membro_id", gid, comando),
+                        UsuariosBloqueados = CarregarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando),
+                        CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
+                    };
+                }
+            }
+            catch (Exception ex) { Console.WriteLine($"[DB] Erro ao recarregar comando {comando}: {ex.Message}"); }
         }
 
         private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId, string comando)
@@ -285,14 +327,13 @@ namespace Botzinho.Admins
             return list;
         }
 
-        // Estado temporário de qual comando está sendo editado
-        private static Dictionary<ulong, string> EditandoComando = new();
-
         public static Embed CriarEmbedComando(SocketGuild guild, string comando)
         {
-            RecarregarConfig(guild.Id);
+            RecarregarComando(guild.Id, comando);
+
             if (!Configs.ContainsKey(guild.Id))
                 Configs[guild.Id] = new ServerConfig();
+
             var config = Configs[guild.Id].GetCommand(comando);
             var botUser = guild.CurrentUser;
 
@@ -361,6 +402,40 @@ namespace Botzinho.Admins
             return new ComponentBuilder().WithSelectMenu(menu).Build();
         }
 
+        public static Embed CriarEmbedPrincipal(SocketGuild guild)
+        {
+            var botUser = guild.CurrentUser;
+            return new EmbedBuilder()
+                .WithAuthor($"Config Server | {botUser.DisplayName}",
+                    botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+                .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+                .WithDescription(
+                    "• ⚙️ **Painel de Configuração do Servidor**\n" +
+                    "   ○ Selecione abaixo qual sistema você deseja configurar.\n" +
+                    "   ○ Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
+                    "   ○ ⚠️ Mesmo administradores precisam estar na lista para usar os comandos quando o sistema estiver ativado."
+                )
+                .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name} • Hoje às {DateTime.Now:HH:mm}")
+                .WithColor(new Discord.Color(0x2B2D31))
+                .Build();
+        }
+
+        public static MessageComponent CriarMenuPrincipal()
+        {
+            var menu = new SelectMenuBuilder()
+                .WithCustomId("configserver_menu")
+                .WithPlaceholder("Selecione o sistema para configurar")
+                .AddOption("Nuke", "config_nuke", "Configurar permissões do /nuke", new Emoji("💣"))
+                .AddOption("Ban", "config_ban", "Configurar permissões do /ban", new Emoji("🔨"))
+                .AddOption("Kick", "config_kick", "Configurar permissões do /kick", new Emoji("👢"))
+                .AddOption("Mute", "config_mute", "Configurar permissões do /mute", new Emoji("🔇"))
+                .AddOption("Warn", "config_warn", "Configurar permissões do /warn", new Emoji("⚠️"))
+                .AddOption("Clear", "config_clear", "Configurar permissões do /clear", new Emoji("🗑️"))
+                .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
+
+            return new ComponentBuilder().WithSelectMenu(menu).Build();
+        }
+
         private async Task AtualizarPainel(SocketGuild guild, string comando)
         {
             if (!PainelMessages.TryGetValue(guild.Id, out var info)) return;
@@ -397,7 +472,7 @@ namespace Botzinho.Admins
             var customId = component.Data.CustomId;
             var selected = component.Data.Values.First();
 
-            // Menu principal - escolher sistema
+            // Menu principal
             if (customId == "configserver_menu")
             {
                 var comando = selected.Replace("config_", "");
@@ -411,50 +486,31 @@ namespace Botzinho.Admins
                 return;
             }
 
-            // Menu de configuração de um comando específico
+            // Menu de comando específico
             if (customId.StartsWith("cmd_config_"))
             {
                 var comando = customId.Replace("cmd_config_", "");
+                EditandoComando[guild.Id] = comando;
+
                 if (!Configs.ContainsKey(guild.Id))
                     Configs[guild.Id] = new ServerConfig();
+
                 var config = Configs[guild.Id].GetCommand(comando);
 
                 switch (selected)
                 {
                     case "back":
-                        var mainMenu = new SelectMenuBuilder()
-                            .WithCustomId("configserver_menu")
-                            .WithPlaceholder("Selecione o sistema para configurar")
-                            .AddOption("Nuke", "config_nuke", "Configurar permissões do /nuke", new Emoji("💣"))
-                            .AddOption("Ban", "config_ban", "Configurar permissões do /ban", new Emoji("🔨"))
-                            .AddOption("Kick", "config_kick", "Configurar permissões do /kick", new Emoji("👢"))
-                            .AddOption("Mute", "config_mute", "Configurar permissões do /mute", new Emoji("🔇"))
-                            .AddOption("Warn", "config_warn", "Configurar permissões do /warn", new Emoji("⚠️"))
-                            .AddOption("Clear", "config_clear", "Configurar permissões do /clear", new Emoji("🗑️"))
-                            .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
-
-                        var mainEmbed = new EmbedBuilder()
-                            .WithAuthor($"Config Server | {guild.CurrentUser.DisplayName}",
-                                guild.CurrentUser.GetAvatarUrl() ?? guild.CurrentUser.GetDefaultAvatarUrl())
-                            .WithThumbnailUrl(guild.CurrentUser.GetAvatarUrl() ?? guild.CurrentUser.GetDefaultAvatarUrl())
-                            .WithDescription(
-                                "• ⚙️ **Painel de Configuração do Servidor**\n" +
-                                "   ○ Selecione abaixo qual sistema você deseja configurar.\n" +
-                                "   ○ Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
-                                "   ○ ⚠️ Mesmo administradores precisam estar na lista para usar os comandos quando o sistema estiver ativado."
-                            )
-                            .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name} • Hoje às {DateTime.Now:HH:mm}")
-                            .WithColor(new Discord.Color(0x2B2D31))
-                            .Build();
-
                         await component.UpdateAsync(m =>
                         {
-                            m.Embed = mainEmbed;
-                            m.Components = new ComponentBuilder().WithSelectMenu(mainMenu).Build();
+                            m.Embed = CriarEmbedPrincipal(guild);
+                            m.Components = CriarMenuPrincipal();
                         });
                         break;
 
                     case "toggle":
+                        // Recarrega do banco antes de toggle
+                        RecarregarComando(guild.Id, comando);
+                        config = Configs[guild.Id].GetCommand(comando);
                         config.Ativado = !config.Ativado;
                         SalvarCommandConfig(guild.Id, comando);
                         await component.RespondAsync($"✅ Sistema de `/{comando}` **{(config.Ativado ? "ativado" : "desativado")}**!", ephemeral: true);
@@ -462,7 +518,6 @@ namespace Botzinho.Admins
                         break;
 
                     case "add_role":
-                        EditandoComando[guild.Id] = comando;
                         await component.RespondAsync("👇 Selecione o cargo:",
                             components: new ComponentBuilder().WithSelectMenu(
                                 new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
@@ -470,7 +525,8 @@ namespace Botzinho.Admins
                         break;
 
                     case "remove_role":
-                        EditandoComando[guild.Id] = comando;
+                        RecarregarComando(guild.Id, comando);
+                        config = Configs[guild.Id].GetCommand(comando);
                         if (config.CargosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum cargo na lista.", ephemeral: true); break; }
                         var rmRoleMenu = new SelectMenuBuilder().WithCustomId("srv_remove_role").WithPlaceholder("Selecione o cargo para remover");
                         foreach (var id in config.CargosPermitidos) { var role = guild.GetRole(id); rmRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
@@ -478,7 +534,6 @@ namespace Botzinho.Admins
                         break;
 
                     case "add_member":
-                        EditandoComando[guild.Id] = comando;
                         await component.RespondAsync("👇 Selecione o membro:",
                             components: new ComponentBuilder().WithSelectMenu(
                                 new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
@@ -486,7 +541,8 @@ namespace Botzinho.Admins
                         break;
 
                     case "remove_member":
-                        EditandoComando[guild.Id] = comando;
+                        RecarregarComando(guild.Id, comando);
+                        config = Configs[guild.Id].GetCommand(comando);
                         if (config.MembrosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum membro na lista.", ephemeral: true); break; }
                         var rmMemberMenu = new SelectMenuBuilder().WithCustomId("srv_remove_member").WithPlaceholder("Selecione o membro para remover");
                         foreach (var id in config.MembrosPermitidos) { var m = guild.GetUser(id); rmMemberMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
@@ -494,7 +550,6 @@ namespace Botzinho.Admins
                         break;
 
                     case "block_user":
-                        EditandoComando[guild.Id] = comando;
                         await component.RespondAsync("👇 Selecione o usuário:",
                             components: new ComponentBuilder().WithSelectMenu(
                                 new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuário")
@@ -502,15 +557,15 @@ namespace Botzinho.Admins
                         break;
 
                     case "unblock_user":
-                        EditandoComando[guild.Id] = comando;
+                        RecarregarComando(guild.Id, comando);
+                        config = Configs[guild.Id].GetCommand(comando);
                         if (config.UsuariosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum usuário bloqueado.", ephemeral: true); break; }
-                        var unblockMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_user").WithPlaceholder("Selecione o usuário para desbloquear");
+                        var unblockMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_user").WithPlaceholder("Selecione o usuário");
                         foreach (var id in config.UsuariosBloqueados) { var m = guild.GetUser(id); unblockMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("👇 Selecione o usuário:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
+                        await component.RespondAsync("👇 Selecione:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
                         break;
 
                     case "block_role":
-                        EditandoComando[guild.Id] = comando;
                         await component.RespondAsync("👇 Selecione o cargo:",
                             components: new ComponentBuilder().WithSelectMenu(
                                 new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
@@ -518,73 +573,101 @@ namespace Botzinho.Admins
                         break;
 
                     case "unblock_role":
-                        EditandoComando[guild.Id] = comando;
+                        RecarregarComando(guild.Id, comando);
+                        config = Configs[guild.Id].GetCommand(comando);
                         if (config.CargosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum cargo bloqueado.", ephemeral: true); break; }
-                        var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_role").WithPlaceholder("Selecione o cargo para desbloquear");
+                        var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_role").WithPlaceholder("Selecione o cargo");
                         foreach (var id in config.CargosBloqueados) { var role = guild.GetRole(id); unblockRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("👇 Selecione o cargo:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
+                        await component.RespondAsync("👇 Selecione:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
                         break;
                 }
                 return;
             }
 
-            // Handlers das ações
+            // Ações de seleção
             if (!EditandoComando.TryGetValue(guild.Id, out var editCmd)) return;
             if (!Configs.ContainsKey(guild.Id)) Configs[guild.Id] = new ServerConfig();
-            var cmdConfig2 = Configs[guild.Id].GetCommand(editCmd);
+
+            // Recarrega antes de modificar
+            RecarregarComando(guild.Id, editCmd);
+            var cmdConfig = Configs[guild.Id].GetCommand(editCmd);
 
             switch (customId)
             {
                 case "srv_add_role":
                     var roleId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig2.CargosPermitidos.Contains(roleId)) { cmdConfig2.CargosPermitidos.Add(roleId); await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado ao `/{editCmd}`!", ephemeral: true); }
+                    if (!cmdConfig.CargosPermitidos.Contains(roleId))
+                    {
+                        cmdConfig.CargosPermitidos.Add(roleId);
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado ao `/{editCmd}`!", ephemeral: true);
+                    }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_remove_role":
-                    cmdConfig2.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                    cmdConfig.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                    SalvarCommandConfig(guild.Id, editCmd);
                     await component.RespondAsync("✅ Cargo removido!", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_add_member":
                     var memberId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig2.MembrosPermitidos.Contains(memberId)) { cmdConfig2.MembrosPermitidos.Add(memberId); await component.RespondAsync($"✅ Membro <@{memberId}> adicionado ao `/{editCmd}`!", ephemeral: true); }
+                    if (!cmdConfig.MembrosPermitidos.Contains(memberId))
+                    {
+                        cmdConfig.MembrosPermitidos.Add(memberId);
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync($"✅ Membro <@{memberId}> adicionado ao `/{editCmd}`!", ephemeral: true);
+                    }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_remove_member":
-                    cmdConfig2.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                    cmdConfig.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                    SalvarCommandConfig(guild.Id, editCmd);
                     await component.RespondAsync("✅ Membro removido!", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_block_user":
                     var blockId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig2.UsuariosBloqueados.Contains(blockId)) { cmdConfig2.UsuariosBloqueados.Add(blockId); await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado do `/{editCmd}`!", ephemeral: true); }
+                    if (!cmdConfig.UsuariosBloqueados.Contains(blockId))
+                    {
+                        cmdConfig.UsuariosBloqueados.Add(blockId);
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado do `/{editCmd}`!", ephemeral: true);
+                    }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_unblock_user":
-                    cmdConfig2.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                    cmdConfig.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                    SalvarCommandConfig(guild.Id, editCmd);
                     await component.RespondAsync("✅ Usuário desbloqueado!", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_block_role":
                     var blockRoleId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig2.CargosBloqueados.Contains(blockRoleId)) { cmdConfig2.CargosBloqueados.Add(blockRoleId); await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado do `/{editCmd}`!", ephemeral: true); }
+                    if (!cmdConfig.CargosBloqueados.Contains(blockRoleId))
+                    {
+                        cmdConfig.CargosBloqueados.Add(blockRoleId);
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado do `/{editCmd}`!", ephemeral: true);
+                    }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
 
                 case "srv_unblock_role":
-                    cmdConfig2.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                    cmdConfig.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                    SalvarCommandConfig(guild.Id, editCmd);
                     await component.RespondAsync("✅ Cargo desbloqueado!", ephemeral: true);
-                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
+                    await AtualizarPainel(guild, editCmd);
                     break;
             }
         }
