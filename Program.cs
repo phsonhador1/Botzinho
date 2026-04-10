@@ -66,14 +66,14 @@ await Task.Delay(Timeout.Infinite);
 
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
-    [SlashCommand("configserver", "Configura permissões do servidor")]
+    [SlashCommand("configserver", "Configura permissoes do servidor")]
     public async Task ConfigServerAsync()
     {
         var user = (SocketGuildUser)Context.User;
 
         if (!AdminModule.PodeUsarEconfigStatic(user))
         {
-            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+            await RespondAsync("voce nao tem permissao para usar este comando.", ephemeral: true);
             return;
         }
 
@@ -94,15 +94,10 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         var user = (SocketGuildUser)Context.User;
         var guildId = Context.Guild.Id;
 
-        if (!AdminModule.TemPermissao(guildId, user, "nuke"))
+        var resultado = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
+        if (resultado != null)
         {
-            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-            return;
-        }
-
-        if (!AdminModule.SistemaAtivado(guildId, "nuke") && !user.GuildPermissions.ManageChannels && !user.GuildPermissions.Administrator)
-        {
-            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+            await RespondAsync(resultado, ephemeral: true);
             return;
         }
 
