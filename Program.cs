@@ -26,7 +26,7 @@ ModerationHelper.InicializarTabelas();
 string[] statusList = new[]
 {
     "Epstein Store",
-    "💜 Estou atualmente em 1 servidor",
+     $"💜 Estou atualmente em {client.Guilds.Count} servidores",
     "🌸 Online, tomando um cafezinho e pronta pra ajudar"
 };
 
