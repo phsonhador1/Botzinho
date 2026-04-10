@@ -47,7 +47,7 @@ client.Ready += async () =>
             string[] statusDinamicos = new[]
             {
                 $"💜 Estou atualmente em {client.Guilds.Count} servidores",
-                "💜 Online | z!ajuda",
+                "💜 Online | Pronta para ajudar",
                 "💜 Epstein Store"
             };
 
