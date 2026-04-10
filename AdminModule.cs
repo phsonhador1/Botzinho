@@ -19,7 +19,7 @@ namespace Botzinho.Admins
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerUsuariosPermitidos = new();
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerCargosPermitidos = new();
 
-        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "warn", "clear", "lock" };
+        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "avisar", "clear", "lock" };
 
         public AdminModule(DiscordSocketClient client)
         {
@@ -132,42 +132,36 @@ namespace Botzinho.Admins
             return serverConfig.GetCommand(comando).Ativado;
         }
 
-        // Retorna null se pode usar, ou a mensagem de erro se nao pode
         public static string? ChecarPermissaoCompleta(ulong guildId, SocketGuildUser user, string comando, GuildPermission permissaoPadrao)
         {
             RecarregarComando(guildId, comando);
 
-            // Checa se existe config pro comando
             if (Configs.TryGetValue(guildId, out var serverConfig) && serverConfig.Commands.ContainsKey(comando))
             {
                 var cmdConfig = serverConfig.GetCommand(comando);
 
-                // Sistema desativado = ninguem usa, mostra mensagem
                 if (!cmdConfig.Ativado)
                     return $"o sistema de {comando} esta desativado neste servidor.";
 
-                // Bloqueado
                 if (cmdConfig.UsuariosBloqueados.Contains(user.Id))
                     return "voce esta bloqueado de usar este comando.";
 
                 if (cmdConfig.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
                     return "voce esta bloqueado de usar este comando.";
 
-                // Checa se esta na lista de permitidos
                 bool temCargo = cmdConfig.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
                 bool temMembro = cmdConfig.MembrosPermitidos.Contains(user.Id);
 
                 if (!temCargo && !temMembro)
                     return "voce nao tem permissao para usar este comando.";
 
-                return null; // permitido
+                return null;
             }
 
-            // Sem config = usa permissao padrao do Discord
             if (!user.GuildPermissions.Has(permissaoPadrao) && !user.GuildPermissions.Administrator)
                 return "voce nao tem permissao para usar este comando.";
 
-            return null; // permitido
+            return null;
         }
 
         private static void InicializarDB()
@@ -259,7 +253,6 @@ namespace Botzinho.Admins
                 SalvarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando, config.CargosBloqueados);
 
                 transaction.Commit();
-                Console.WriteLine($"[DB] Config de /{comando} salva (ativado={config.Ativado})");
             }
             catch (Exception ex)
             {
@@ -319,8 +312,6 @@ namespace Botzinho.Admins
                         CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
                     };
                 }
-
-                Console.WriteLine($"[DB] Configs carregadas: {Configs.Count} servidores");
             }
             catch (Exception ex) { Console.WriteLine($"[DB] Erro: {ex.Message}"); }
         }
@@ -441,8 +432,6 @@ namespace Botzinho.Admins
                     ConfigServerUsuariosPermitidos[guildId] = CarregarListaConfigServer(conn, "configserver_usuarios_permitidos", "user_id", guildId);
                     ConfigServerCargosPermitidos[guildId] = CarregarListaConfigServer(conn, "configserver_cargos_permitidos", "cargo_id", guildId);
                 }
-
-                Console.WriteLine("[DB] Permissoes do /configserver carregadas.");
             }
             catch (Exception ex) { Console.WriteLine($"[DB] Erro: {ex.Message}"); }
         }
@@ -579,7 +568,7 @@ namespace Botzinho.Admins
                 .AddOption("Ban", "config_ban", "Configurar /ban")
                 .AddOption("Kick", "config_kick", "Configurar /kick")
                 .AddOption("Mute", "config_mute", "Configurar /mute")
-                .AddOption("Warn", "config_warn", "Configurar /warn")
+                .AddOption("Avisar", "config_avisar", "Configurar /avisar")
                 .AddOption("Clear", "config_clear", "Configurar /clear")
                 .AddOption("Lock/Unlock", "config_lock", "Configurar /lock e /unlock");
 
