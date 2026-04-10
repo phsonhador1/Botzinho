@@ -23,12 +23,7 @@ var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 
-string[] statusList = new[]
-{
-    "Epstein Store",
-     $"💜 Estou atualmente em {client.Guilds.Count} servidores",
-    "🌸 Online, tomando um cafezinho e pronta pra ajudar"
-};
+
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
@@ -47,9 +42,19 @@ client.Ready += async () =>
         while (true)
         {
             await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetCustomStatusAsync(statusList[i]);
-            i = (i + 1) % statusList.Length;
-            await Task.Delay(TimeSpan.FromSeconds(7));
+
+            // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
+            string[] statusDinamicos = new[]
+            {
+                $"💜 Estou atualmente em {client.Guilds.Count} servidores",
+                "💜 Online | z!ajuda",
+                "💜 Epstein Store"
+            };
+
+            await client.SetCustomStatusAsync(statusDinamicos[i]);
+
+            i = (i + 1) % statusDinamicos.Length;
+            await Task.Delay(TimeSpan.FromSeconds(15));
         }
     });
 };
