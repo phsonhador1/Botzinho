@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Botzinho.Admins;
+using Botzinho.Moderation;
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
@@ -20,6 +21,7 @@ var services = new ServiceCollection()
 
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
+ModerationHelper.InicializarTabelas();
 
 string[] statusList = new[]
 {
@@ -29,9 +31,7 @@ string[] statusList = new[]
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
-    await interactionService.AddModuleAsync<NukeModule>(services);
-    await interactionService.AddModuleAsync<NukeConfigModule>(services);
-    await interactionService.AddModuleAsync<Botzinho.Moderation.ModerationModule>(services);
+    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync();
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
