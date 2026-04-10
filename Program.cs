@@ -32,14 +32,7 @@ client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
-
-    // Limpa comandos duplicados dos guilds
-    foreach (var guild in client.Guilds)
-        await guild.DeleteApplicationCommandsAsync();
-
-    // Registra só global
     await interactionService.RegisterCommandsGloballyAsync(true);
-
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
@@ -67,10 +60,10 @@ await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 await Task.Delay(Timeout.Infinite);
 
-public class NukeConfigModule : InteractionModuleBase<SocketInteractionContext>
+public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
-    [SlashCommand("nukeconfig", "Configura permissões do /nuke")]
-    public async Task NukeConfigAsync()
+    [SlashCommand("configserver", "Configura permissões do servidor")]
+    public async Task ConfigServerAsync()
     {
         var user = (SocketGuildUser)Context.User;
 
@@ -80,10 +73,32 @@ public class NukeConfigModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        var embed = AdminModule.CriarEmbedPainelStatic(Context.Guild as SocketGuild);
-        var components = AdminModule.CriarMenuPainelStatic();
+        var menu = new SelectMenuBuilder()
+            .WithCustomId("configserver_menu")
+            .WithPlaceholder("Selecione o sistema para configurar")
+            .AddOption("Nuke", "config_nuke", "Configurar permissões do /nuke", new Emoji("💣"))
+            .AddOption("Ban", "config_ban", "Configurar permissões do /ban", new Emoji("🔨"))
+            .AddOption("Kick", "config_kick", "Configurar permissões do /kick", new Emoji("👢"))
+            .AddOption("Mute", "config_mute", "Configurar permissões do /mute", new Emoji("🔇"))
+            .AddOption("Warn", "config_warn", "Configurar permissões do /warn", new Emoji("⚠️"))
+            .AddOption("Clear", "config_clear", "Configurar permissões do /clear", new Emoji("🗑️"))
+            .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
 
-        await RespondAsync(embed: embed, components: components);
+        var embed = new EmbedBuilder()
+            .WithAuthor($"Config Server | {Context.Guild.CurrentUser.DisplayName}",
+                Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
+            .WithThumbnailUrl(Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
+            .WithDescription(
+                "• ⚙️ **Painel de Configuração do Servidor**\n" +
+                "   ○ Selecione abaixo qual sistema você deseja configurar.\n" +
+                "   ○ Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
+                "   ○ ⚠️ Mesmo administradores precisam estar na lista para usar os comandos quando o sistema estiver ativado."
+            )
+            .WithFooter($"Servidor de {Context.Guild.Owner?.Username ?? Context.Guild.Name} • Hoje às {DateTime.Now:HH:mm}")
+            .WithColor(new Discord.Color(0x2B2D31))
+            .Build();
+
+        await RespondAsync(embed: embed, components: new ComponentBuilder().WithSelectMenu(menu).Build());
         var msg = await GetOriginalResponseAsync();
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
     }
@@ -99,31 +114,10 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         AdminModule.RecarregarConfig(guildId);
 
-        if (AdminModule.Configs.TryGetValue(guildId, out var config) && config.Ativado)
+        if (!AdminModule.TemPermissao(guildId, user, "nuke"))
         {
-            if (config.UsuariosBloqueados.Contains(user.Id) ||
-                config.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
-            {
-                await RespondAsync("❌ Você está bloqueado de usar este comando.", ephemeral: true);
-                return;
-            }
-
-            bool temCargo = config.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
-            bool temMembro = config.MembrosPermitidos.Contains(user.Id);
-
-            if (!temCargo && !temMembro)
-            {
-                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-                return;
-            }
-        }
-        else
-        {
-            if (!user.GuildPermissions.ManageChannels && !user.GuildPermissions.Administrator)
-            {
-                await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
-                return;
-            }
+            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
+            return;
         }
 
         await DeferAsync(ephemeral: true);
