@@ -11,7 +11,7 @@ namespace Botzinho.Admins
     public class AdminModule
     {
         private readonly DiscordSocketClient _client;
-        public static Dictionary<ulong, NukeConfig> Configs = new();
+        public static Dictionary<ulong, ServerConfig> Configs = new();
         private static Dictionary<ulong, (ulong channelId, ulong messageId)> PainelMessages = new();
 
         private static readonly List<ulong> UsuariosPermitidosConfig = new()
@@ -24,6 +24,9 @@ namespace Botzinho.Admins
             1487245316439670804
         };
 
+        // Sistemas disponíveis
+        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "warn", "clear", "lock" };
+
         public AdminModule(DiscordSocketClient client)
         {
             _client = client;
@@ -32,13 +35,25 @@ namespace Botzinho.Admins
             CarregarConfigs();
         }
 
-        public class NukeConfig
+        public class CommandConfig
         {
             public bool Ativado { get; set; } = false;
             public List<ulong> CargosPermitidos { get; set; } = new();
             public List<ulong> MembrosPermitidos { get; set; } = new();
             public List<ulong> UsuariosBloqueados { get; set; } = new();
             public List<ulong> CargosBloqueados { get; set; } = new();
+        }
+
+        public class ServerConfig
+        {
+            public Dictionary<string, CommandConfig> Commands { get; set; } = new();
+
+            public CommandConfig GetCommand(string cmd)
+            {
+                if (!Commands.ContainsKey(cmd))
+                    Commands[cmd] = new CommandConfig();
+                return Commands[cmd];
+            }
         }
 
         private static string GetConnectionString()
@@ -49,10 +64,8 @@ namespace Botzinho.Admins
 
         public static bool PodeUsarEconfigStatic(SocketGuildUser user)
         {
-            if (UsuariosPermitidosConfig.Contains(user.Id))
-                return true;
-            if (user.Roles.Any(r => CargosPermitidosConfig.Contains(r.Id)))
-                return true;
+            if (UsuariosPermitidosConfig.Contains(user.Id)) return true;
+            if (user.Roles.Any(r => CargosPermitidosConfig.Contains(r.Id))) return true;
             return false;
         }
 
@@ -61,44 +74,76 @@ namespace Botzinho.Admins
             PainelMessages[guildId] = (channelId, messageId);
         }
 
+        // Checa se o usuário pode usar um comando específico
+        public static bool TemPermissao(ulong guildId, SocketGuildUser user, string comando)
+        {
+            RecarregarConfig(guildId);
+
+            if (!Configs.TryGetValue(guildId, out var serverConfig))
+                return true; // sem config = comportamento padrão
+
+            var cmdConfig = serverConfig.GetCommand(comando);
+
+            if (!cmdConfig.Ativado)
+                return true; // sistema desativado = comportamento padrão
+
+            // Bloqueados primeiro
+            if (cmdConfig.UsuariosBloqueados.Contains(user.Id) ||
+                cmdConfig.CargosBloqueados.Any(r => user.Roles.Any(ur => ur.Id == r)))
+                return false;
+
+            // Só quem está na lista pode usar
+            bool temCargo = cmdConfig.CargosPermitidos.Any(r => user.Roles.Any(ur => ur.Id == r));
+            bool temMembro = cmdConfig.MembrosPermitidos.Contains(user.Id);
+
+            return temCargo || temMembro;
+        }
+
         private static void InicializarDB()
         {
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                CREATE TABLE IF NOT EXISTS nuke_config (
-                    guild_id TEXT PRIMARY KEY,
-                    ativado BOOLEAN DEFAULT FALSE
-                );
-                CREATE TABLE IF NOT EXISTS nuke_cargos_permitidos (
+                CREATE TABLE IF NOT EXISTS command_config (
                     guild_id TEXT,
+                    comando TEXT,
+                    ativado BOOLEAN DEFAULT FALSE,
+                    PRIMARY KEY (guild_id, comando)
+                );
+                CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
+                    guild_id TEXT,
+                    comando TEXT,
                     cargo_id TEXT,
-                    PRIMARY KEY (guild_id, cargo_id)
+                    PRIMARY KEY (guild_id, comando, cargo_id)
                 );
-                CREATE TABLE IF NOT EXISTS nuke_membros_permitidos (
+                CREATE TABLE IF NOT EXISTS command_membros_permitidos (
                     guild_id TEXT,
+                    comando TEXT,
                     membro_id TEXT,
-                    PRIMARY KEY (guild_id, membro_id)
+                    PRIMARY KEY (guild_id, comando, membro_id)
                 );
-                CREATE TABLE IF NOT EXISTS nuke_usuarios_bloqueados (
+                CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
                     guild_id TEXT,
+                    comando TEXT,
                     usuario_id TEXT,
-                    PRIMARY KEY (guild_id, usuario_id)
+                    PRIMARY KEY (guild_id, comando, usuario_id)
                 );
-                CREATE TABLE IF NOT EXISTS nuke_cargos_bloqueados (
+                CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
                     guild_id TEXT,
+                    comando TEXT,
                     cargo_id TEXT,
-                    PRIMARY KEY (guild_id, cargo_id)
+                    PRIMARY KEY (guild_id, comando, cargo_id)
                 );
             ";
             cmd.ExecuteNonQuery();
             Console.WriteLine("Banco PostgreSQL inicializado.");
         }
 
-        private static void SalvarConfig(ulong guildId)
+        private static void SalvarCommandConfig(ulong guildId, string comando)
         {
-            if (!Configs.TryGetValue(guildId, out var config)) return;
+            if (!Configs.TryGetValue(guildId, out var serverConfig)) return;
+            var config = serverConfig.GetCommand(comando);
             var gid = guildId.ToString();
 
             using var conn = new NpgsqlConnection(GetConnectionString());
@@ -109,19 +154,20 @@ namespace Botzinho.Admins
             {
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = "INSERT INTO nuke_config (guild_id, ativado) VALUES (@gid, @ativado) ON CONFLICT (guild_id) DO UPDATE SET ativado = @ativado";
+                    cmd.CommandText = "INSERT INTO command_config (guild_id, comando, ativado) VALUES (@gid, @cmd, @ativado) ON CONFLICT (guild_id, comando) DO UPDATE SET ativado = @ativado";
                     cmd.Parameters.AddWithValue("@gid", gid);
+                    cmd.Parameters.AddWithValue("@cmd", comando);
                     cmd.Parameters.AddWithValue("@ativado", config.Ativado);
                     cmd.ExecuteNonQuery();
                 }
 
-                LimparEInserir(conn, "nuke_cargos_permitidos", "cargo_id", gid, config.CargosPermitidos);
-                LimparEInserir(conn, "nuke_membros_permitidos", "membro_id", gid, config.MembrosPermitidos);
-                LimparEInserir(conn, "nuke_usuarios_bloqueados", "usuario_id", gid, config.UsuariosBloqueados);
-                LimparEInserir(conn, "nuke_cargos_bloqueados", "cargo_id", gid, config.CargosBloqueados);
+                LimparEInserir(conn, "command_cargos_permitidos", "cargo_id", gid, comando, config.CargosPermitidos);
+                LimparEInserir(conn, "command_membros_permitidos", "membro_id", gid, comando, config.MembrosPermitidos);
+                LimparEInserir(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando, config.UsuariosBloqueados);
+                LimparEInserir(conn, "command_cargos_bloqueados", "cargo_id", gid, comando, config.CargosBloqueados);
 
                 transaction.Commit();
-                Console.WriteLine($"Config salva para guild {guildId}");
+                Console.WriteLine($"Config de {comando} salva para guild {guildId}");
             }
             catch (Exception ex)
             {
@@ -130,20 +176,22 @@ namespace Botzinho.Admins
             }
         }
 
-        private static void LimparEInserir(NpgsqlConnection conn, string tabela, string coluna, string guildId, List<ulong> ids)
+        private static void LimparEInserir(NpgsqlConnection conn, string tabela, string coluna, string guildId, string comando, List<ulong> ids)
         {
             using (var del = conn.CreateCommand())
             {
-                del.CommandText = $"DELETE FROM {tabela} WHERE guild_id = @gid";
+                del.CommandText = $"DELETE FROM {tabela} WHERE guild_id = @gid AND comando = @cmd";
                 del.Parameters.AddWithValue("@gid", guildId);
+                del.Parameters.AddWithValue("@cmd", comando);
                 del.ExecuteNonQuery();
             }
 
             foreach (var id in ids)
             {
                 using var ins = conn.CreateCommand();
-                ins.CommandText = $"INSERT INTO {tabela} (guild_id, {coluna}) VALUES (@gid, @id)";
+                ins.CommandText = $"INSERT INTO {tabela} (guild_id, comando, {coluna}) VALUES (@gid, @cmd, @id)";
                 ins.Parameters.AddWithValue("@gid", guildId);
+                ins.Parameters.AddWithValue("@cmd", comando);
                 ins.Parameters.AddWithValue("@id", id.ToString());
                 ins.ExecuteNonQuery();
             }
@@ -157,25 +205,29 @@ namespace Botzinho.Admins
                 conn.Open();
 
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT guild_id, ativado FROM nuke_config";
+                cmd.CommandText = "SELECT guild_id, comando, ativado FROM command_config";
                 using var reader = cmd.ExecuteReader();
 
-                var guildIds = new List<(ulong id, bool ativado)>();
+                var entries = new List<(ulong guildId, string comando, bool ativado)>();
                 while (reader.Read())
-                    guildIds.Add((ulong.Parse(reader.GetString(0)), reader.GetBoolean(1)));
+                    entries.Add((ulong.Parse(reader.GetString(0)), reader.GetString(1), reader.GetBoolean(2)));
                 reader.Close();
 
-                foreach (var (guildId, ativado) in guildIds)
+                foreach (var (guildId, comando, ativado) in entries)
                 {
-                    var config = new NukeConfig
+                    if (!Configs.ContainsKey(guildId))
+                        Configs[guildId] = new ServerConfig();
+
+                    var gid = guildId.ToString();
+                    var config = new CommandConfig
                     {
                         Ativado = ativado,
-                        CargosPermitidos = CarregarLista(conn, "nuke_cargos_permitidos", "cargo_id", guildId.ToString()),
-                        MembrosPermitidos = CarregarLista(conn, "nuke_membros_permitidos", "membro_id", guildId.ToString()),
-                        UsuariosBloqueados = CarregarLista(conn, "nuke_usuarios_bloqueados", "usuario_id", guildId.ToString()),
-                        CargosBloqueados = CarregarLista(conn, "nuke_cargos_bloqueados", "cargo_id", guildId.ToString())
+                        CargosPermitidos = CarregarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando),
+                        MembrosPermitidos = CarregarLista(conn, "command_membros_permitidos", "membro_id", gid, comando),
+                        UsuariosBloqueados = CarregarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando),
+                        CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
                     };
-                    Configs[guildId] = config;
+                    Configs[guildId].Commands[comando] = config;
                 }
 
                 Console.WriteLine($"Configs carregadas: {Configs.Count} servidores");
@@ -191,115 +243,125 @@ namespace Botzinho.Admins
                 conn.Open();
 
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT guild_id, ativado FROM nuke_config WHERE guild_id = @gid";
+                cmd.CommandText = "SELECT comando, ativado FROM command_config WHERE guild_id = @gid";
                 cmd.Parameters.AddWithValue("@gid", guildId.ToString());
                 using var reader = cmd.ExecuteReader();
 
-                if (reader.Read())
-                {
-                    var gid = guildId.ToString();
-                    var ativado = reader.GetBoolean(1);
-                    reader.Close();
+                var entries = new List<(string comando, bool ativado)>();
+                while (reader.Read())
+                    entries.Add((reader.GetString(0), reader.GetBoolean(1)));
+                reader.Close();
 
-                    var config = new NukeConfig
+                if (!Configs.ContainsKey(guildId))
+                    Configs[guildId] = new ServerConfig();
+
+                var gid = guildId.ToString();
+                foreach (var (comando, ativado) in entries)
+                {
+                    var config = new CommandConfig
                     {
                         Ativado = ativado,
-                        CargosPermitidos = CarregarLista(conn, "nuke_cargos_permitidos", "cargo_id", gid),
-                        MembrosPermitidos = CarregarLista(conn, "nuke_membros_permitidos", "membro_id", gid),
-                        UsuariosBloqueados = CarregarLista(conn, "nuke_usuarios_bloqueados", "usuario_id", gid),
-                        CargosBloqueados = CarregarLista(conn, "nuke_cargos_bloqueados", "cargo_id", gid)
+                        CargosPermitidos = CarregarLista(conn, "command_cargos_permitidos", "cargo_id", gid, comando),
+                        MembrosPermitidos = CarregarLista(conn, "command_membros_permitidos", "membro_id", gid, comando),
+                        UsuariosBloqueados = CarregarLista(conn, "command_usuarios_bloqueados", "usuario_id", gid, comando),
+                        CargosBloqueados = CarregarLista(conn, "command_cargos_bloqueados", "cargo_id", gid, comando)
                     };
-                    Configs[guildId] = config;
-                    Console.WriteLine($"Config recarregada para guild {guildId}");
+                    Configs[guildId].Commands[comando] = config;
                 }
             }
             catch (Exception ex) { Console.WriteLine($"Erro ao recarregar config: {ex.Message}"); }
         }
 
-        private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId)
+        private static List<ulong> CarregarLista(NpgsqlConnection conn, string tabela, string coluna, string guildId, string comando)
         {
             var list = new List<ulong>();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT {coluna} FROM {tabela} WHERE guild_id = @gid";
+            cmd.CommandText = $"SELECT {coluna} FROM {tabela} WHERE guild_id = @gid AND comando = @cmd";
             cmd.Parameters.AddWithValue("@gid", guildId);
+            cmd.Parameters.AddWithValue("@cmd", comando);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 list.Add(ulong.Parse(reader.GetString(0)));
             return list;
         }
 
-        private static NukeConfig GetConfig(ulong guildId)
-        {
-            if (!Configs.ContainsKey(guildId))
-                Configs[guildId] = new NukeConfig();
-            return Configs[guildId];
-        }
+        // Estado temporário de qual comando está sendo editado
+        private static Dictionary<ulong, string> EditandoComando = new();
 
-        public static Embed CriarEmbedPainelStatic(SocketGuild guild)
+        public static Embed CriarEmbedComando(SocketGuild guild, string comando)
         {
             RecarregarConfig(guild.Id);
-            var config = GetConfig(guild.Id);
+            if (!Configs.ContainsKey(guild.Id))
+                Configs[guild.Id] = new ServerConfig();
+            var config = Configs[guild.Id].GetCommand(comando);
             var botUser = guild.CurrentUser;
 
-            var statusText = config.Ativado ? "`Ativado`" : "`Desativado`";
+            var nomeComando = comando switch
+            {
+                "nuke" => "💣 Nuke",
+                "ban" => "🔨 Ban",
+                "kick" => "👢 Kick",
+                "mute" => "🔇 Mute",
+                "warn" => "⚠️ Warn",
+                "clear" => "🗑️ Clear",
+                "lock" => "🔒 Lock/Unlock",
+                _ => comando
+            };
 
+            var statusText = config.Ativado ? "`Ativado`" : "`Desativado`";
             var cargosText = config.CargosPermitidos.Count > 0
                 ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
-                : "`Padrão (Gerenciar Canais)`";
-
+                : "`Padrão`";
             var membrosText = config.MembrosPermitidos.Count > 0
                 ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
-                : "`Padrão (Gerenciar Canais)`";
-
+                : "`Padrão`";
             var bloqueadosText = config.UsuariosBloqueados.Count > 0
                 ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
                 : "`Nenhum`";
-
             var cargosBloqText = config.CargosBloqueados.Count > 0
                 ? string.Join(", ", config.CargosBloqueados.Select(x => $"<@&{x}>"))
                 : "`Nenhum`";
 
             return new EmbedBuilder()
-                .WithAuthor($"Nuke Config | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+                .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
-                    "• 🛡️ **Bem-vindo(a) ao sistema de configuração do Nuke!**\n" +
-                    "   ○ Configure quem pode usar o comando  `/nuke`  no seu servidor. " +
-                    "Ative ou desative conforme necessário, restrinja o uso a cargos ou membros específicos, " +
-                    "ou bloqueie usuários/cargos. Utilize o **menu abaixo** para configurar.\n" +
-                    "   ○ ⚠️ Se nenhum cargo/membro for definido, o comportamento padrão (permissão Gerenciar Canais) será usado.\n\n" +
-                    "• 🔧 **Informações sobre o sistema:**\n" +
+                    $"• {nomeComando} — **Configuração de Permissões**\n" +
+                    $"   ○ Configure quem pode usar o comando `/{comando}` no seu servidor.\n" +
+                    "   ○ ⚠️ Quando ativado, **apenas** cargos/membros da lista podem usar, mesmo sendo admin.\n\n" +
+                    "• 🔧 **Informações:**\n" +
                     $"   ○ **Status**: {statusText}\n" +
                     $"   ○ **Cargos Permitidos**: {cargosText}\n" +
                     $"   ○ **Membros Permitidos**: {membrosText}\n" +
                     $"   ○ **Usuários Bloqueados**: {bloqueadosText}\n" +
                     $"   ○ **Cargos Bloqueados**: {cargosBloqText}\n\n" +
-                    "🌿 Em caso de dúvidas ou bugs, não hesite em entrar em meu [servidor de suporte](https://discord.gg/SEULINK) para que nossa equipe possa lhe ajudar."
+                    "🌿 Use o menu abaixo para configurar ou volte ao menu principal."
                 )
                 .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name} • Hoje às {DateTime.Now:HH:mm}")
                 .WithColor(new Discord.Color(0x2B2D31))
                 .Build();
         }
 
-        public static MessageComponent CriarMenuPainelStatic()
+        public static MessageComponent CriarMenuComando(string comando)
         {
             var menu = new SelectMenuBuilder()
-                .WithCustomId("nuke_config_menu")
+                .WithCustomId($"cmd_config_{comando}")
                 .WithPlaceholder("Selecione a opção desejada para configurar.")
-                .AddOption("Ativar", "toggle", "Ative o sistema de nuke.", new Emoji("🛡️"))
-                .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos que podem usar o /nuke.", new Emoji("➕"))
-                .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos permitidos.", new Emoji("➖"))
-                .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros que podem usar o /nuke.", new Emoji("👤"))
-                .AddOption("Remover membros permitidos", "remove_member", "Remova membros permitidos.", new Emoji("🚫"))
-                .AddOption("Bloquear usuário", "block_user", "Bloqueie um usuário de usar o /nuke.", new Emoji("🔒"))
-                .AddOption("Desbloquear usuário", "unblock_user", "Desbloqueie um usuário.", new Emoji("🔓"))
-                .AddOption("Bloquear cargo", "block_role", "Bloqueie um cargo de usar o /nuke.", new Emoji("⛔"))
-                .AddOption("Desbloquear cargo", "unblock_role", "Desbloqueie um cargo.", new Emoji("✅"));
+                .AddOption("Ativar/Desativar", "toggle", $"Ative ou desative o sistema de /{comando}", new Emoji("🛡️"))
+                .AddOption("Adicionar cargos permitidos", "add_role", $"Adicione cargos que podem usar /{comando}", new Emoji("➕"))
+                .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos permitidos", new Emoji("➖"))
+                .AddOption("Adicionar membros permitidos", "add_member", $"Adicione membros que podem usar /{comando}", new Emoji("👤"))
+                .AddOption("Remover membros permitidos", "remove_member", "Remova membros permitidos", new Emoji("🚫"))
+                .AddOption("Bloquear usuário", "block_user", "Bloqueie um usuário", new Emoji("🔒"))
+                .AddOption("Desbloquear usuário", "unblock_user", "Desbloqueie um usuário", new Emoji("🔓"))
+                .AddOption("Bloquear cargo", "block_role", "Bloqueie um cargo", new Emoji("⛔"))
+                .AddOption("Desbloquear cargo", "unblock_role", "Desbloqueie um cargo", new Emoji("✅"))
+                .AddOption("Voltar ao menu principal", "back", "Voltar para escolher outro sistema", new Emoji("◀️"));
 
             return new ComponentBuilder().WithSelectMenu(menu).Build();
         }
 
-        private async Task AtualizarPainel(SocketGuild guild)
+        private async Task AtualizarPainel(SocketGuild guild, string comando)
         {
             if (!PainelMessages.TryGetValue(guild.Id, out var info)) return;
 
@@ -313,8 +375,8 @@ namespace Botzinho.Admins
 
                 await mensagem.ModifyAsync(m =>
                 {
-                    m.Embed = CriarEmbedPainelStatic(guild);
-                    m.Components = CriarMenuPainelStatic();
+                    m.Embed = CriarEmbedComando(guild, comando);
+                    m.Components = CriarMenuComando(comando);
                 });
             }
             catch { }
@@ -332,129 +394,197 @@ namespace Botzinho.Admins
             }
 
             var guild = user.Guild;
-            var config = GetConfig(guild.Id);
+            var customId = component.Data.CustomId;
             var selected = component.Data.Values.First();
 
-            switch (component.Data.CustomId)
+            // Menu principal - escolher sistema
+            if (customId == "configserver_menu")
             {
-                case "nuke_config_menu":
-                    switch (selected)
-                    {
-                        case "toggle":
-                            config.Ativado = !config.Ativado;
-                            SalvarConfig(guild.Id);
-                            await component.RespondAsync($"✅ Sistema de nuke **{(config.Ativado ? "ativado" : "desativado")}**!", ephemeral: true);
-                            await AtualizarPainel(guild);
-                            break;
+                var comando = selected.Replace("config_", "");
+                EditandoComando[guild.Id] = comando;
 
-                        case "add_role":
-                            await component.RespondAsync("👇 Selecione o cargo:",
-                                components: new ComponentBuilder().WithSelectMenu(
-                                    new SelectMenuBuilder().WithCustomId("nuke_add_role").WithPlaceholder("Selecione o cargo")
-                                    .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
-                            break;
+                await component.UpdateAsync(m =>
+                {
+                    m.Embed = CriarEmbedComando(guild, comando);
+                    m.Components = CriarMenuComando(comando);
+                });
+                return;
+            }
 
-                        case "remove_role":
-                            if (config.CargosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum cargo na lista.", ephemeral: true); break; }
-                            var rmRoleMenu = new SelectMenuBuilder().WithCustomId("nuke_remove_role").WithPlaceholder("Selecione o cargo para remover");
-                            foreach (var id in config.CargosPermitidos) { var role = guild.GetRole(id); rmRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
-                            await component.RespondAsync("👇 Selecione o cargo:", components: new ComponentBuilder().WithSelectMenu(rmRoleMenu).Build(), ephemeral: true);
-                            break;
+            // Menu de configuração de um comando específico
+            if (customId.StartsWith("cmd_config_"))
+            {
+                var comando = customId.Replace("cmd_config_", "");
+                if (!Configs.ContainsKey(guild.Id))
+                    Configs[guild.Id] = new ServerConfig();
+                var config = Configs[guild.Id].GetCommand(comando);
 
-                        case "add_member":
-                            await component.RespondAsync("👇 Selecione o membro:",
-                                components: new ComponentBuilder().WithSelectMenu(
-                                    new SelectMenuBuilder().WithCustomId("nuke_add_member").WithPlaceholder("Selecione o membro")
-                                    .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
-                            break;
+                switch (selected)
+                {
+                    case "back":
+                        var mainMenu = new SelectMenuBuilder()
+                            .WithCustomId("configserver_menu")
+                            .WithPlaceholder("Selecione o sistema para configurar")
+                            .AddOption("Nuke", "config_nuke", "Configurar permissões do /nuke", new Emoji("💣"))
+                            .AddOption("Ban", "config_ban", "Configurar permissões do /ban", new Emoji("🔨"))
+                            .AddOption("Kick", "config_kick", "Configurar permissões do /kick", new Emoji("👢"))
+                            .AddOption("Mute", "config_mute", "Configurar permissões do /mute", new Emoji("🔇"))
+                            .AddOption("Warn", "config_warn", "Configurar permissões do /warn", new Emoji("⚠️"))
+                            .AddOption("Clear", "config_clear", "Configurar permissões do /clear", new Emoji("🗑️"))
+                            .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
 
-                        case "remove_member":
-                            if (config.MembrosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum membro na lista.", ephemeral: true); break; }
-                            var rmMemberMenu = new SelectMenuBuilder().WithCustomId("nuke_remove_member").WithPlaceholder("Selecione o membro para remover");
-                            foreach (var id in config.MembrosPermitidos) { var m = guild.GetUser(id); rmMemberMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
-                            await component.RespondAsync("👇 Selecione o membro:", components: new ComponentBuilder().WithSelectMenu(rmMemberMenu).Build(), ephemeral: true);
-                            break;
+                        var mainEmbed = new EmbedBuilder()
+                            .WithAuthor($"Config Server | {guild.CurrentUser.DisplayName}",
+                                guild.CurrentUser.GetAvatarUrl() ?? guild.CurrentUser.GetDefaultAvatarUrl())
+                            .WithThumbnailUrl(guild.CurrentUser.GetAvatarUrl() ?? guild.CurrentUser.GetDefaultAvatarUrl())
+                            .WithDescription(
+                                "• ⚙️ **Painel de Configuração do Servidor**\n" +
+                                "   ○ Selecione abaixo qual sistema você deseja configurar.\n" +
+                                "   ○ Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
+                                "   ○ ⚠️ Mesmo administradores precisam estar na lista para usar os comandos quando o sistema estiver ativado."
+                            )
+                            .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name} • Hoje às {DateTime.Now:HH:mm}")
+                            .WithColor(new Discord.Color(0x2B2D31))
+                            .Build();
 
-                        case "block_user":
-                            await component.RespondAsync("👇 Selecione o usuário:",
-                                components: new ComponentBuilder().WithSelectMenu(
-                                    new SelectMenuBuilder().WithCustomId("nuke_block_user").WithPlaceholder("Selecione o usuário")
-                                    .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
-                            break;
+                        await component.UpdateAsync(m =>
+                        {
+                            m.Embed = mainEmbed;
+                            m.Components = new ComponentBuilder().WithSelectMenu(mainMenu).Build();
+                        });
+                        break;
 
-                        case "unblock_user":
-                            if (config.UsuariosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum usuário bloqueado.", ephemeral: true); break; }
-                            var unblockMenu = new SelectMenuBuilder().WithCustomId("nuke_unblock_user").WithPlaceholder("Selecione o usuário para desbloquear");
-                            foreach (var id in config.UsuariosBloqueados) { var m = guild.GetUser(id); unblockMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
-                            await component.RespondAsync("👇 Selecione o usuário:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
-                            break;
+                    case "toggle":
+                        config.Ativado = !config.Ativado;
+                        SalvarCommandConfig(guild.Id, comando);
+                        await component.RespondAsync($"✅ Sistema de `/{comando}` **{(config.Ativado ? "ativado" : "desativado")}**!", ephemeral: true);
+                        await AtualizarPainel(guild, comando);
+                        break;
 
-                        case "block_role":
-                            await component.RespondAsync("👇 Selecione o cargo:",
-                                components: new ComponentBuilder().WithSelectMenu(
-                                    new SelectMenuBuilder().WithCustomId("nuke_block_role").WithPlaceholder("Selecione o cargo")
-                                    .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
-                            break;
+                    case "add_role":
+                        EditandoComando[guild.Id] = comando;
+                        await component.RespondAsync("👇 Selecione o cargo:",
+                            components: new ComponentBuilder().WithSelectMenu(
+                                new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
+                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                        break;
 
-                        case "unblock_role":
-                            if (config.CargosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum cargo bloqueado.", ephemeral: true); break; }
-                            var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("nuke_unblock_role").WithPlaceholder("Selecione o cargo para desbloquear");
-                            foreach (var id in config.CargosBloqueados) { var role = guild.GetRole(id); unblockRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
-                            await component.RespondAsync("👇 Selecione o cargo:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
-                            break;
-                    }
-                    break;
+                    case "remove_role":
+                        EditandoComando[guild.Id] = comando;
+                        if (config.CargosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum cargo na lista.", ephemeral: true); break; }
+                        var rmRoleMenu = new SelectMenuBuilder().WithCustomId("srv_remove_role").WithPlaceholder("Selecione o cargo para remover");
+                        foreach (var id in config.CargosPermitidos) { var role = guild.GetRole(id); rmRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
+                        await component.RespondAsync("👇 Selecione o cargo:", components: new ComponentBuilder().WithSelectMenu(rmRoleMenu).Build(), ephemeral: true);
+                        break;
 
-                case "nuke_add_role":
+                    case "add_member":
+                        EditandoComando[guild.Id] = comando;
+                        await component.RespondAsync("👇 Selecione o membro:",
+                            components: new ComponentBuilder().WithSelectMenu(
+                                new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
+                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                        break;
+
+                    case "remove_member":
+                        EditandoComando[guild.Id] = comando;
+                        if (config.MembrosPermitidos.Count == 0) { await component.RespondAsync("❌ Nenhum membro na lista.", ephemeral: true); break; }
+                        var rmMemberMenu = new SelectMenuBuilder().WithCustomId("srv_remove_member").WithPlaceholder("Selecione o membro para remover");
+                        foreach (var id in config.MembrosPermitidos) { var m = guild.GetUser(id); rmMemberMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
+                        await component.RespondAsync("👇 Selecione o membro:", components: new ComponentBuilder().WithSelectMenu(rmMemberMenu).Build(), ephemeral: true);
+                        break;
+
+                    case "block_user":
+                        EditandoComando[guild.Id] = comando;
+                        await component.RespondAsync("👇 Selecione o usuário:",
+                            components: new ComponentBuilder().WithSelectMenu(
+                                new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuário")
+                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                        break;
+
+                    case "unblock_user":
+                        EditandoComando[guild.Id] = comando;
+                        if (config.UsuariosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum usuário bloqueado.", ephemeral: true); break; }
+                        var unblockMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_user").WithPlaceholder("Selecione o usuário para desbloquear");
+                        foreach (var id in config.UsuariosBloqueados) { var m = guild.GetUser(id); unblockMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
+                        await component.RespondAsync("👇 Selecione o usuário:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
+                        break;
+
+                    case "block_role":
+                        EditandoComando[guild.Id] = comando;
+                        await component.RespondAsync("👇 Selecione o cargo:",
+                            components: new ComponentBuilder().WithSelectMenu(
+                                new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
+                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                        break;
+
+                    case "unblock_role":
+                        EditandoComando[guild.Id] = comando;
+                        if (config.CargosBloqueados.Count == 0) { await component.RespondAsync("❌ Nenhum cargo bloqueado.", ephemeral: true); break; }
+                        var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_role").WithPlaceholder("Selecione o cargo para desbloquear");
+                        foreach (var id in config.CargosBloqueados) { var role = guild.GetRole(id); unblockRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
+                        await component.RespondAsync("👇 Selecione o cargo:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
+                        break;
+                }
+                return;
+            }
+
+            // Handlers das ações
+            if (!EditandoComando.TryGetValue(guild.Id, out var editCmd)) return;
+            if (!Configs.ContainsKey(guild.Id)) Configs[guild.Id] = new ServerConfig();
+            var cmdConfig2 = Configs[guild.Id].GetCommand(editCmd);
+
+            switch (customId)
+            {
+                case "srv_add_role":
                     var roleId = ulong.Parse(component.Data.Values.First());
-                    if (!config.CargosPermitidos.Contains(roleId)) { config.CargosPermitidos.Add(roleId); await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado!", ephemeral: true); }
+                    if (!cmdConfig2.CargosPermitidos.Contains(roleId)) { cmdConfig2.CargosPermitidos.Add(roleId); await component.RespondAsync($"✅ Cargo <@&{roleId}> adicionado ao `/{editCmd}`!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_remove_role":
-                    config.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                case "srv_remove_role":
+                    cmdConfig2.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo removido!", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_add_member":
+                case "srv_add_member":
                     var memberId = ulong.Parse(component.Data.Values.First());
-                    if (!config.MembrosPermitidos.Contains(memberId)) { config.MembrosPermitidos.Add(memberId); await component.RespondAsync($"✅ Membro <@{memberId}> adicionado!", ephemeral: true); }
+                    if (!cmdConfig2.MembrosPermitidos.Contains(memberId)) { cmdConfig2.MembrosPermitidos.Add(memberId); await component.RespondAsync($"✅ Membro <@{memberId}> adicionado ao `/{editCmd}`!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está na lista.", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_remove_member":
-                    config.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                case "srv_remove_member":
+                    cmdConfig2.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Membro removido!", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_block_user":
+                case "srv_block_user":
                     var blockId = ulong.Parse(component.Data.Values.First());
-                    if (!config.UsuariosBloqueados.Contains(blockId)) { config.UsuariosBloqueados.Add(blockId); await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado!", ephemeral: true); }
+                    if (!cmdConfig2.UsuariosBloqueados.Contains(blockId)) { cmdConfig2.UsuariosBloqueados.Add(blockId); await component.RespondAsync($"✅ Usuário <@{blockId}> bloqueado do `/{editCmd}`!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_unblock_user":
-                    config.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                case "srv_unblock_user":
+                    cmdConfig2.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Usuário desbloqueado!", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_block_role":
+                case "srv_block_role":
                     var blockRoleId = ulong.Parse(component.Data.Values.First());
-                    if (!config.CargosBloqueados.Contains(blockRoleId)) { config.CargosBloqueados.Add(blockRoleId); await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado!", ephemeral: true); }
+                    if (!cmdConfig2.CargosBloqueados.Contains(blockRoleId)) { cmdConfig2.CargosBloqueados.Add(blockRoleId); await component.RespondAsync($"✅ Cargo <@&{blockRoleId}> bloqueado do `/{editCmd}`!", ephemeral: true); }
                     else await component.RespondAsync("⚠️ Já está bloqueado.", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
 
-                case "nuke_unblock_role":
-                    config.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                case "srv_unblock_role":
+                    cmdConfig2.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
                     await component.RespondAsync("✅ Cargo desbloqueado!", ephemeral: true);
-                    SalvarConfig(guild.Id); await AtualizarPainel(guild);
+                    SalvarCommandConfig(guild.Id, editCmd); await AtualizarPainel(guild, editCmd);
                     break;
             }
         }
