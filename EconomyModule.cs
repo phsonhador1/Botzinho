@@ -514,6 +514,7 @@ namespace Botzinho.Economy
 
             if (content == "zhelp")
             {
+                // Esta string precisa de ter exatamente este formato para o Discord reconhecer o emoji
                 var emojiAnimado = "<a:CryxEmojiNRSmiley:1474576047659028531>";
 
                 var embed = new EmbedBuilder()
