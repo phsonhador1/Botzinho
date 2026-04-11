@@ -1,14 +1,15 @@
+using Botzinho.Admins;
+using Botzinho.Moderation;
 using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using Botzinho.Admins;
-using Botzinho.Moderation;
 
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
@@ -37,6 +38,35 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
+    client.MessageReceived += async message =>
+    {
+        if (message is not SocketUserMessage msg) return;
+        if (msg.Author.IsBot) return;
+
+        int argPos = 0;
+
+        // prefixo "z"
+        if (!msg.HasCharPrefix('z', ref argPos)) return;
+
+        var comando = msg.Content.Substring(argPos).Trim().ToLower();
+
+        if (comando == "help")
+        {
+            var embed = new EmbedBuilder()
+                .WithTitle("💜 Comandos da Zoe")
+                .WithDescription(
+                    "`zhelp` - mostra este menu\n" +
+                    "`znuke` - limpa o canal\n" +
+                    "`zclear` - apaga mensagens\n" +
+                    "`zavisar` - dar aviso\n"
+                )
+                .WithColor(new Color(0xFF69B4))
+                .Build();
+
+            await msg.Channel.SendMessageAsync(embed: embed);
+        }
+    };
+
     _ = Task.Run(async () =>
     {
         int i = 0;
@@ -49,7 +79,7 @@ client.Ready += async () =>
             {
                 $"💜 Atualmente em {client.Guilds.Count} servidores",
                 "💜 Online | Pronta Para Ajudar!",
-                "✨ Use zhelp para ver meus comandos"
+                "✨ Use zhelp para ver meus comandos",
             };
 
             await client.SetCustomStatusAsync(statusDinamicos[i]);
