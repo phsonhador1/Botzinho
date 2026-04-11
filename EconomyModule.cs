@@ -514,10 +514,10 @@ namespace Botzinho.Economy
 
             if (content == "zhelp")
             {
-                var emojiRoxo = "<:CryxEmojiNRSmiley:1474576047659028531>";
+                var emojiAnimado = "<a:CryxEmojiNRSmiley:1474576047659028531>";
                 var embed = new EmbedBuilder()
                     .WithAuthor($"Ajuda | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                    .WithDescription($"{emojiRoxo} Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda** - {_client.CurrentUser.Username}\n\n" +
+                    .WithDescription($"{emojiAnimado} Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda** - {_client.CurrentUser.Username}\n\n" +
                                      "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
                     .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                     .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
