@@ -531,7 +531,7 @@ namespace Botzinho.Economy
                     .WithPlaceholder("Selecione uma categoria")
                     .AddOption("Moderação", "help_mod", "Comandos de moderação", new Emoji("🛡️"))
                     .AddOption("Economia", "help_eco", "Comandos de cpoints", new Emoji("💰"))
-                    .AddOption("Administração", "help_admin", "Configuração do bot", new Emoji("⚙️"));
+                    .AddOption("Administração", "help_admin", "Configuração do bot", Emote.Parse("<:botportal:1492661012682248212>"));
 
                 var components = new ComponentBuilder().WithSelectMenu(menu).Build();
 
