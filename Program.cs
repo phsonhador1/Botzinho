@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
 
-
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent | GatewayIntents.GuildMembers
@@ -24,8 +23,6 @@ var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 
-
-
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
@@ -37,6 +34,17 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
+    var bio = @"Ola! Sou a Zany!
+Meu prefixo é z. Use zajuda para descobrir todos os meus comandos
+Suporte: https://discord.gg/zany
+Site: https://zany.cc/ — Loja: https://loja.zany.cc/
+Instagram: https://instagram.com/zanybot";
+
+    await client.CurrentUser.ModifyAsync(user =>
+    {
+        user.Username = $"Zany | {bio}";
+    });
+
     _ = Task.Run(async () =>
     {
         int i = 0;
@@ -44,21 +52,24 @@ client.Ready += async () =>
         {
             await client.SetStatusAsync(UserStatus.Online);
 
-            // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
             string[] statusDinamicos = new[]
             {
+                "Ola! Sou a Zoe!",
+                "Meu prefixo é z.",
+                "Use zajuda para descobrir todos os meus comandos...",
                 $"💜 Estou atualmente em {client.Guilds.Count} servidores",
-                "💜 Online | Pronta Para Ajudar!",
+                "💜 Zoe | Pronta Para Ajudar!",
                 "💜 Epstein Store"
             };
 
-            await client.SetCustomStatusAsync(statusDinamicos[i]);
+            await client.SetActivityAsync(new Game(statusDinamicos[i]));
 
             i = (i + 1) % statusDinamicos.Length;
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await Task.Delay(TimeSpan.FromSeconds(15));
         }
     });
 };
+
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
