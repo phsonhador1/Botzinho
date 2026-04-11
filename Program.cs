@@ -49,7 +49,7 @@ client.Ready += async () =>
             {
                 $"💜 Estou atualmente em {client.Guilds.Count} servidores",
                 "💜 Online | Pronta Para Ajudar!",
-                "💜 Epstein Store"
+                "✨ Use zhelp para ver meus comandos"
             };
 
             await client.SetCustomStatusAsync(statusDinamicos[i]);
