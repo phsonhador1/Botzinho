@@ -55,7 +55,7 @@ client.Ready += async () =>
             await client.SetCustomStatusAsync(statusDinamicos[i]);
 
             i = (i + 1) % statusDinamicos.Length;
-            await Task.Delay(TimeSpan.FromSeconds(15));
+            await Task.Delay(TimeSpan.FromSeconds(5));
         }
     });
 };
