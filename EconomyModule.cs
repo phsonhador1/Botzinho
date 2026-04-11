@@ -514,7 +514,7 @@ namespace Botzinho.Economy
 
             if (content == "zhelp")
             {
-                var emojiAnimado = "<a:CryxEmojiNRSmiley:1474576047659028531>";
+                var emojiAnimado = "<:CryxEmojiNRSmiley:1474576047659028531>";
 
                 var embed = new EmbedBuilder()
                     .WithAuthor($"Ajuda | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
