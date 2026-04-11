@@ -23,12 +23,6 @@ var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 
-string[] statusList = new[]
-{
-    $"💜 Atualmente em {client.Guilds.Count} servidores",
-    "💜 Online | Pronta Para Ajudar!",
-    "💫 Use zhelp para ver meus comandos"
-};
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
@@ -45,11 +39,11 @@ client.Ready += async () =>
 
             string[] statusDinamicos = new[]
             {
-                "Ola! Sou a Zoe!",
-                "Meu prefixo é z.",
-                "Use zhelp para descobrir todos os meus comandos...",
+                
+                
                 $"💜 Atualmente em {client.Guilds.Count} servidores",
-                "💜 Zoe | Pronta Para Ajudar!"
+                "💜 Zoe | Pronta Para Ajudar!",
+                "✨ Use zhelp para descobrir todos os meus comandos..."
             };
 
             await client.SetActivityAsync(new Game(statusDinamicos[i]));
