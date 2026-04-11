@@ -534,7 +534,10 @@ namespace Botzinho.Economy
                     var restante = TimeSpan.FromHours(24) - diferenca;
                     var horas = (int)restante.TotalHours;
                     var minutos = restante.Minutes;
-                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m`.");
+                    var segundos = restante.Seconds; // Adiciona esta linha
+
+                    // Atualiza a mensagem para incluir os segundos
+                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
                     return;
                 }
 
