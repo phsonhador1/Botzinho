@@ -23,13 +23,6 @@ var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 
-string[] statusList = new[]
-{
-    $"💜 Estou atualmente em {client.Guilds.Count} servidores",
-    "💜 Online | Pronta Para Ajudar!",
-    "✨ Use zhelp para ver meus comandos"
-};
-
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
@@ -43,13 +36,21 @@ client.Ready += async () =>
 
     _ = Task.Run(async () =>
     {
-        int i = 0;
         while (true)
         {
-            await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetCustomStatusAsync(statusList[i]);
-            i = (i + 1) % statusList.Length;
-            await Task.Delay(TimeSpan.FromSeconds(15));
+            string[] statusAtual = new[]
+            {
+                $"Estou atualmente em {client.Guilds.Count} servidores",
+                "Online | Pronta Para Ajudar!",
+                "Use /help para ver meus comandos"
+            };
+
+            for (int i = 0; i < statusAtual.Length; i++)
+            {
+                await client.SetStatusAsync(UserStatus.DoNotDisturb);
+                await client.SetCustomStatusAsync(statusAtual[i]);
+                await Task.Delay(TimeSpan.FromSeconds(15));
+            }
         }
     });
 };
