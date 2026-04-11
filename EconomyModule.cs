@@ -524,23 +524,22 @@ namespace Botzinho.Economy
                 File.Delete(imagemPath);
             }
             else if (content == "zdaily")
-            {
-                var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
-                var agora = DateTime.UtcNow;
-                var diferenca = agora - ultimoDaily;
+{
+    var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
+    var agora = DateTime.UtcNow;
+    var diferenca = agora - ultimoDaily;
 
-                if (diferenca.TotalHours < 24)
-                {
-                    var restante = TimeSpan.FromHours(24) - diferenca;
-                    var horas = (int)restante.TotalHours;
-                    var minutos = restante.Minutes;
-                    var segundos = restante.Seconds; // Adiciona esta linha
-
-                    // Atualiza a mensagem para incluir os segundos
-                    string tempoFormatado = restante.ToString(@"hh\:mm\:ss");
-                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{tempoFormatado}`.");
-                    return;
-                }
+    if (diferenca.TotalHours < 24)
+    {
+        var restante = TimeSpan.FromHours(24) - diferenca;
+        var horas = (int)restante.TotalHours;
+        var minutos = restante.Minutes;
+        var segundos = restante.Seconds; // Adiciona esta linha
+        
+        // Atualiza a mensagem para incluir os segundos
+        await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
+        return;
+    }
 
                 var random = new Random();
                 long recompensa = random.Next(500, 2001);
