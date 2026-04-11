@@ -1,5 +1,4 @@
 using Discord;
-using Discord.Interactions;
 using Discord.WebSocket;
 using Npgsql;
 using Botzinho.Admins;
@@ -114,200 +113,227 @@ namespace Botzinho.Economy
         }
     }
 
-    public class SaldoModule : InteractionModuleBase<SocketInteractionContext>
+    public class EconomyHandler
     {
-        [SlashCommand("zsaldo", "Mostra seu saldo ou de outro usuario")]
-        public async Task SaldoAsync(
-            [Summary("usuario", "Usuario para ver o saldo")] SocketGuildUser alvo = null)
+        private readonly DiscordSocketClient _client;
+
+        public EconomyHandler(DiscordSocketClient client)
         {
-            var target = alvo ?? (SocketGuildUser)Context.User;
-            var saldo = EconomyHelper.GetSaldo(Context.Guild.Id, target.Id);
-
-            var embed = new EmbedBuilder()
-                .WithAuthor($"{target.DisplayName}", target.GetAvatarUrl() ?? target.GetDefaultAvatarUrl())
-                .WithDescription($"**Saldo:** `{EconomyHelper.FormatarSaldo(saldo)}` cpoints")
-                .WithColor(new Discord.Color(0x2B2D31))
-                .Build();
-
-            await RespondAsync(embed: embed);
+            _client = client;
+            _client.MessageReceived += HandleMessage;
         }
-    }
 
-    public class DailyModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zdaily", "Coleta sua recompensa diaria")]
-        public async Task DailyAsync()
+        private async Task HandleMessage(SocketMessage msg)
         {
-            var user = (SocketGuildUser)Context.User;
-            var guildId = Context.Guild.Id;
+            if (msg.Author.IsBot) return;
+            if (msg is not SocketUserMessage userMsg) return;
+            var user = msg.Author as SocketGuildUser;
+            if (user == null) return;
 
-            var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
-            var agora = DateTime.UtcNow;
-            var diferenca = agora - ultimoDaily;
+            var content = msg.Content.ToLower().Trim();
+            var guildId = user.Guild.Id;
 
-            if (diferenca.TotalHours < 24)
+            // zsaldo
+            if (content == "zsaldo" || content.StartsWith("zsaldo "))
             {
-                var restante = TimeSpan.FromHours(24) - diferenca;
-                var horas = (int)restante.TotalHours;
-                var minutos = restante.Minutes;
-                await RespondAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m`.", ephemeral: true);
-                return;
+                SocketGuildUser alvo = user;
+
+                if (msg.MentionedUsers.Count > 0)
+                    alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id) ?? user;
+
+                var saldo = EconomyHelper.GetSaldo(guildId, alvo.Id);
+
+                var embed = new EmbedBuilder()
+                    .WithAuthor($"{alvo.DisplayName}", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                    .WithDescription($"**Saldo:** `{EconomyHelper.FormatarSaldo(saldo)}` cpoints")
+                    .WithColor(new Discord.Color(0x2B2D31))
+                    .Build();
+
+                await msg.Channel.SendMessageAsync(embed: embed);
             }
 
-            var random = new Random();
-            long recompensa = random.Next(500, 2001);
-
-            EconomyHelper.AdicionarSaldo(guildId, user.Id, recompensa);
-            EconomyHelper.SetUltimoDaily(guildId, user.Id);
-
-            var saldoAtual = EconomyHelper.GetSaldo(guildId, user.Id);
-
-            var embed = new EmbedBuilder()
-                .WithAuthor($"Daily | {user.DisplayName}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                .WithDescription(
-                    $"voce coletou seu daily e recebeu `{EconomyHelper.FormatarSaldo(recompensa)}` cpoints\n" +
-                    $"**Saldo atual:** `{EconomyHelper.FormatarSaldo(saldoAtual)}` cpoints")
-                .WithColor(new Discord.Color(0x2B2D31))
-                .Build();
-
-            await RespondAsync(embed: embed);
-        }
-    }
-
-    public class PagarModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zpagar", "Transfere cpoints para outro usuario")]
-        public async Task PagarAsync(
-            [Summary("usuario", "Usuario para transferir")] SocketGuildUser alvo,
-            [Summary("valor", "Quantidade de cpoints")] long valor)
-        {
-            var user = (SocketGuildUser)Context.User;
-
-            if (alvo.Id == user.Id)
-            { await RespondAsync("voce nao pode pagar a si mesmo.", ephemeral: true); return; }
-
-            if (alvo.IsBot)
-            { await RespondAsync("voce nao pode pagar um bot.", ephemeral: true); return; }
-
-            if (valor <= 0)
-            { await RespondAsync("valor invalido.", ephemeral: true); return; }
-
-            if (!EconomyHelper.RemoverSaldo(Context.Guild.Id, user.Id, valor))
-            { await RespondAsync("saldo insuficiente.", ephemeral: true); return; }
-
-            EconomyHelper.AdicionarSaldo(Context.Guild.Id, alvo.Id, valor);
-
-            var saldoRemetente = EconomyHelper.GetSaldo(Context.Guild.Id, user.Id);
-            var saldoDestino = EconomyHelper.GetSaldo(Context.Guild.Id, alvo.Id);
-
-            await RespondAsync(
-                $"{user.Mention} transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n" +
-                $"**Seu saldo:** `{EconomyHelper.FormatarSaldo(saldoRemetente)}` cpoints");
-        }
-    }
-
-    public class RankingModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zranking", "Mostra os mais ricos do servidor")]
-        public async Task RankingAsync()
-        {
-            using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
-            conn.Open();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT user_id, saldo FROM economy_users WHERE guild_id = @gid AND saldo > 0 ORDER BY saldo DESC LIMIT 10";
-            cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
-            using var reader = cmd.ExecuteReader();
-
-            var ranking = new List<string>();
-            int pos = 1;
-            while (reader.Read())
+            // zdaily
+            else if (content == "zdaily")
             {
-                var userId = reader.GetString(0);
-                var saldo = reader.GetInt64(1);
-                ranking.Add($"`#{pos}` <@{userId}> - `{EconomyHelper.FormatarSaldo(saldo)}` cpoints");
-                pos++;
+                var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
+                var agora = DateTime.UtcNow;
+                var diferenca = agora - ultimoDaily;
+
+                if (diferenca.TotalHours < 24)
+                {
+                    var restante = TimeSpan.FromHours(24) - diferenca;
+                    var horas = (int)restante.TotalHours;
+                    var minutos = restante.Minutes;
+                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m`.");
+                    return;
+                }
+
+                var random = new Random();
+                long recompensa = random.Next(500, 2001);
+
+                EconomyHelper.AdicionarSaldo(guildId, user.Id, recompensa);
+                EconomyHelper.SetUltimoDaily(guildId, user.Id);
+
+                var saldoAtual = EconomyHelper.GetSaldo(guildId, user.Id);
+
+                var embed = new EmbedBuilder()
+                    .WithAuthor($"Daily | {user.DisplayName}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithDescription(
+                        $"voce coletou seu daily e recebeu `{EconomyHelper.FormatarSaldo(recompensa)}` cpoints\n" +
+                        $"**Saldo atual:** `{EconomyHelper.FormatarSaldo(saldoAtual)}` cpoints")
+                    .WithColor(new Discord.Color(0x2B2D31))
+                    .Build();
+
+                await msg.Channel.SendMessageAsync(embed: embed);
             }
 
-            if (ranking.Count == 0)
+            // zpagar @usuario valor
+            else if (content.StartsWith("zpagar"))
             {
-                await RespondAsync("ninguem tem cpoints ainda.", ephemeral: true);
-                return;
+                if (msg.MentionedUsers.Count == 0)
+                {
+                    await msg.Channel.SendMessageAsync("use: `zpagar @usuario valor`");
+                    return;
+                }
+
+                var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
+                if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
+                if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("voce nao pode pagar a si mesmo."); return; }
+                if (alvo.IsBot) { await msg.Channel.SendMessageAsync("voce nao pode pagar um bot."); return; }
+
+                var partes = content.Split(' ');
+                long valor = 0;
+                foreach (var parte in partes)
+                {
+                    if (long.TryParse(parte, out var v)) { valor = v; break; }
+                }
+
+                if (valor <= 0) { await msg.Channel.SendMessageAsync("valor invalido."); return; }
+
+                if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
+                { await msg.Channel.SendMessageAsync("saldo insuficiente."); return; }
+
+                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
+                var saldoRemetente = EconomyHelper.GetSaldo(guildId, user.Id);
+
+                await msg.Channel.SendMessageAsync(
+                    $"{user.Mention} transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n" +
+                    $"**Seu saldo:** `{EconomyHelper.FormatarSaldo(saldoRemetente)}` cpoints");
             }
 
-            var embed = new EmbedBuilder()
-                .WithAuthor($"Ranking | {Context.Guild.Name}")
-                .WithDescription(string.Join("\n", ranking))
-                .WithFooter($"Top {ranking.Count} mais ricos")
-                .WithColor(new Discord.Color(0x2B2D31))
-                .Build();
+            // zranking
+            else if (content == "zranking")
+            {
+                using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT user_id, saldo FROM economy_users WHERE guild_id = @gid AND saldo > 0 ORDER BY saldo DESC LIMIT 10";
+                cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+                using var reader = cmd.ExecuteReader();
 
-            await RespondAsync(embed: embed);
-        }
-    }
+                var ranking = new List<string>();
+                int pos = 1;
+                while (reader.Read())
+                {
+                    var userId = reader.GetString(0);
+                    var saldo = reader.GetInt64(1);
+                    ranking.Add($"`#{pos}` <@{userId}> - `{EconomyHelper.FormatarSaldo(saldo)}` cpoints");
+                    pos++;
+                }
 
-    public class AdicionarSaldoModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zaddsaldo", "Adiciona cpoints a um usuario (admin)")]
-        public async Task AddSaldoAsync(
-            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
-            [Summary("valor", "Quantidade de cpoints")] long valor)
-        {
-            var user = (SocketGuildUser)Context.User;
+                if (ranking.Count == 0)
+                {
+                    await msg.Channel.SendMessageAsync("ninguem tem cpoints ainda.");
+                    return;
+                }
 
-            if (!AdminModule.PodeUsarEconfigStatic(user))
-            { await RespondAsync("voce nao tem permissao.", ephemeral: true); return; }
+                var embed = new EmbedBuilder()
+                    .WithAuthor($"Ranking | {user.Guild.Name}")
+                    .WithDescription(string.Join("\n", ranking))
+                    .WithFooter($"Top {ranking.Count} mais ricos")
+                    .WithColor(new Discord.Color(0x2B2D31))
+                    .Build();
 
-            if (valor <= 0)
-            { await RespondAsync("valor invalido.", ephemeral: true); return; }
+                await msg.Channel.SendMessageAsync(embed: embed);
+            }
 
-            EconomyHelper.AdicionarSaldo(Context.Guild.Id, alvo.Id, valor);
-            var saldo = EconomyHelper.GetSaldo(Context.Guild.Id, alvo.Id);
+            // zaddsaldo @usuario valor (admin)
+            else if (content.StartsWith("zaddsaldo"))
+            {
+                if (!AdminModule.PodeUsarEconfigStatic(user))
+                { await msg.Channel.SendMessageAsync("voce nao tem permissao."); return; }
 
-            await RespondAsync($"adicionado `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n**Saldo atual:** `{EconomyHelper.FormatarSaldo(saldo)}` cpoints");
-        }
-    }
+                if (msg.MentionedUsers.Count == 0)
+                { await msg.Channel.SendMessageAsync("use: `zaddsaldo @usuario valor`"); return; }
 
-    public class RemoverSaldoModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zremovesaldo", "Remove cpoints de um usuario (admin)")]
-        public async Task RemoveSaldoAsync(
-            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
-            [Summary("valor", "Quantidade de cpoints")] long valor)
-        {
-            var user = (SocketGuildUser)Context.User;
+                var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
+                if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
 
-            if (!AdminModule.PodeUsarEconfigStatic(user))
-            { await RespondAsync("voce nao tem permissao.", ephemeral: true); return; }
+                long valor = 0;
+                foreach (var parte in content.Split(' '))
+                {
+                    if (long.TryParse(parte, out var v)) { valor = v; break; }
+                }
 
-            if (valor <= 0)
-            { await RespondAsync("valor invalido.", ephemeral: true); return; }
+                if (valor <= 0) { await msg.Channel.SendMessageAsync("valor invalido."); return; }
 
-            var saldoAtual = EconomyHelper.GetSaldo(Context.Guild.Id, alvo.Id);
-            var novoSaldo = Math.Max(0, saldoAtual - valor);
-            EconomyHelper.SetSaldo(Context.Guild.Id, alvo.Id, novoSaldo);
+                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
+                var saldo = EconomyHelper.GetSaldo(guildId, alvo.Id);
 
-            await RespondAsync($"removido `{EconomyHelper.FormatarSaldo(valor)}` cpoints de {alvo.Mention}\n**Saldo atual:** `{EconomyHelper.FormatarSaldo(novoSaldo)}` cpoints");
-        }
-    }
+                await msg.Channel.SendMessageAsync($"adicionado `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n**Saldo atual:** `{EconomyHelper.FormatarSaldo(saldo)}` cpoints");
+            }
 
-    public class SetSaldoModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zsetsaldo", "Define o saldo de um usuario (admin)")]
-        public async Task SetSaldoAsync(
-            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
-            [Summary("valor", "Novo saldo")] long valor)
-        {
-            var user = (SocketGuildUser)Context.User;
+            // zremovesaldo @usuario valor (admin)
+            else if (content.StartsWith("zremovesaldo"))
+            {
+                if (!AdminModule.PodeUsarEconfigStatic(user))
+                { await msg.Channel.SendMessageAsync("voce nao tem permissao."); return; }
 
-            if (!AdminModule.PodeUsarEconfigStatic(user))
-            { await RespondAsync("voce nao tem permissao.", ephemeral: true); return; }
+                if (msg.MentionedUsers.Count == 0)
+                { await msg.Channel.SendMessageAsync("use: `zremovesaldo @usuario valor`"); return; }
 
-            if (valor < 0)
-            { await RespondAsync("valor invalido.", ephemeral: true); return; }
+                var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
+                if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
 
-            EconomyHelper.SetSaldo(Context.Guild.Id, alvo.Id, valor);
+                long valor = 0;
+                foreach (var parte in content.Split(' '))
+                {
+                    if (long.TryParse(parte, out var v)) { valor = v; break; }
+                }
 
-            await RespondAsync($"saldo de {alvo.Mention} definido para `{EconomyHelper.FormatarSaldo(valor)}` cpoints");
+                if (valor <= 0) { await msg.Channel.SendMessageAsync("valor invalido."); return; }
+
+                var saldoAtual = EconomyHelper.GetSaldo(guildId, alvo.Id);
+                var novoSaldo = Math.Max(0, saldoAtual - valor);
+                EconomyHelper.SetSaldo(guildId, alvo.Id, novoSaldo);
+
+                await msg.Channel.SendMessageAsync($"removido `{EconomyHelper.FormatarSaldo(valor)}` cpoints de {alvo.Mention}\n**Saldo atual:** `{EconomyHelper.FormatarSaldo(novoSaldo)}` cpoints");
+            }
+
+            // zsetsaldo @usuario valor (admin)
+            else if (content.StartsWith("zsetsaldo"))
+            {
+                if (!AdminModule.PodeUsarEconfigStatic(user))
+                { await msg.Channel.SendMessageAsync("voce nao tem permissao."); return; }
+
+                if (msg.MentionedUsers.Count == 0)
+                { await msg.Channel.SendMessageAsync("use: `zsetsaldo @usuario valor`"); return; }
+
+                var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
+                if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
+
+                long valor = 0;
+                foreach (var parte in content.Split(' '))
+                {
+                    if (long.TryParse(parte, out var v)) { valor = v; break; }
+                }
+
+                if (valor < 0) { await msg.Channel.SendMessageAsync("valor invalido."); return; }
+
+                EconomyHelper.SetSaldo(guildId, alvo.Id, valor);
+
+                await msg.Channel.SendMessageAsync($"saldo de {alvo.Mention} definido para `{EconomyHelper.FormatarSaldo(valor)}` cpoints");
+            }
         }
     }
 }
