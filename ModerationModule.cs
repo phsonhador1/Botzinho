@@ -15,7 +15,7 @@ namespace Botzinho.Moderation
         public static string GetConnectionString()
         {
             return Environment.GetEnvironmentVariable("DATABASE_URL")
-                ?? throw new Exception("DATABASE_URL não configurado!");
+                ?? throw new Exception("DATABASE_URL nao configurado!");
         }
 
         public static void InicializarTabelas()
@@ -24,17 +24,16 @@ namespace Botzinho.Moderation
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-        CREATE TABLE IF NOT EXISTS avisos (
-            id SERIAL PRIMARY KEY,
-            guild_id TEXT,
-            user_id TEXT,
-            moderator_id TEXT,
-            motivo TEXT,
-            data TIMESTAMP DEFAULT NOW()
-        );
-    ";
+                CREATE TABLE IF NOT EXISTS warns (
+                    id SERIAL PRIMARY KEY,
+                    guild_id TEXT,
+                    user_id TEXT,
+                    moderator_id TEXT,
+                    motivo TEXT,
+                    data TIMESTAMP DEFAULT NOW()
+                );
+            ";
             cmd.ExecuteNonQuery();
-            Console.WriteLine("Tabelas de moderação inicializadas.");
         }
 
         public static TimeSpan? ParseDuration(string input)
@@ -48,116 +47,122 @@ namespace Botzinho.Moderation
 
     public class BanModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("ban", "Bane um usuário do servidor")]
+        [SlashCommand("ban", "Bane um usuario do servidor")]
         [RequireBotPermission(GuildPermission.BanMembers)]
         public async Task BanAsync(
-            [Summary("usuario", "Usuário para banir")] SocketGuildUser alvo,
+            [Summary("usuario", "Usuario para banir")] SocketGuildUser alvo,
             [Summary("motivo", "Motivo do ban")] string motivo = "Sem motivo informado",
             [Summary("dias", "Dias de mensagens para apagar (0-7)")] int dias = 0)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "ban"))
-            { await RespondAsync("❌ tu não tem permissão pra banir ninguém", ephemeral: true); return; }
-            if (alvo.Id == user.Id) { await RespondAsync("❌ tu quer se banir? kkkk não dá", ephemeral: true); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("❌ cargo igual ou maior", ephemeral: true); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("❌ meu cargo é menor", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "ban", GuildPermission.BanMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
 
-            try { await alvo.SendMessageAsync($"🔨 tu foi banido de **{Context.Guild.Name}** kkkk"); } catch { }
+            if (alvo.Id == user.Id) { await RespondAsync("tu quer se banir? kkkk nao da", ephemeral: true); return; }
+            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("cargo igual ou maior", ephemeral: true); return; }
+            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("meu cargo e menor", ephemeral: true); return; }
+
+            try { await alvo.SendMessageAsync($"tu foi banido de **{Context.Guild.Name}** kkkk"); } catch { }
             await Context.Guild.AddBanAsync(alvo, pruneDays: Math.Clamp(dias, 0, 7), reason: motivo);
-            await RespondAsync($"kkkkkkkkkkkk {alvo.Mention} banido, vaza mlk 🔨\n**Motivo:** {motivo}");
+            await RespondAsync($"kkkkkkkkkkkk {alvo.Mention} banido, vaza mlk\n**Motivo:** {motivo}");
         }
     }
 
     public class UnbanModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("unban", "Desbane um usuário")]
+        [SlashCommand("unban", "Desbane um usuario")]
         [RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task UnbanAsync([Summary("id", "ID do usuário")] string userId)
+        public async Task UnbanAsync([Summary("id", "ID do usuario")] string userId)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "ban"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
-            if (!ulong.TryParse(userId, out var id)) { await RespondAsync("❌ ID inválido", ephemeral: true); return; }
-            try { await Context.Guild.RemoveBanAsync(id); await RespondAsync($"✅ ID `{id}` desbanido, volta aí mano"); }
-            catch { await RespondAsync("❌ esse ID não tá na lista de bans", ephemeral: true); }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "ban", GuildPermission.BanMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
+            if (!ulong.TryParse(userId, out var id)) { await RespondAsync("ID invalido", ephemeral: true); return; }
+            try { await Context.Guild.RemoveBanAsync(id); await RespondAsync($"ID `{id}` desbanido, volta ai mano"); }
+            catch { await RespondAsync("esse ID nao ta na lista de bans", ephemeral: true); }
         }
     }
 
     public class KickModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("kick", "Expulsa um usuário")]
+        [SlashCommand("kick", "Expulsa um usuario")]
         [RequireBotPermission(GuildPermission.KickMembers)]
         public async Task KickAsync(
-            [Summary("usuario", "Usuário para expulsar")] SocketGuildUser alvo,
+            [Summary("usuario", "Usuario para expulsar")] SocketGuildUser alvo,
             [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "kick"))
-            { await RespondAsync("❌ tu não tem permissão pra kickar", ephemeral: true); return; }
-            if (alvo.Id == user.Id) { await RespondAsync("❌ quer se kickar? kkkk", ephemeral: true); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("❌ cargo igual ou maior", ephemeral: true); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("❌ meu cargo é menor", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "kick", GuildPermission.KickMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
 
-            try { await alvo.SendMessageAsync($"👢 tu foi kickado de **{Context.Guild.Name}** kkkk"); } catch { }
+            if (alvo.Id == user.Id) { await RespondAsync("quer se kickar? kkkk", ephemeral: true); return; }
+            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("cargo igual ou maior", ephemeral: true); return; }
+            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("meu cargo e menor", ephemeral: true); return; }
+
+            try { await alvo.SendMessageAsync($"tu foi kickado de **{Context.Guild.Name}** kkkk"); } catch { }
             await alvo.KickAsync(motivo);
-            await RespondAsync($"👢 {alvo.Mention} tomou kick kkkk vaza daqui\n**Motivo:** {motivo}");
+            await RespondAsync($"{alvo.Mention} tomou kick kkkk vaza daqui\n**Motivo:** {motivo}");
         }
     }
 
     public class MuteModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("mute", "Silencia um usuário")]
+        [SlashCommand("mute", "Silencia um usuario")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task MuteAsync(
-            [Summary("usuario", "Usuário")] SocketGuildUser alvo,
-            [Summary("duracao", "Duração (10m, 1h, 1d)")] string duracao,
+            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
+            [Summary("duracao", "Duracao (10m, 1h, 1d)")] string duracao,
             [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "mute"))
-            { await RespondAsync("❌ tu não tem permissão pra mutar", ephemeral: true); return; }
-            if (alvo.Id == user.Id) { await RespondAsync("❌ quer se mutar? kkkk", ephemeral: true); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("❌ cargo igual ou maior", ephemeral: true); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("❌ meu cargo é menor", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
+            if (alvo.Id == user.Id) { await RespondAsync("quer se mutar? kkkk", ephemeral: true); return; }
+            if (alvo.Hierarchy >= user.Hierarchy) { await RespondAsync("cargo igual ou maior", ephemeral: true); return; }
+            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await RespondAsync("meu cargo e menor", ephemeral: true); return; }
 
             var tempo = ModerationHelper.ParseDuration(duracao);
             if (tempo == null || tempo.Value.TotalMinutes < 1 || tempo.Value.TotalDays > 28)
-            { await RespondAsync("❌ duração inválida, usa: `10m`, `1h`, `1d` (máx 28d)", ephemeral: true); return; }
+            { await RespondAsync("duracao invalida, usa: `10m`, `1h`, `1d` (max 28d)", ephemeral: true); return; }
 
             await alvo.SetTimeOutAsync(tempo.Value, new RequestOptions { AuditLogReason = motivo });
-            await RespondAsync($"🔇 {alvo.Mention} calado por `{duracao}` kkkkk silêncio otário\n**Motivo:** {motivo}");
+            await RespondAsync($"{alvo.Mention} calado por `{duracao}` kkkkk silencio otario\n**Motivo:** {motivo}");
         }
 
         [SlashCommand("unmute", "Remove silenciamento")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
-        public async Task UnmuteAsync([Summary("usuario", "Usuário")] SocketGuildUser alvo)
+        public async Task UnmuteAsync([Summary("usuario", "Usuario")] SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "mute"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
             await alvo.RemoveTimeOutAsync();
-            await RespondAsync($"🔊 {alvo.Mention} pode falar de novo, se comporta agr");
+            await RespondAsync($"{alvo.Mention} pode falar de novo, se comporta agr");
         }
     }
 
-    public class AvisoModule : InteractionModuleBase<SocketInteractionContext>
+    public class AvisarModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("aviso", "Dá um aviso")]
-        public async Task AvisoAsync(
-            [Summary("usuario", "Usuário")] SocketGuildUser alvo,
+        [SlashCommand("avisar", "Da um aviso")]
+        public async Task AvisarAsync(
+            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
             [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "aviso"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
-            if (alvo.IsBot) { await RespondAsync("❌ não dá pra avisar bot", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "avisar", GuildPermission.ModerateMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
+            if (alvo.IsBot) { await RespondAsync("nao da pra avisar bot", ephemeral: true); return; }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
 
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "INSERT INTO avisos (guild_id, user_id, moderator_id, motivo) VALUES (@gid, @uid, @mid, @motivo)";
+                cmd.CommandText = "INSERT INTO warns (guild_id, user_id, moderator_id, motivo) VALUES (@gid, @uid, @mid, @motivo)";
                 cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
                 cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
                 cmd.Parameters.AddWithValue("@mid", user.Id.ToString());
@@ -165,46 +170,46 @@ namespace Botzinho.Moderation
                 cmd.ExecuteNonQuery();
             }
 
-            int totalAvisos;
+            int totalWarns;
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT COUNT(*) FROM avisos WHERE guild_id = @gid AND user_id = @uid";
+                cmd.CommandText = "SELECT COUNT(*) FROM warns WHERE guild_id = @gid AND user_id = @uid";
                 cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
                 cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
-                totalAvisos = Convert.ToInt32(cmd.ExecuteScalar());
+                totalWarns = Convert.ToInt32(cmd.ExecuteScalar());
             }
 
-            await RespondAsync($"⚠️ {alvo.Mention} tomou aviso kkk cuidado hein ({totalAvisos}/3)\n**Motivo:** {motivo}");
+            await RespondAsync($"{alvo.Mention} tomou aviso kkk cuidado hein ({totalWarns}/3)\n**Motivo:** {motivo}");
 
-            if (totalAvisos >= 3)
+            if (totalWarns >= 3)
             {
                 try
                 {
-                    try { await alvo.SendMessageAsync($"🔨 tu foi banido de **{Context.Guild.Name}** por acumular 3 avisos kkkk"); } catch { }
+                    try { await alvo.SendMessageAsync($"tu foi banido de **{Context.Guild.Name}** por acumular 3 avisos kkkk"); } catch { }
                     await Context.Guild.AddBanAsync(alvo, reason: "Acumulou 3 avisos.");
-                    await Context.Channel.SendMessageAsync($"🔨 {alvo.Mention} acumulou 3 avisos e foi banido automaticamente kkkk vaza");
+                    await Context.Channel.SendMessageAsync($"{alvo.Mention} acumulou 3 avisos e foi banido automaticamente kkkk vaza");
 
                     using var delCmd = conn.CreateCommand();
-                    delCmd.CommandText = "DELETE FROM avisos WHERE guild_id = @gid AND user_id = @uid";
+                    delCmd.CommandText = "DELETE FROM warns WHERE guild_id = @gid AND user_id = @uid";
                     delCmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
                     delCmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
                     delCmd.ExecuteNonQuery();
                 }
-                catch (Exception ex) { Console.WriteLine($"Erro no ban automático: {ex.Message}"); }
+                catch (Exception ex) { Console.WriteLine($"Erro no ban automatico: {ex.Message}"); }
             }
         }
 
         [SlashCommand("avisos", "Mostra avisos")]
-        public async Task AvisosAsync([Summary("usuario", "Usuário")] SocketGuildUser alvo)
+        public async Task AvisosAsync([Summary("usuario", "Usuario")] SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "aviso"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "avisar", GuildPermission.ModerateMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT id, moderator_id, motivo, data FROM avisos WHERE guild_id = @gid AND user_id = @uid ORDER BY data DESC";
+            cmd.CommandText = "SELECT id, moderator_id, motivo, data FROM warns WHERE guild_id = @gid AND user_id = @uid ORDER BY data DESC";
             cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
             cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
             using var reader = cmd.ExecuteReader();
@@ -213,29 +218,29 @@ namespace Botzinho.Moderation
             {
                 var avisoId = reader.GetInt32(0);
                 var modId = reader.GetString(1);
-                var motivo = reader.GetString(2);
+                var wMotivo = reader.GetString(2);
                 var data = reader.GetDateTime(3);
-                avisos.Add($"`#{avisoId}` | <@{modId}> | {motivo} | <t:{((DateTimeOffset)DateTime.SpecifyKind(data, DateTimeKind.Utc)).ToUnixTimeSeconds()}:R>");
+                avisos.Add($"`#{avisoId}` | <@{modId}> | {wMotivo} | <t:{((DateTimeOffset)DateTime.SpecifyKind(data, DateTimeKind.Utc)).ToUnixTimeSeconds()}:R>");
             }
-            if (avisos.Count == 0) { await RespondAsync($"✅ {alvo.Mention} tá limpo, sem avisos", ephemeral: true); return; }
-            await RespondAsync($"⚠️ **Avisos de {alvo.Username}:**\n{string.Join("\n", avisos)}\n**Total: {avisos.Count}/3**", ephemeral: true);
+            if (avisos.Count == 0) { await RespondAsync($"{alvo.Mention} ta limpo, sem avisos", ephemeral: true); return; }
+            await RespondAsync($"**Avisos de {alvo.Username}:**\n{string.Join("\n", avisos)}\n**Total: {avisos.Count}/3**", ephemeral: true);
         }
 
         [SlashCommand("limparavisos", "Limpa avisos")]
-        public async Task LimparAvisosAsync([Summary("usuario", "Usuário")] SocketGuildUser alvo)
+        public async Task LimparAvisosAsync([Summary("usuario", "Usuario")] SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "aviso"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "avisar", GuildPermission.ModerateMembers);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
 
             using var conn = new NpgsqlConnection(ModerationHelper.GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "DELETE FROM avisos WHERE guild_id = @gid AND user_id = @uid";
+            cmd.CommandText = "DELETE FROM warns WHERE guild_id = @gid AND user_id = @uid";
             cmd.Parameters.AddWithValue("@gid", Context.Guild.Id.ToString());
             cmd.Parameters.AddWithValue("@uid", alvo.Id.ToString());
             var deleted = cmd.ExecuteNonQuery();
-            await RespondAsync($"🗑️ avisos de {alvo.Mention} limpos, tá zerado agr ({deleted} removidos)");
+            await RespondAsync($"avisos de {alvo.Mention} limpos, ta zerado agr ({deleted} removidos)");
         }
     }
 
@@ -246,51 +251,55 @@ namespace Botzinho.Moderation
         public async Task ClearAsync([Summary("quantidade", "Quantidade (1-100)")] int quantidade)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "clear"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
-            if (quantidade < 1 || quantidade > 100) { await RespondAsync("❌ coloca entre 1 e 100", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "clear", GuildPermission.ManageMessages);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
+            if (quantidade < 1 || quantidade > 100) { await RespondAsync("coloca entre 1 e 100", ephemeral: true); return; }
 
             await DeferAsync(ephemeral: true);
             var channel = (ITextChannel)Context.Channel;
             var messages = await channel.GetMessagesAsync(quantidade + 1).FlattenAsync();
             var deletable = messages.Where(m => (DateTimeOffset.UtcNow - m.Timestamp).TotalDays < 14).ToList();
-            if (deletable.Count == 0) { await FollowupAsync("❌ nenhuma mensagem pra apagar", ephemeral: true); return; }
+            if (deletable.Count == 0) { await FollowupAsync("nenhuma mensagem pra apagar", ephemeral: true); return; }
             await channel.DeleteMessagesAsync(deletable);
-            await FollowupAsync($"✅ {deletable.Count - 1} mensagens apagadas, sumiu tudo kkkk", ephemeral: true);
+            await FollowupAsync($"{deletable.Count - 1} mensagens apagadas, sumiu tudo kkkk", ephemeral: true);
         }
 
         [SlashCommand("slowmode", "Define slowmode")]
         public async Task SlowmodeAsync([Summary("segundos", "Segundos (0 para desativar)")] int segundos)
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "clear"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
-            if (segundos < 0 || segundos > 21600) { await RespondAsync("❌ coloca entre 0 e 21600", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "clear", GuildPermission.ManageChannels);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
+            if (segundos < 0 || segundos > 21600) { await RespondAsync("coloca entre 0 e 21600", ephemeral: true); return; }
             var channel = (ITextChannel)Context.Channel;
             await channel.ModifyAsync(x => x.SlowModeInterval = segundos);
-            await RespondAsync(segundos > 0 ? $"🐌 slowmode de `{segundos}s` ativado, calma aí galera" : "🐌 slowmode desativado, pode spammar");
+            await RespondAsync(segundos > 0 ? $"slowmode de `{segundos}s` ativado, calma ai galera" : "slowmode desativado, pode spammar");
         }
 
         [SlashCommand("lock", "Tranca o canal")]
         public async Task LockAsync()
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "lock"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "lock", GuildPermission.ManageChannels);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
             var channel = (ITextChannel)Context.Channel;
             await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Deny));
-            await RespondAsync("🔒 canal trancado, ninguém fala mais aqui");
+            await RespondAsync("canal trancado, ninguem fala mais aqui");
         }
 
         [SlashCommand("unlock", "Destranca o canal")]
         public async Task UnlockAsync()
         {
             var user = (SocketGuildUser)Context.User;
-            if (!AdminModule.TemPermissao(Context.Guild.Id, user, "lock"))
-            { await RespondAsync("❌ tu não tem permissão", ephemeral: true); return; }
+            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "lock", GuildPermission.ManageChannels);
+            if (erro != null) { await RespondAsync(erro, ephemeral: true); return; }
+
             var channel = (ITextChannel)Context.Channel;
             await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Inherit));
-            await RespondAsync("🔓 canal destrancado, podem falar");
+            await RespondAsync("canal destrancado, podem falar");
         }
     }
 }
