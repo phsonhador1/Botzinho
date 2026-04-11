@@ -47,7 +47,7 @@ client.Ready += async () =>
             // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
             string[] statusDinamicos = new[]
             {
-                $"💜 Estou atualmente em {client.Guilds.Count} servidores",
+                $"💜 Atualmente em {client.Guilds.Count} servidores",
                 "💜 Online | Pronta Para Ajudar!",
                 "✨ Use zhelp para ver meus comandos"
             };
