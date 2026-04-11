@@ -526,11 +526,11 @@ namespace Botzinho.Economy
                     .WithColor(new Discord.Color(120, 80, 220))
                     .Build();
 
-                var menu = new SelectMenuBuilder()
-                    .WithCustomId("help_menu")
+                var menu = new SelectMenuBuilder()  
+                    .WithCustomId("help_menu") 
                     .WithPlaceholder("Selecione uma categoria")
-                    .AddOption("Moderação", "help_mod", "Comandos de moderação", new Emoji("🛡️"))
-                    .AddOption("Economia", "help_eco", "Comandos de cpoints", new Emoji("💰"))
+                    .AddOption("Moderação", "help_mod", "Comandos de moderação", Emote.Parse("<:suporte:1492662681130373201>"))
+                    .AddOption("Economia", "help_eco", "Comandos de cpoints", Emote.Parse("<:botportal:1492661012682248212>"))
                     .AddOption("Administração", "help_admin", "Configuração do bot", Emote.Parse("<:botportal:1492661012682248212>"));
 
                 var components = new ComponentBuilder().WithSelectMenu(menu).Build();
