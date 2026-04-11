@@ -537,7 +537,8 @@ namespace Botzinho.Economy
                     var segundos = restante.Seconds; // Adiciona esta linha
 
                     // Atualiza a mensagem para incluir os segundos
-                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
+                    string tempoFormatado = restante.ToString(@"hh\:mm\:ss");
+                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{tempoFormatado}`.");
                     return;
                 }
 
