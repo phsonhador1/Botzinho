@@ -1,6 +1,7 @@
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,12 +11,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
-    GatewayIntents = GatewayIntents.Guilds
-                   | GatewayIntents.GuildMessages
-                   | GatewayIntents.MessageContent
-                   | GatewayIntents.GuildMembers
+    GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent | GatewayIntents.GuildMembers
 });
 
 var services = new ServiceCollection()
@@ -24,18 +23,14 @@ var services = new ServiceCollection()
 
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
-
 ModerationHelper.InicializarTabelas();
 
-client.Log += msg =>
-{
-    Console.WriteLine(msg);
-    return Task.CompletedTask;
-};
 
+
+client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
-    await interactionService.AddModulesAsync(typeof(ConfigServerModule).Assembly, services);
+    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
     foreach (var guild in client.Guilds)
@@ -43,20 +38,48 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
+    client.MessageReceived += async message =>
+    {
+        if (message is not SocketUserMessage msg) return;
+        if (msg.Author.IsBot) return;
+
+        int argPos = 0;
+
+        // prefixo "z"
+        if (!msg.HasCharPrefix('z', ref argPos)) return;
+
+        var comando = msg.Content.Substring(argPos).Trim().ToLower();
+
+        if (comando == "help")
+        {
+            var embed = new EmbedBuilder()
+                .WithTitle("💜 Comandos da Zoe")
+                .WithDescription(
+                    "`zhelp` - mostra este menu\n" +
+                    "`znuke` - limpa o canal\n" +
+                    "`zclear` - apaga mensagens\n" +
+                    "`zavisar` - dar aviso\n"
+                )
+                .WithColor(new Color(0xFF69B4))
+                .Build();
+
+            await msg.Channel.SendMessageAsync(embed: embed);
+        }
+    };
+
     _ = Task.Run(async () =>
     {
         int i = 0;
-
         while (true)
         {
             await client.SetStatusAsync(UserStatus.Online);
 
+            // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
             string[] statusDinamicos = new[]
             {
                 $"💜 Atualmente em {client.Guilds.Count} servidores",
-                "💜 Olá! Sou a Zoe",
-                "✨ Meu prefixo é z",
-                "📌 Use zhelp para descobrir todos os meus comandos"
+                "💜 Online | Pronta Para Ajudar!",
+                "✨ Use zhelp para ver meus comandos",
             };
 
             await client.SetCustomStatusAsync(statusDinamicos[i]);
@@ -66,85 +89,6 @@ client.Ready += async () =>
         }
     });
 };
-
-client.MessageReceived += async message =>
-{
-    if (message is not SocketUserMessage msg) return;
-    if (msg.Author.IsBot) return;
-    if (msg.Channel is not SocketGuildChannel guildChannel) return;
-
-    int argPos = 0;
-    if (!msg.HasCharPrefix('z', ref argPos)) return;
-
-    var conteudo = msg.Content.Substring(argPos).Trim();
-    if (string.IsNullOrWhiteSpace(conteudo)) return;
-
-    var partes = conteudo.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    var comando = partes[0].ToLower();
-
-    // zhelp
-    if (comando == "help")
-    {
-        var embed = new EmbedBuilder()
-            .WithTitle("💜 Comandos da Zoe")
-            .WithDescription(
-                "`zhelp` - mostra este menu\n" +
-                "`znuke` - limpa o canal\n" +
-                "`zclear` - apaga mensagens\n" +
-                "`zavisar` - dar aviso\n"
-            )
-            .WithColor(new Color(0xFF69B4))
-            .Build();
-
-        await msg.Channel.SendMessageAsync(embed: embed);
-        return;
-    }
-
-    // znuke
-    if (comando == "nuke")
-    {
-        var user = msg.Author as SocketGuildUser;
-        if (user == null) return;
-
-        var guildId = user.Guild.Id;
-
-        var resultado = AdminModule.ChecarPermissaoCompleta(
-            guildId,
-            user,
-            "nuke",
-            GuildPermission.ManageChannels
-        );
-
-        if (resultado != null)
-        {
-            await msg.Channel.SendMessageAsync(resultado);
-            return;
-        }
-
-        if (msg.Channel is not ITextChannel channel)
-        {
-            await msg.Channel.SendMessageAsync("esse comando so pode ser usado em canal de texto.");
-            return;
-        }
-
-        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
-        {
-            props.Topic = channel.Topic;
-            props.CategoryId = channel.CategoryId;
-            props.Position = channel.Position;
-            props.IsNsfw = channel.IsNsfw;
-            props.SlowModeInterval = channel.SlowModeInterval;
-            props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(
-                channel.PermissionOverwrites.ToList()
-            );
-        });
-
-        await channel.DeleteAsync();
-        await newChannel.SendMessageAsync($"canal nukado por {msg.Author.Username}");
-        return;
-    }
-};
-
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
@@ -175,8 +119,43 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
         var components = AdminModule.CriarMenuPrincipal();
 
         await RespondAsync(embed: embed, components: components);
-
         var msg = await GetOriginalResponseAsync();
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
+    }
+}
+
+public class NukeModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
+    public async Task NukeAsync()
+    {
+        var user = (SocketGuildUser)Context.User;
+        var guildId = Context.Guild.Id;
+
+        var resultado = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
+        if (resultado != null)
+        {
+            await RespondAsync(resultado, ephemeral: true);
+            return;
+        }
+
+        await DeferAsync(ephemeral: true);
+
+        var channel = (ITextChannel)Context.Channel;
+        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
+        {
+            props.Topic = channel.Topic;
+            props.CategoryId = channel.CategoryId;
+            props.Position = channel.Position;
+            props.IsNsfw = channel.IsNsfw;
+            props.SlowModeInterval = channel.SlowModeInterval;
+            props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(
+                channel.PermissionOverwrites.ToList()
+            );
+        });
+
+        await channel.DeleteAsync();
+
+        await newChannel.SendMessageAsync($"canal nukado por {Context.User.Username}");
     }
 }
