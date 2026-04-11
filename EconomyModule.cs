@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Botzinho.Economy
 {
@@ -134,6 +135,7 @@ namespace Botzinho.Economy
             var guildId = user.Guild.Id;
 
             // zsaldo
+            // zsaldo
             if (content == "zsaldo" || content.StartsWith("zsaldo "))
             {
                 SocketGuildUser alvo = user;
@@ -143,13 +145,9 @@ namespace Botzinho.Economy
 
                 var saldo = EconomyHelper.GetSaldo(guildId, alvo.Id);
 
-                var embed = new EmbedBuilder()
-                    .WithAuthor($"{alvo.DisplayName}", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                    .WithDescription($"**Saldo:** `{EconomyHelper.FormatarSaldo(saldo)}` cpoints")
-                    .WithColor(new Discord.Color(0x2B2D31))
-                    .Build();
-
-                await msg.Channel.SendMessageAsync(embed: embed);
+                var imagemPath = await EconomyImageHelper.GerarImagemSaldo(alvo, saldo);
+                await msg.Channel.SendFileAsync(imagemPath, "");
+                File.Delete(imagemPath);
             }
 
             // zdaily
@@ -333,6 +331,154 @@ namespace Botzinho.Economy
                 EconomyHelper.SetSaldo(guildId, alvo.Id, valor);
 
                 await msg.Channel.SendMessageAsync($"saldo de {alvo.Mention} definido para `{EconomyHelper.FormatarSaldo(valor)}` cpoints");
+            }
+        }
+        public static class EconomyImageHelper
+        {
+            public static async Task<string> GerarImagemSaldo(SocketGuildUser user, long saldo)
+            {
+                int width = 400;
+                int height = 300;
+
+                using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
+                var canvas = surface.Canvas;
+
+                // Fundo
+                var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(30, 30, 35) };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 20, 20, bgPaint);
+
+                // Borda
+                var borderPaint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(80, 60, 180),
+                    Style = SkiaSharp.SKPaintStyle.Stroke,
+                    StrokeWidth = 3
+                };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 20, 20, borderPaint);
+
+                // Avatar
+                try
+                {
+                    var avatarUrl = user.GetAvatarUrl(ImageFormat.Png, 128) ?? user.GetDefaultAvatarUrl();
+                    using var httpClient = new System.Net.Http.HttpClient();
+                    var avatarBytes = await httpClient.GetByteArrayAsync(avatarUrl);
+                    using var avatarBitmap = SkiaSharp.SKBitmap.Decode(avatarBytes);
+
+                    if (avatarBitmap != null)
+                    {
+                        int avatarSize = 80;
+                        int avatarX = (width - avatarSize) / 2;
+                        int avatarY = 25;
+
+                        // Circulo do avatar
+                        var avatarRect = new SkiaSharp.SKRect(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
+                        var clipPath = new SkiaSharp.SKPath();
+                        clipPath.AddOval(avatarRect);
+
+                        canvas.Save();
+                        canvas.ClipPath(clipPath);
+                        canvas.DrawBitmap(avatarBitmap, avatarRect);
+                        canvas.Restore();
+
+                        // Borda do avatar
+                        var avatarBorderPaint = new SkiaSharp.SKPaint
+                        {
+                            Color = new SkiaSharp.SKColor(80, 60, 180),
+                            Style = SkiaSharp.SKPaintStyle.Stroke,
+                            StrokeWidth = 3,
+                            IsAntialias = true
+                        };
+                        canvas.DrawOval(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, avatarSize / 2, avatarBorderPaint);
+                    }
+                }
+                catch { }
+
+                // Nome
+                var namePaint = new SkiaSharp.SKPaint
+                {
+                    Color = SkiaSharp.SKColors.White,
+                    TextSize = 22,
+                    IsAntialias = true,
+                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial", SkiaSharp.SKFontStyle.Bold),
+                    TextAlign = SkiaSharp.SKTextAlign.Center
+                };
+                canvas.DrawText(user.DisplayName, width / 2, 130, namePaint);
+
+                // Separador
+                var sepPaint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(60, 60, 70),
+                    StrokeWidth = 1
+                };
+                canvas.DrawLine(30, 145, width - 30, 145, sepPaint);
+
+                // Items
+                var labelPaint = new SkiaSharp.SKPaint
+                {
+                    Color = SkiaSharp.SKColors.White,
+                    TextSize = 18,
+                    IsAntialias = true,
+                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial", SkiaSharp.SKFontStyle.Bold)
+                };
+
+                var valorPaint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(160, 160, 170),
+                    TextSize = 16,
+                    IsAntialias = true,
+                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial")
+                };
+
+                var iconPaint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(180, 130, 255),
+                    TextSize = 20,
+                    IsAntialias = true
+                };
+
+                string saldoFormatado = EconomyHelper.FormatarSaldo(saldo);
+
+                // Carteira
+                DrawItem(canvas, 50, 170, "Carteira", saldoFormatado, labelPaint, valorPaint, new SkiaSharp.SKColor(100, 200, 100), width);
+
+                // Banco
+                DrawItem(canvas, 50, 210, "Banco", "0", labelPaint, valorPaint, new SkiaSharp.SKColor(200, 100, 100), width);
+
+                // Total
+                DrawItem(canvas, 50, 250, "Total", saldoFormatado, labelPaint, valorPaint, new SkiaSharp.SKColor(200, 150, 50), width);
+
+                // Salvar
+                var path = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
+                using var image = surface.Snapshot();
+                using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                using var stream = File.OpenWrite(path);
+                data.SaveTo(stream);
+
+                return path;
+            }
+
+            private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor, SkiaSharp.SKPaint labelPaint, SkiaSharp.SKPaint valorPaint, SkiaSharp.SKColor dotColor, int width)
+            {
+                // Fundo do item
+                var itemBg = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(40, 40, 48)
+                };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y - 15, width - 50, y + 20), 8, 8, itemBg);
+
+                // Bolinha colorida
+                var dotPaint = new SkiaSharp.SKPaint
+                {
+                    Color = dotColor,
+                    IsAntialias = true
+                };
+                canvas.DrawCircle(x + 15, y + 2, 8, dotPaint);
+
+                // Label
+                canvas.DrawText(label, x + 35, y + 7, labelPaint);
+
+                // Valor
+                canvas.DrawText(valor, x + 35, y + 25, valorPaint);
             }
         }
     }
