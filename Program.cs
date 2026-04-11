@@ -42,7 +42,7 @@ client.Ready += async () =>
         int i = 0;
         while (true)
         {
-            await client.SetStatusAsync(UserStatus.DoNotDisturb);
+            await client.SetStatusAsync(UserStatus.Online);
 
             // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
             string[] statusDinamicos = new[]
