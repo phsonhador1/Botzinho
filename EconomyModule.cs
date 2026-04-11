@@ -338,28 +338,39 @@ namespace Botzinho.Economy
             public static async Task<string> GerarImagemSaldo(SocketGuildUser user, long saldo)
             {
                 int width = 400;
-                int height = 300;
+                int height = 320;
 
                 using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
                 var canvas = surface.Canvas;
 
-                // Fonte que existe no Linux
                 var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold)
                     ?? SkiaSharp.SKTypeface.Default;
                 var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans")
                     ?? SkiaSharp.SKTypeface.Default;
 
-                // Fundo
-                var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(30, 30, 35) };
+                // Fundo gradiente
+                var bgPaint = new SkiaSharp.SKPaint();
+                bgPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
+                    new SkiaSharp.SKPoint(0, 0),
+                    new SkiaSharp.SKPoint(width, height),
+                    new[] { new SkiaSharp.SKColor(25, 25, 35), new SkiaSharp.SKColor(35, 30, 55) },
+                    null,
+                    SkiaSharp.SKShaderTileMode.Clamp);
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 20, 20, bgPaint);
 
                 // Borda
                 var borderPaint = new SkiaSharp.SKPaint
                 {
-                    Color = new SkiaSharp.SKColor(80, 60, 180),
                     Style = SkiaSharp.SKPaintStyle.Stroke,
-                    StrokeWidth = 3
+                    StrokeWidth = 2,
+                    IsAntialias = true
                 };
+                borderPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
+                    new SkiaSharp.SKPoint(0, 0),
+                    new SkiaSharp.SKPoint(width, height),
+                    new[] { new SkiaSharp.SKColor(120, 80, 220), new SkiaSharp.SKColor(80, 60, 180) },
+                    null,
+                    SkiaSharp.SKShaderTileMode.Clamp);
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 20, 20, borderPaint);
 
                 // Avatar
@@ -385,9 +396,20 @@ namespace Botzinho.Economy
                         canvas.DrawBitmap(avatarBitmap, avatarRect);
                         canvas.Restore();
 
+                        // Borda do avatar com glow
+                        var glowPaint = new SkiaSharp.SKPaint
+                        {
+                            Color = new SkiaSharp.SKColor(120, 80, 220, 80),
+                            Style = SkiaSharp.SKPaintStyle.Stroke,
+                            StrokeWidth = 6,
+                            IsAntialias = true,
+                            MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, 3)
+                        };
+                        canvas.DrawOval(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, avatarSize / 2, glowPaint);
+
                         var avatarBorderPaint = new SkiaSharp.SKPaint
                         {
-                            Color = new SkiaSharp.SKColor(80, 60, 180),
+                            Color = new SkiaSharp.SKColor(120, 80, 220),
                             Style = SkiaSharp.SKPaintStyle.Stroke,
                             StrokeWidth = 3,
                             IsAntialias = true
@@ -397,7 +419,7 @@ namespace Botzinho.Economy
                 }
                 catch { }
 
-                // Nome
+                // Nome com tag
                 var namePaint = new SkiaSharp.SKPaint
                 {
                     Color = SkiaSharp.SKColors.White,
@@ -408,24 +430,33 @@ namespace Botzinho.Economy
                 };
                 canvas.DrawText(user.DisplayName, width / 2, 125, namePaint);
 
-                // Separador
+                // Separador com gradiente
                 var sepPaint = new SkiaSharp.SKPaint
                 {
-                    Color = new SkiaSharp.SKColor(60, 60, 70),
-                    StrokeWidth = 1
+                    StrokeWidth = 1,
+                    IsAntialias = true
                 };
+                sepPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
+                    new SkiaSharp.SKPoint(30, 0),
+                    new SkiaSharp.SKPoint(width - 30, 0),
+                    new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(120, 80, 220), new SkiaSharp.SKColor(60, 60, 70, 0) },
+                    null,
+                    SkiaSharp.SKShaderTileMode.Clamp);
                 canvas.DrawLine(30, 140, width - 30, 140, sepPaint);
 
                 string saldoFormatado = EconomyHelper.FormatarSaldo(saldo);
 
                 // Carteira
-                DrawItem(canvas, 50, 165, "Carteira", saldoFormatado, fontBold, fontNormal, new SkiaSharp.SKColor(100, 200, 100), width);
+                DrawItem(canvas, 40, 160, "Carteira", saldoFormatado + " cpoints", fontBold, fontNormal,
+                    new SkiaSharp.SKColor(80, 200, 120), new SkiaSharp.SKColor(40, 80, 50), width, DrawWalletIcon);
 
                 // Banco
-                DrawItem(canvas, 50, 210, "Banco", "0", fontBold, fontNormal, new SkiaSharp.SKColor(200, 100, 100), width);
+                DrawItem(canvas, 40, 210, "Banco", "0 cpoints", fontBold, fontNormal,
+                    new SkiaSharp.SKColor(100, 140, 230), new SkiaSharp.SKColor(40, 50, 80), width, DrawBankIcon);
 
                 // Total
-                DrawItem(canvas, 50, 255, "Total", saldoFormatado, fontBold, fontNormal, new SkiaSharp.SKColor(200, 150, 50), width);
+                DrawItem(canvas, 40, 260, "Total", saldoFormatado + " cpoints", fontBold, fontNormal,
+                    new SkiaSharp.SKColor(230, 180, 60), new SkiaSharp.SKColor(80, 65, 30), width, DrawCoinIcon);
 
                 // Salvar
                 var path = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -437,35 +468,95 @@ namespace Botzinho.Economy
                 return path;
             }
 
-            private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor, SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal, SkiaSharp.SKColor dotColor, int width)
+            private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor,
+                SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal,
+                SkiaSharp.SKColor accentColor, SkiaSharp.SKColor bgTint, int width,
+                Action<SkiaSharp.SKCanvas, float, float, SkiaSharp.SKColor> drawIcon)
             {
                 // Fundo do item
-                var itemBg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(40, 40, 48) };
-                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y - 5, width - 50, y + 30), 8, 8, itemBg);
+                var itemBg = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(38, 38, 48),
+                    IsAntialias = true
+                };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, width - 40, y + 40), 10, 10, itemBg);
 
-                // Bolinha
-                var dotPaint = new SkiaSharp.SKPaint { Color = dotColor, IsAntialias = true };
-                canvas.DrawCircle(x + 18, y + 12, 8, dotPaint);
+                // Barra lateral colorida
+                var barPaint = new SkiaSharp.SKPaint { Color = accentColor, IsAntialias = true };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 4, y + 40), 2, 2, barPaint);
+
+                // Icone
+                drawIcon(canvas, x + 22, y + 20, accentColor);
 
                 // Label
                 var labelPaint = new SkiaSharp.SKPaint
                 {
                     Color = SkiaSharp.SKColors.White,
-                    TextSize = 16,
+                    TextSize = 15,
                     IsAntialias = true,
                     Typeface = fontBold
                 };
-                canvas.DrawText(label, x + 35, y + 10, labelPaint);
+                canvas.DrawText(label, x + 45, y + 17, labelPaint);
 
                 // Valor
                 var valorPaint = new SkiaSharp.SKPaint
                 {
-                    Color = new SkiaSharp.SKColor(160, 160, 170),
-                    TextSize = 14,
+                    Color = new SkiaSharp.SKColor(170, 170, 180),
+                    TextSize = 13,
                     IsAntialias = true,
                     Typeface = fontNormal
                 };
-                canvas.DrawText(valor, x + 35, y + 27, valorPaint);
+                canvas.DrawText(valor, x + 45, y + 34, valorPaint);
+            }
+
+            // Icone de carteira (retangulo com aba)
+            private static void DrawWalletIcon(SkiaSharp.SKCanvas canvas, float cx, float cy, SkiaSharp.SKColor color)
+            {
+                var paint = new SkiaSharp.SKPaint { Color = color, IsAntialias = true, Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 2 };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(cx - 8, cy - 6, cx + 8, cy + 6), 2, 2, paint);
+                canvas.DrawLine(cx - 8, cy - 3, cx + 8, cy - 3, paint);
+
+                var fillPaint = new SkiaSharp.SKPaint { Color = color, IsAntialias = true };
+                canvas.DrawCircle(cx + 4, cy + 1, 2, fillPaint);
+            }
+
+            // Icone de banco (casinha com colunas)
+            private static void DrawBankIcon(SkiaSharp.SKCanvas canvas, float cx, float cy, SkiaSharp.SKColor color)
+            {
+                var paint = new SkiaSharp.SKPaint { Color = color, IsAntialias = true, Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 2 };
+
+                // Telhado triangular
+                var path = new SkiaSharp.SKPath();
+                path.MoveTo(cx, cy - 8);
+                path.LineTo(cx - 10, cy - 2);
+                path.LineTo(cx + 10, cy - 2);
+                path.Close();
+                canvas.DrawPath(path, paint);
+
+                // Base
+                canvas.DrawLine(cx - 9, cy + 7, cx + 9, cy + 7, paint);
+
+                // Colunas
+                canvas.DrawLine(cx - 6, cy - 1, cx - 6, cy + 6, paint);
+                canvas.DrawLine(cx, cy - 1, cx, cy + 6, paint);
+                canvas.DrawLine(cx + 6, cy - 1, cx + 6, cy + 6, paint);
+            }
+
+            // Icone de moeda (circulo com cifrao)
+            private static void DrawCoinIcon(SkiaSharp.SKCanvas canvas, float cx, float cy, SkiaSharp.SKColor color)
+            {
+                var paint = new SkiaSharp.SKPaint { Color = color, IsAntialias = true, Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 2 };
+                canvas.DrawCircle(cx, cy, 8, paint);
+
+                var textPaint = new SkiaSharp.SKPaint
+                {
+                    Color = color,
+                    TextSize = 12,
+                    IsAntialias = true,
+                    Typeface = SkiaSharp.SKTypeface.Default,
+                    TextAlign = SkiaSharp.SKTextAlign.Center
+                };
+                canvas.DrawText("$", cx, cy + 4, textPaint);
             }
         }
     }
