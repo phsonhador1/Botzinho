@@ -343,6 +343,12 @@ namespace Botzinho.Economy
                 using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
                 var canvas = surface.Canvas;
 
+                // Fonte que existe no Linux
+                var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold)
+                    ?? SkiaSharp.SKTypeface.Default;
+                var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans")
+                    ?? SkiaSharp.SKTypeface.Default;
+
                 // Fundo
                 var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(30, 30, 35) };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 20, 20, bgPaint);
@@ -368,9 +374,8 @@ namespace Botzinho.Economy
                     {
                         int avatarSize = 80;
                         int avatarX = (width - avatarSize) / 2;
-                        int avatarY = 25;
+                        int avatarY = 20;
 
-                        // Circulo do avatar
                         var avatarRect = new SkiaSharp.SKRect(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
                         var clipPath = new SkiaSharp.SKPath();
                         clipPath.AddOval(avatarRect);
@@ -380,7 +385,6 @@ namespace Botzinho.Economy
                         canvas.DrawBitmap(avatarBitmap, avatarRect);
                         canvas.Restore();
 
-                        // Borda do avatar
                         var avatarBorderPaint = new SkiaSharp.SKPaint
                         {
                             Color = new SkiaSharp.SKColor(80, 60, 180),
@@ -397,12 +401,12 @@ namespace Botzinho.Economy
                 var namePaint = new SkiaSharp.SKPaint
                 {
                     Color = SkiaSharp.SKColors.White,
-                    TextSize = 22,
+                    TextSize = 20,
                     IsAntialias = true,
-                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial", SkiaSharp.SKFontStyle.Bold),
+                    Typeface = fontBold,
                     TextAlign = SkiaSharp.SKTextAlign.Center
                 };
-                canvas.DrawText(user.DisplayName, width / 2, 130, namePaint);
+                canvas.DrawText(user.DisplayName, width / 2, 125, namePaint);
 
                 // Separador
                 var sepPaint = new SkiaSharp.SKPaint
@@ -410,42 +414,18 @@ namespace Botzinho.Economy
                     Color = new SkiaSharp.SKColor(60, 60, 70),
                     StrokeWidth = 1
                 };
-                canvas.DrawLine(30, 145, width - 30, 145, sepPaint);
-
-                // Items
-                var labelPaint = new SkiaSharp.SKPaint
-                {
-                    Color = SkiaSharp.SKColors.White,
-                    TextSize = 18,
-                    IsAntialias = true,
-                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial", SkiaSharp.SKFontStyle.Bold)
-                };
-
-                var valorPaint = new SkiaSharp.SKPaint
-                {
-                    Color = new SkiaSharp.SKColor(160, 160, 170),
-                    TextSize = 16,
-                    IsAntialias = true,
-                    Typeface = SkiaSharp.SKTypeface.FromFamilyName("Arial")
-                };
-
-                var iconPaint = new SkiaSharp.SKPaint
-                {
-                    Color = new SkiaSharp.SKColor(180, 130, 255),
-                    TextSize = 20,
-                    IsAntialias = true
-                };
+                canvas.DrawLine(30, 140, width - 30, 140, sepPaint);
 
                 string saldoFormatado = EconomyHelper.FormatarSaldo(saldo);
 
                 // Carteira
-                DrawItem(canvas, 50, 170, "Carteira", saldoFormatado, labelPaint, valorPaint, new SkiaSharp.SKColor(100, 200, 100), width);
+                DrawItem(canvas, 50, 165, "Carteira", saldoFormatado, fontBold, fontNormal, new SkiaSharp.SKColor(100, 200, 100), width);
 
                 // Banco
-                DrawItem(canvas, 50, 210, "Banco", "0", labelPaint, valorPaint, new SkiaSharp.SKColor(200, 100, 100), width);
+                DrawItem(canvas, 50, 210, "Banco", "0", fontBold, fontNormal, new SkiaSharp.SKColor(200, 100, 100), width);
 
                 // Total
-                DrawItem(canvas, 50, 250, "Total", saldoFormatado, labelPaint, valorPaint, new SkiaSharp.SKColor(200, 150, 50), width);
+                DrawItem(canvas, 50, 255, "Total", saldoFormatado, fontBold, fontNormal, new SkiaSharp.SKColor(200, 150, 50), width);
 
                 // Salvar
                 var path = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -457,28 +437,35 @@ namespace Botzinho.Economy
                 return path;
             }
 
-            private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor, SkiaSharp.SKPaint labelPaint, SkiaSharp.SKPaint valorPaint, SkiaSharp.SKColor dotColor, int width)
+            private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor, SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal, SkiaSharp.SKColor dotColor, int width)
             {
                 // Fundo do item
-                var itemBg = new SkiaSharp.SKPaint
-                {
-                    Color = new SkiaSharp.SKColor(40, 40, 48)
-                };
-                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y - 15, width - 50, y + 20), 8, 8, itemBg);
+                var itemBg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(40, 40, 48) };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y - 5, width - 50, y + 30), 8, 8, itemBg);
 
-                // Bolinha colorida
-                var dotPaint = new SkiaSharp.SKPaint
-                {
-                    Color = dotColor,
-                    IsAntialias = true
-                };
-                canvas.DrawCircle(x + 15, y + 2, 8, dotPaint);
+                // Bolinha
+                var dotPaint = new SkiaSharp.SKPaint { Color = dotColor, IsAntialias = true };
+                canvas.DrawCircle(x + 18, y + 12, 8, dotPaint);
 
                 // Label
-                canvas.DrawText(label, x + 35, y + 7, labelPaint);
+                var labelPaint = new SkiaSharp.SKPaint
+                {
+                    Color = SkiaSharp.SKColors.White,
+                    TextSize = 16,
+                    IsAntialias = true,
+                    Typeface = fontBold
+                };
+                canvas.DrawText(label, x + 35, y + 10, labelPaint);
 
                 // Valor
-                canvas.DrawText(valor, x + 35, y + 25, valorPaint);
+                var valorPaint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(160, 160, 170),
+                    TextSize = 14,
+                    IsAntialias = true,
+                    Typeface = fontNormal
+                };
+                canvas.DrawText(valor, x + 35, y + 27, valorPaint);
             }
         }
     }
