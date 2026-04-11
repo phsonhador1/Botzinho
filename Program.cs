@@ -10,6 +10,9 @@ using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
 
+ModerationHelper.InicializarTabelas();
+Botzinho.Cassino.EconomyHelper.InicializarTabelas(); 
+
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent | GatewayIntents.GuildMembers
@@ -47,7 +50,7 @@ client.Ready += async () =>
             string[] statusDinamicos = new[]
             {
                 $"💜 Estou atualmente em {client.Guilds.Count} servidores",
-                "💜 Online | Pronta para ajudar",
+                "💜 Online | Pronta Para Ajudar!",
                 "💜 Epstein Store"
             };
 
