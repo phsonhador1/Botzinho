@@ -70,27 +70,43 @@ namespace Botzinho.Commands
 
         private async Task Nuke(SocketUserMessage msg)
         {
-            var user = msg.Author as SocketGuildUser;
-            var guildId = user.Guild.Id;
+            if (msg.Author is not SocketGuildUser user)
+                return;
 
-            var erro = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
+            if (msg.Channel is not ITextChannel channel)
+            {
+                await msg.Channel.SendMessageAsync("esse comando so pode ser usado em canal de texto.");
+                return;
+            }
+
+            var erro = AdminModule.ChecarPermissaoCompleta(
+                user.Guild.Id,
+                user,
+                "nuke",
+                GuildPermission.ManageChannels
+            );
+
             if (erro != null)
             {
                 await msg.Channel.SendMessageAsync(erro);
                 return;
             }
 
-            var channel = (ITextChannel)msg.Channel;
+            var oldChannel = channel;
 
-            var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
+            var newChannel = await oldChannel.Guild.CreateTextChannelAsync(oldChannel.Name, props =>
             {
-                props.Topic = channel.Topic;
-                props.CategoryId = channel.CategoryId;
-                props.Position = channel.Position;
-                props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(channel.PermissionOverwrites.ToList());
+                props.Topic = oldChannel.Topic;
+                props.CategoryId = oldChannel.CategoryId;
+                props.Position = oldChannel.Position;
+                props.IsNsfw = oldChannel.IsNsfw;
+                props.SlowModeInterval = oldChannel.SlowModeInterval;
+                props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(
+                    oldChannel.PermissionOverwrites.ToList()
+                );
             });
 
-            await channel.DeleteAsync();
+            await oldChannel.DeleteAsync();
             await newChannel.SendMessageAsync($"canal nukado por {msg.Author.Username}");
         }
 
