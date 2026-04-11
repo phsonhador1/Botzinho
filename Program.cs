@@ -40,9 +40,9 @@ client.Ready += async () =>
         {
             string[] statusAtual = new[]
             {
-                $"Estou atualmente em {client.Guilds.Count} servidores",
-                "Online | Pronta Para Ajudar!",
-                "Use /help para ver meus comandos"
+                $"💜 Atualmente em {client.Guilds.Count} servidores",
+                "💜 Online | Pronta Para Ajudar!",
+                "✨ zhelp para descobrir todos os meus comandos"
             };
 
             for (int i = 0; i < statusAtual.Length; i++)
