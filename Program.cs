@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
+using Botzinho.Economy;
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
@@ -22,6 +23,7 @@ var services = new ServiceCollection()
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
+Botzinho.Economy.EconomyHelper.InicializarTabelas();
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
