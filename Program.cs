@@ -25,7 +25,6 @@ ModerationHelper.InicializarTabelas();
 
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
