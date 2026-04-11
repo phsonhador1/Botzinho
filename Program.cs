@@ -1,17 +1,14 @@
-using Botzinho.Admins;
-using Botzinho.Commands;
-using Botzinho.Moderation;
 using Discord;
-using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
+using System.Collections.Generic;
+using Botzinho.Admins;
+using Botzinho.Moderation;
 
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
@@ -25,68 +22,29 @@ var services = new ServiceCollection()
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
-new PrefixCommands(client);
 
-
+string[] statusList = new[]
+{
+    $"💜 Atualmente em {client.Guilds.Count} servidores",
+    "💜 Online | Pronta Para Ajudar!",
+    "💫 Use zhelp para ver meus comandos"
+};
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
-
-    foreach (var guild in client.Guilds)
-        AdminModule.GarantirAcessoInicialConfigServer(guild);
-
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
-
-    client.MessageReceived += async message =>
-    {
-        if (message is not SocketUserMessage msg) return;
-        if (msg.Author.IsBot) return;
-
-        int argPos = 0;
-
-        // prefixo "z"
-        if (!msg.HasCharPrefix('z', ref argPos)) return;
-
-        var comando = msg.Content.Substring(argPos).Trim().ToLower();
-
-        if (comando == "help")
-        {
-            var embed = new EmbedBuilder()
-                .WithTitle("💜 Comandos da Zoe")
-                .WithDescription(
-                    "`zhelp` - mostra este menu\n" +
-                    "`znuke` - limpa o canal\n" +
-                    "`zclear` - apaga mensagens\n" +
-                    "`zavisar` - dar aviso\n"
-                )
-                .WithColor(new Color(0xFF69B4))
-                .Build();
-
-            await msg.Channel.SendMessageAsync(embed: embed);
-        }
-    };
 
     _ = Task.Run(async () =>
     {
         int i = 0;
         while (true)
         {
-            await client.SetStatusAsync(UserStatus.Online);
-
-            // Criamos a lista AQUI DENTRO, assim o client.Guilds.Count atualiza sempre!
-            string[] statusDinamicos = new[]
-            {
-                $"💜 Atualmente em {client.Guilds.Count} servidores",
-                "💜 Online | Pronta Para Ajudar!",
-                "✨ Use zhelp para ver meus comandos",
-            };
-
-            await client.SetCustomStatusAsync(statusDinamicos[i]);
-
-            i = (i + 1) % statusDinamicos.Length;
+            await client.SetStatusAsync(UserStatus.DoNotDisturb);
+            await client.SetGameAsync(statusList[i], "", ActivityType.Streaming);
+            i = (i + 1) % statusList.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
     });
@@ -98,7 +56,7 @@ client.InteractionCreated += async interaction =>
 };
 
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-    ?? throw new Exception("DISCORD_TOKEN nao configurado!");
+    ?? throw new Exception("DISCORD_TOKEN não configurado!");
 
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
@@ -106,21 +64,43 @@ await Task.Delay(Timeout.Infinite);
 
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
-    [SlashCommand("configserver", "Configura permissoes do servidor")]
+    [SlashCommand("configserver", "Configura permissões do servidor")]
     public async Task ConfigServerAsync()
     {
         var user = (SocketGuildUser)Context.User;
 
         if (!AdminModule.PodeUsarEconfigStatic(user))
         {
-            await RespondAsync("voce nao tem permissao para usar este comando.", ephemeral: true);
+            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
             return;
         }
 
-        var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
-        var components = AdminModule.CriarMenuPrincipal();
+        var menu = new SelectMenuBuilder()
+            .WithCustomId("configserver_menu")
+            .WithPlaceholder("Selecione o sistema para configurar")
+            .AddOption("Nuke", "config_nuke", "Configurar permissões do /nuke", new Emoji("💣"))
+            .AddOption("Ban", "config_ban", "Configurar permissões do /ban", new Emoji("🔨"))
+            .AddOption("Kick", "config_kick", "Configurar permissões do /kick", new Emoji("👢"))
+            .AddOption("Mute", "config_mute", "Configurar permissões do /mute", new Emoji("🔇"))
+            .AddOption("Warn", "config_warn", "Configurar permissões do /warn", new Emoji("⚠️"))
+            .AddOption("Clear", "config_clear", "Configurar permissões do /clear", new Emoji("🗑️"))
+            .AddOption("Lock/Unlock", "config_lock", "Configurar permissões do /lock e /unlock", new Emoji("🔒"));
 
-        await RespondAsync(embed: embed, components: components);
+        var embed = new EmbedBuilder()
+            .WithAuthor($"Config Server | {Context.Guild.CurrentUser.DisplayName}",
+                Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
+            .WithThumbnailUrl(Context.Guild.CurrentUser.GetAvatarUrl() ?? Context.Guild.CurrentUser.GetDefaultAvatarUrl())
+            .WithDescription(
+                "• ⚙️ **Painel de Configuração do Servidor**\n" +
+                "   ○ Selecione abaixo qual sistema você deseja configurar.\n" +
+                "   ○ Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
+                "   ○ ⚠️ Mesmo administradores precisam estar na lista para usar os comandos quando o sistema estiver ativado."
+            )
+            .WithFooter($"Servidor de {Context.Guild.Owner?.Username ?? Context.Guild.Name} • Hoje às {DateTime.Now:HH:mm}")
+            .WithColor(new Discord.Color(0x2B2D31))
+            .Build();
+
+        await RespondAsync(embed: embed, components: new ComponentBuilder().WithSelectMenu(menu).Build());
         var msg = await GetOriginalResponseAsync();
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
     }
@@ -134,10 +114,11 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         var user = (SocketGuildUser)Context.User;
         var guildId = Context.Guild.Id;
 
-        var resultado = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
-        if (resultado != null)
+        AdminModule.RecarregarConfig(guildId);
+
+        if (!AdminModule.TemPermissao(guildId, user, "nuke"))
         {
-            await RespondAsync(resultado, ephemeral: true);
+            await RespondAsync("❌ Você não tem permissão para usar este comando.", ephemeral: true);
             return;
         }
 
@@ -158,6 +139,11 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         await channel.DeleteAsync();
 
-        await newChannel.SendMessageAsync($"canal nukado por {Context.User.Username}");
+        var embed = new EmbedBuilder()
+            .WithDescription($"canal nukado por {Context.User.Username}")
+            .WithColor(new Discord.Color(0x2B2D31))
+            .Build();
+
+        await newChannel.SendMessageAsync(embed: embed);
     }
 }
