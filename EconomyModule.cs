@@ -124,7 +124,23 @@ namespace Botzinho.Economy
             _client.MessageReceived += HandleMessage;
         }
 
-        private async Task HandleMessage(SocketMessage msg)
+        private Task HandleMessage(SocketMessage msg)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await ProcessarMensagem(msg);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Economy] Erro: {ex.Message}");
+                }
+            });
+            return Task.CompletedTask;
+        }
+
+        private async Task ProcessarMensagem(SocketMessage msg)
         {
             if (msg.Author.IsBot) return;
             if (msg is not SocketUserMessage userMsg) return;
@@ -135,9 +151,9 @@ namespace Botzinho.Economy
             var guildId = user.Guild.Id;
 
             // zsaldo
-            // zsaldo
             if (content == "zsaldo" || content.StartsWith("zsaldo "))
             {
+                // ... resto do codigo igual
                 SocketGuildUser alvo = user;
 
                 if (msg.MentionedUsers.Count > 0)
