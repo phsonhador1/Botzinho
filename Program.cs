@@ -31,10 +31,9 @@ string[] statusList = new[]
 };
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
 {
-    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
-    await interactionService.RegisterCommandsGloballyAsync(true);
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
     _ = Task.Run(async () =>
@@ -42,13 +41,25 @@ client.Ready += async () =>
         int i = 0;
         while (true)
         {
-            await client.SetStatusAsync(UserStatus.DoNotDisturb);
-            await client.SetGameAsync(statusList[i], "", ActivityType.Streaming);
-            i = (i + 1) % statusList.Length;
+            await client.SetStatusAsync(UserStatus.Online);
+
+            string[] statusDinamicos = new[]
+            {
+                "Ola! Sou a Zoe!",
+                "Meu prefixo é z.",
+                "Use zhelp para descobrir todos os meus comandos...",
+                $"💜 Atualmente em {client.Guilds.Count} servidores",
+                "💜 Zoe | Pronta Para Ajudar!"
+            };
+
+            await client.SetActivityAsync(new Game(statusDinamicos[i]));
+
+            i = (i + 1) % statusDinamicos.Length;
             await Task.Delay(TimeSpan.FromSeconds(15));
         }
     });
 };
+
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
