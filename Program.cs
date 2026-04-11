@@ -1,4 +1,5 @@
 using Botzinho.Admins;
+using Botzinho.Commands;
 using Botzinho.Moderation;
 using Discord;
 using Discord.Commands;
@@ -24,6 +25,7 @@ var services = new ServiceCollection()
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
+new PrefixCommands(client);
 
 
 
