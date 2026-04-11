@@ -512,6 +512,30 @@ namespace Botzinho.Economy
             var content = msg.Content.ToLower().Trim();
             var guildId = user.Guild.Id;
 
+            if (content == "zhelp")
+            {
+                var embed = new EmbedBuilder()
+                    .WithAuthor($"Ajuda | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                    .WithDescription($"• Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda** - {_client.CurrentUser.Username}\n\n" +
+                                     "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
+                    .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                    .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithColor(new Discord.Color(80, 00, 80))
+                    .Build();
+
+                var menu = new SelectMenuBuilder()
+                    .WithCustomId("help_menu")
+                    .WithPlaceholder("Selecione uma categoria")
+                    .AddOption("Moderação", "help_mod", "Comandos de moderação", new Emoji("🛡️"))
+                    .AddOption("Economia", "help_eco", "Comandos de cpoints", new Emoji("💰"))
+                    .AddOption("Administração", "help_admin", "Configuração do bot", new Emoji("⚙️"));
+
+                var components = new ComponentBuilder().WithSelectMenu(menu).Build();
+
+                await msg.Channel.SendMessageAsync(embed: embed, components: components);
+                return;
+            }
+
             if (content == "zsaldo" || content.StartsWith("zsaldo "))
             {
                 SocketGuildUser alvo = user;
@@ -524,22 +548,21 @@ namespace Botzinho.Economy
                 File.Delete(imagemPath);
             }
             else if (content == "zdaily")
-{
-    var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
-    var agora = DateTime.UtcNow;
-    var diferenca = agora - ultimoDaily;
+            {
+                var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
+                var agora = DateTime.UtcNow;
+                var diferenca = agora - ultimoDaily;
 
-    if (diferenca.TotalHours < 24)
-    {
-        var restante = TimeSpan.FromHours(24) - diferenca;
-        var horas = (int)restante.TotalHours;
-        var minutos = restante.Minutes;
-        var segundos = restante.Seconds; // Adiciona esta linha
-        
-        // Atualiza a mensagem para incluir os segundos
-        await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
-        return;
-    }
+                if (diferenca.TotalHours < 24)
+                {
+                    var restante = TimeSpan.FromHours(24) - diferenca;
+                    var horas = (int)restante.TotalHours;
+                    var minutos = restante.Minutes;
+                    var segundos = restante.Seconds;
+
+                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
+                    return;
+                }
 
                 var random = new Random();
                 long recompensa = random.Next(500, 2001);
