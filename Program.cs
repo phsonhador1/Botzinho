@@ -23,6 +23,7 @@ var services = new ServiceCollection()
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
+var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
