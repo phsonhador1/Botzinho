@@ -1,6 +1,5 @@
 using Discord;
 using Discord.WebSocket;
-using Discord.Rest;
 using Npgsql;
 using System;
 using System.Collections.Generic;
@@ -16,7 +15,7 @@ namespace Botzinho.Economy
         public static string GetConnectionString()
         {
             return Environment.GetEnvironmentVariable("DATABASE_URL")
-                ?? throw new Exception("DATABASE_URL nao configurado!");
+              ?? throw new Exception("DATABASE_URL nao configurado!");
         }
 
         public static void InicializarTabelas()
@@ -25,14 +24,14 @@ namespace Botzinho.Economy
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                CREATE TABLE IF NOT EXISTS economy_users (
-                    guild_id TEXT,
-                    user_id TEXT,
-                    saldo BIGINT DEFAULT 0,
-                    ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
-                    PRIMARY KEY (guild_id, user_id)
-                );
-            ";
+                CREATE TABLE IF NOT EXISTS economy_users (
+                    guild_id TEXT,
+                    user_id TEXT,
+                    saldo BIGINT DEFAULT 0,
+                    ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
+                    PRIMARY KEY (guild_id, user_id)
+                );
+            ";
             cmd.ExecuteNonQuery();
         }
 
@@ -54,10 +53,10 @@ namespace Botzinho.Economy
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO economy_users (guild_id, user_id, saldo)
-                VALUES (@gid, @uid, @saldo)
-                ON CONFLICT (guild_id, user_id)
-                DO UPDATE SET saldo = @saldo";
+                INSERT INTO economy_users (guild_id, user_id, saldo)
+                VALUES (@gid, @uid, @saldo)
+                ON CONFLICT (guild_id, user_id)
+                DO UPDATE SET saldo = @saldo";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             cmd.Parameters.AddWithValue("@saldo", novoSaldo);
@@ -97,10 +96,10 @@ namespace Botzinho.Economy
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO economy_users (guild_id, user_id, ultimo_daily)
-                VALUES (@gid, @uid, @data)
-                ON CONFLICT (guild_id, user_id)
-                DO UPDATE SET ultimo_daily = @data";
+                INSERT INTO economy_users (guild_id, user_id, ultimo_daily)
+                VALUES (@gid, @uid, @data)
+                ON CONFLICT (guild_id, user_id)
+                DO UPDATE SET ultimo_daily = @data";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             cmd.Parameters.AddWithValue("@data", DateTime.UtcNow);
@@ -137,11 +136,11 @@ namespace Botzinho.Economy
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT rank_pos, saldo FROM (
-                    SELECT user_id, saldo, RANK() OVER(ORDER BY saldo DESC) as rank_pos
-                    FROM economy_users
-                    WHERE guild_id = @gid AND saldo > 0
-                ) ranked WHERE user_id = @uid";
+                SELECT rank_pos, saldo FROM (
+                    SELECT user_id, saldo, RANK() OVER(ORDER BY saldo DESC) as rank_pos
+                    FROM economy_users
+                    WHERE guild_id = @gid AND saldo > 0
+                ) ranked WHERE user_id = @uid";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
 
@@ -165,17 +164,17 @@ namespace Botzinho.Economy
             var canvas = surface.Canvas;
 
             var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold)
-                ?? SkiaSharp.SKTypeface.Default;
+              ?? SkiaSharp.SKTypeface.Default;
             var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans")
-                ?? SkiaSharp.SKTypeface.Default;
+              ?? SkiaSharp.SKTypeface.Default;
 
             var bgPaint = new SkiaSharp.SKPaint();
             bgPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(0, 0),
-                new SkiaSharp.SKPoint(width, height),
-                new[] { new SkiaSharp.SKColor(25, 25, 35), new SkiaSharp.SKColor(35, 30, 55) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(0, 0),
+              new SkiaSharp.SKPoint(width, height),
+              new[] { new SkiaSharp.SKColor(25, 25, 35), new SkiaSharp.SKColor(35, 30, 55) },
+              null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 20, 20, bgPaint);
 
             var borderPaint = new SkiaSharp.SKPaint
@@ -185,11 +184,11 @@ namespace Botzinho.Economy
                 IsAntialias = true
             };
             borderPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(0, 0),
-                new SkiaSharp.SKPoint(width, height),
-                new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(0, 0),
+              new SkiaSharp.SKPoint(width, height),
+              new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) }, // Nova cor roxa escuro
+                      null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 20, 20, borderPaint);
 
             try
@@ -216,8 +215,8 @@ namespace Botzinho.Economy
 
                     var glowPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(80, 0, 80, 80),
-                        Style = SkiaSharp.SKPaintStyle.Stroke,
+                        Color = new SkiaSharp.SKColor(80, 0, 80, 80), // Glow roxo escuro
+                        Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 6,
                         IsAntialias = true,
                         MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, 3)
@@ -226,8 +225,8 @@ namespace Botzinho.Economy
 
                     var avatarBorderPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(80, 0, 80),
-                        Style = SkiaSharp.SKPaintStyle.Stroke,
+                        Color = new SkiaSharp.SKColor(80, 0, 80), // Borda do avatar
+                        Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 3,
                         IsAntialias = true
                     };
@@ -248,23 +247,23 @@ namespace Botzinho.Economy
 
             var sepPaint = new SkiaSharp.SKPaint { StrokeWidth = 1, IsAntialias = true };
             sepPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(30, 0),
-                new SkiaSharp.SKPoint(width - 30, 0),
-                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(30, 0),
+              new SkiaSharp.SKPoint(width - 30, 0),
+              new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) }, // Linha divisória
+                      null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawLine(30, 140, width - 30, 140, sepPaint);
 
             string saldoFormatado = EconomyHelper.FormatarSaldo(saldo);
 
             DrawItem(canvas, 40, 160, "Carteira", saldoFormatado + " cpoints", fontBold, fontNormal,
-                new SkiaSharp.SKColor(80, 200, 120), new SkiaSharp.SKColor(40, 80, 50), width, DrawWalletIcon);
+              new SkiaSharp.SKColor(80, 200, 120), new SkiaSharp.SKColor(40, 80, 50), width, DrawWalletIcon);
 
             DrawItem(canvas, 40, 210, "Banco", "0 cpoints", fontBold, fontNormal,
-                new SkiaSharp.SKColor(100, 140, 230), new SkiaSharp.SKColor(40, 50, 80), width, DrawBankIcon);
+              new SkiaSharp.SKColor(100, 140, 230), new SkiaSharp.SKColor(40, 50, 80), width, DrawBankIcon);
 
             DrawItem(canvas, 40, 260, "Total", saldoFormatado + " cpoints", fontBold, fontNormal,
-                new SkiaSharp.SKColor(230, 180, 60), new SkiaSharp.SKColor(80, 65, 30), width, DrawCoinIcon);
+              new SkiaSharp.SKColor(230, 180, 60), new SkiaSharp.SKColor(80, 65, 30), width, DrawCoinIcon);
 
             var path = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
             using var image = surface.Snapshot();
@@ -284,17 +283,17 @@ namespace Botzinho.Economy
             var canvas = surface.Canvas;
 
             var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold)
-                ?? SkiaSharp.SKTypeface.Default;
+              ?? SkiaSharp.SKTypeface.Default;
             var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans")
-                ?? SkiaSharp.SKTypeface.Default;
+              ?? SkiaSharp.SKTypeface.Default;
 
             var bgPaint = new SkiaSharp.SKPaint();
             bgPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(0, 0),
-                new SkiaSharp.SKPoint(width, height),
-                new[] { new SkiaSharp.SKColor(25, 20, 45), new SkiaSharp.SKColor(40, 25, 60) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(0, 0),
+              new SkiaSharp.SKPoint(width, height),
+              new[] { new SkiaSharp.SKColor(25, 20, 45), new SkiaSharp.SKColor(40, 25, 60) },
+              null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 16, 16, bgPaint);
 
             var borderPaint = new SkiaSharp.SKPaint
@@ -304,11 +303,11 @@ namespace Botzinho.Economy
                 IsAntialias = true
             };
             borderPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(0, 0),
-                new SkiaSharp.SKPoint(width, 0),
-                new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(0, 0),
+              new SkiaSharp.SKPoint(width, 0),
+              new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) }, // Nova cor
+                      null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 16, 16, borderPaint);
 
             try
@@ -335,8 +334,8 @@ namespace Botzinho.Economy
 
                     var avatarBorderPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(80, 0, 80),
-                        Style = SkiaSharp.SKPaintStyle.Stroke,
+                        Color = new SkiaSharp.SKColor(80, 0, 80), // Borda do avatar
+                        Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 2,
                         IsAntialias = true
                     };
@@ -347,8 +346,8 @@ namespace Botzinho.Economy
 
             var titlePaint = new SkiaSharp.SKPaint
             {
-                Color = new SkiaSharp.SKColor(80, 0, 80),
-                TextSize = 20,
+                Color = new SkiaSharp.SKColor(80, 0, 80), // Título Daily
+                TextSize = 20,
                 IsAntialias = true,
                 Typeface = fontBold
             };
@@ -365,11 +364,11 @@ namespace Botzinho.Economy
 
             var sepPaint = new SkiaSharp.SKPaint { StrokeWidth = 1, IsAntialias = true };
             sepPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
-                new SkiaSharp.SKPoint(20, 0),
-                new SkiaSharp.SKPoint(width - 20, 0),
-                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) },
-                null,
-                SkiaSharp.SKShaderTileMode.Clamp);
+              new SkiaSharp.SKPoint(20, 0),
+              new SkiaSharp.SKPoint(width - 20, 0),
+              new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) },
+              null,
+              SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawLine(20, 70, width - 20, 70, sepPaint);
 
             var coinGlow = new SkiaSharp.SKPaint
@@ -465,15 +464,12 @@ namespace Botzinho.Economy
 
             var avatares = new Dictionary<ulong, byte[]>();
             using var httpClient = new HttpClient();
-
-            var avatarTasks = topUsers.Select(async u =>
+            var tasks = topUsers.Select(async u =>
             {
                 try
                 {
-                    IGuildUser discordUser = guild.GetUser(u.UserId);
-                    if (discordUser == null) discordUser = await ((IGuild)guild).GetUserAsync(u.UserId);
-
-                    var url = discordUser?.GetAvatarUrl(ImageFormat.Png, 128) ?? discordUser?.GetDefaultAvatarUrl();
+                    var user = guild.GetUser(u.UserId);
+                    var url = user?.GetAvatarUrl(ImageFormat.Png, 128) ?? user?.GetDefaultAvatarUrl();
                     if (url != null)
                     {
                         var bytes = await httpClient.GetByteArrayAsync(url);
@@ -482,7 +478,7 @@ namespace Botzinho.Economy
                 }
                 catch { }
             });
-            await Task.WhenAll(avatarTasks);
+            await Task.WhenAll(tasks);
 
             int startX = 40;
             int startY = 120;
@@ -501,10 +497,7 @@ namespace Botzinho.Economy
 
                 var rank = i + 1;
                 var user = topUsers[i];
-
-                IGuildUser member = guild.GetUser(user.UserId);
-                if (member == null) member = await ((IGuild)guild).GetUserAsync(user.UserId);
-
+                var member = guild.GetUser(user.UserId);
                 string username = member?.Username ?? "Desconhecido";
 
                 if (username.Length > 12) username = username.Substring(0, 10) + "...";
@@ -515,9 +508,9 @@ namespace Botzinho.Economy
                 if (rank == 1) { bgColor = new SkiaSharp.SKColor(255, 180, 0); textColor = SkiaSharp.SKColors.Black; }
                 else if (rank == 2) { bgColor = new SkiaSharp.SKColor(220, 220, 230); textColor = SkiaSharp.SKColors.Black; }
                 else if (rank == 3) { bgColor = new SkiaSharp.SKColor(255, 120, 0); textColor = SkiaSharp.SKColors.Black; }
-                else { bgColor = new SkiaSharp.SKColor(80, 0, 80); textColor = SkiaSharp.SKColors.White; }
+                else { bgColor = new SkiaSharp.SKColor(80, 0, 80); textColor = SkiaSharp.SKColors.White; } // Pílulas 4-10 em roxo 80,0,80
 
-                var cardPaint = new SkiaSharp.SKPaint { Color = bgColor, IsAntialias = true };
+                var cardPaint = new SkiaSharp.SKPaint { Color = bgColor, IsAntialias = true };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + cardWidth, y + cardHeight), cardHeight / 2, cardHeight / 2, cardPaint);
 
                 int avatarSize = 65;
@@ -564,9 +557,9 @@ namespace Botzinho.Economy
         }
 
         private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor,
-            SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal,
-            SkiaSharp.SKColor accentColor, SkiaSharp.SKColor bgTint, int width,
-            Action<SkiaSharp.SKCanvas, float, float, SkiaSharp.SKColor> drawIcon)
+          SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal,
+          SkiaSharp.SKColor accentColor, SkiaSharp.SKColor bgTint, int width,
+          Action<SkiaSharp.SKCanvas, float, float, SkiaSharp.SKColor> drawIcon)
         {
             var itemBg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(38, 38, 48), IsAntialias = true };
             canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, width - 40, y + 40), 10, 10, itemBg);
@@ -638,9 +631,6 @@ namespace Botzinho.Economy
     public class EconomyHandler
     {
         private readonly DiscordSocketClient _client;
-        private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
-        private static readonly Dictionary<ulong, int> _floodCount = new();
-        private static readonly Dictionary<ulong, DateTime> _botMutes = new();
 
         public EconomyHandler(DiscordSocketClient client)
         {
@@ -652,8 +642,14 @@ namespace Botzinho.Economy
         {
             _ = Task.Run(async () =>
             {
-                try { await ProcessarMensagem(msg); }
-                catch (Exception ex) { Console.WriteLine($"[Economy] Erro: {ex.Message}"); }
+                try
+                {
+                    await ProcessarMensagem(msg);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Economy] Erro: {ex.Message}");
+                }
             });
             return Task.CompletedTask;
         }
@@ -668,70 +664,28 @@ namespace Botzinho.Economy
             var content = msg.Content.ToLower().Trim();
             var guildId = user.Guild.Id;
 
-            string[] comandos = { "zhelp", "zsaldo", "zdaily", "zpay", "zrank", "ztop coins", "zaddsaldo" };
-            bool isComando = comandos.Any(c => content == c || content.StartsWith(c + " "));
-
-            if (!isComando) return;
-
-            var userId = user.Id;
-            var agora = DateTime.UtcNow;
-
-            if (_botMutes.TryGetValue(userId, out var muteFim))
-            {
-                if (agora < muteFim) return;
-                else { _botMutes.Remove(userId); _floodCount.Remove(userId); }
-            }
-
-            if (_cooldowns.TryGetValue(userId, out var ultimaVez))
-            {
-                var tempoPassado = (agora - ultimaVez).TotalSeconds;
-                if (tempoPassado < 5)
-                {
-                    int count = _floodCount.ContainsKey(userId) ? _floodCount[userId] + 1 : 1;
-                    _floodCount[userId] = count;
-
-                    if (count >= 4)
-                    {
-                        _botMutes[userId] = agora.AddMinutes(10);
-                        await msg.Channel.SendMessageAsync($"🚨 {user.Mention} exagerou no spam! Como punição, você ficará **10 minutos** sem poder usar meus comandos.");
-                        return;
-                    }
-
-                    int restante = 5 - (int)tempoPassado;
-                    var emojiteste = "<a:teste:1490570407307378712>";
-                    var aviso = await msg.Channel.SendMessageAsync($"{emojiteste} Calma lá, {user.Mention}! Aguarde `{restante}s` para usar outro comando.");
-
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(3000);
-                        try { await aviso.DeleteAsync(); } catch { }
-                    });
-
-                    return;
-                }
-                else { _floodCount.Remove(userId); }
-            }
-
-            _cooldowns[userId] = agora;
-
             if (content == "zhelp")
             {
                 var emojiAnimado = "<a:teste:1490570407307378712>";
+
                 var embed = new EmbedBuilder()
-                    .WithAuthor($"Ajuda | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                    .WithDescription($"{emojiAnimado} Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda** - {_client.CurrentUser.Username}\n\n" + "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
-                    .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                    .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Discord.Color(80, 0, 80))
-                    .Build();
+                  .WithAuthor($"Ajuda | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                  .WithDescription($"{emojiAnimado} Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda** - {_client.CurrentUser.Username}\n\n" +
+                          "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
+                  .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                  .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                  .WithColor(new Discord.Color(80, 0, 80)) // Cor do embed alterada
+                            .Build();
 
                 var menu = new SelectMenuBuilder()
-                    .WithCustomId("help_menu")
-                    .WithPlaceholder("Selecione uma categoria")
-                    .AddOption("Moderação", "help_mod", "Comandos de moderação", Emote.Parse("<:suporte:1492662681130373201>"))
-                    .AddOption("Economia", "help_eco", "Comandos de cpoints", Emote.Parse("<:botportal:1492661012682248212>"))
-                    .AddOption("Administração", "help_admin", "Configuração do bot", Emote.Parse("<:botportal:1492661012682248212>"));
+                  .WithCustomId("help_menu")
+                  .WithPlaceholder("Selecione uma categoria")
+                  .AddOption("Moderação", "help_mod", "Comandos de moderação", Emote.Parse("<:suporte:1492662681130373201>"))
+                  .AddOption("Economia", "help_eco", "Comandos de cpoints", Emote.Parse("<:botportal:1492661012682248212>"))
+                  .AddOption("Administração", "help_admin", "Configuração do bot", Emote.Parse("<:botportal:1492661012682248212>"));
+
                 var components = new ComponentBuilder().WithSelectMenu(menu).Build();
+
                 await msg.Channel.SendMessageAsync(embed: embed, components: components);
                 return;
             }
@@ -741,6 +695,7 @@ namespace Botzinho.Economy
                 SocketGuildUser alvo = user;
                 if (msg.MentionedUsers.Count > 0)
                     alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id) ?? user;
+
                 var saldo = EconomyHelper.GetSaldo(guildId, alvo.Id);
                 var imagemPath = await EconomyImageHelper.GerarImagemSaldo(alvo, saldo);
                 await msg.Channel.SendFileAsync(imagemPath, "");
@@ -749,72 +704,84 @@ namespace Botzinho.Economy
             else if (content == "zdaily")
             {
                 var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
+                var agora = DateTime.UtcNow;
                 var diferenca = agora - ultimoDaily;
+
                 if (diferenca.TotalHours < 24)
                 {
                     var restante = TimeSpan.FromHours(24) - diferenca;
-                    var negativo = "<a:negativo:1492950137587241114>";
-                    await msg.Channel.SendMessageAsync($"{negativo} Voce ja coletou seu daily hoje. volte em `{(int)restante.TotalHours}h {restante.Minutes}m {restante.Seconds}s`.");
+                    var horas = (int)restante.TotalHours;
+                    var minutos = restante.Minutes;
+                    var segundos = restante.Seconds;
+
+                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
                     return;
                 }
+
                 var random = new Random();
                 long recompensa = random.Next(500, 2001);
+
                 EconomyHelper.AdicionarSaldo(guildId, user.Id, recompensa);
                 EconomyHelper.SetUltimoDaily(guildId, user.Id);
+
                 var saldoAtual = EconomyHelper.GetSaldo(guildId, user.Id);
+
                 var imagemPath = await EconomyImageHelper.GerarImagemDaily(user, recompensa, saldoAtual);
                 await msg.Channel.SendFileAsync(imagemPath, "");
                 File.Delete(imagemPath);
             }
             else if (content.StartsWith("zpay"))
             {
-                if (msg.MentionedUsers.Count == 0) { await msg.Channel.SendMessageAsync("use: `zpay @usuario valor`"); return; }
+                if (msg.MentionedUsers.Count == 0)
+                { await msg.Channel.SendMessageAsync("use: `zpay @usuario valor`"); return; }
+
                 var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
                 if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
                 if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("voce nao pode pagar a si mesmo."); return; }
                 if (alvo.IsBot) { await msg.Channel.SendMessageAsync("voce nao pode pagar um bot."); return; }
+
                 long valor = 0;
-                foreach (var parte in content.Split(' ')) { if (long.TryParse(parte, out var v)) { valor = v; break; } }
+                foreach (var parte in content.Split(' '))
+                { if (long.TryParse(parte, out var v)) { valor = v; break; } }
+
                 if (valor <= 0) { await msg.Channel.SendMessageAsync("valor invalido."); return; }
-                if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor)) { await msg.Channel.SendMessageAsync("saldo insuficiente."); return; }
+                if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
+                { await msg.Channel.SendMessageAsync("saldo insuficiente."); return; }
+
                 EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
-                await msg.Channel.SendMessageAsync($"{user.Mention} transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}");
+                var saldoRemetente = EconomyHelper.GetSaldo(guildId, user.Id);
+
+                await msg.Channel.SendMessageAsync(
+                  $"{user.Mention} transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n" +
+                  $"**Seu saldo:** `{EconomyHelper.FormatarSaldo(saldoRemetente)}` cpoints");
             }
             else if (content == "zrank" || content == "ztop coins")
             {
                 var top10 = EconomyHelper.GetTop10(guildId);
-                if (top10.Count == 0) { await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking."); return; }
 
-                var carregandoEmoji = "<a:teste:1490570407307378712>";
-                var loadingMsg = await msg.Channel.SendMessageAsync($"{carregandoEmoji} Buscando dados e gerando imagem profissionais da Zany, aguarde...");
-
-                await Task.Delay(3000);
-
-                var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
-                await msg.Channel.SendFileAsync(imagemPath, "🏆 **Zany Coins - Melhores do Servidor**");
-
-                await loadingMsg.DeleteAsync();
-                File.Delete(imagemPath);
-            }
-            // --- BÓNUS PARA A STAFF INJETAR DINHEIRO RÁPIDO ---
-            else if (content.StartsWith("zaddsaldo"))
-            {
-                if (!Botzinho.Admins.AdminModule.PodeUsarEconfigStatic(user)) return;
-
-                var partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (msg.MentionedUsers.Count == 0 || partes.Length < 3)
+                if (top10.Count == 0)
                 {
-                    await msg.Channel.SendMessageAsync("Uso correto: `zaddsaldo @usuario [valor]`");
+                    await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking de cpoints.");
                     return;
                 }
+                var carregando = "<a:carregandoportal:1492944498605686844>";
+                var loadingMsg = await msg.Channel.SendMessageAsync($"{carregando} Gerando o ranking, aguarde um instante...");
 
-                var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
-                if (alvo == null) return;
+                var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
+                var emojiRoxo = "<:emoji_8:1491910148476899529>";
 
-                if (!long.TryParse(partes[2], out long valorAdd) || valorAdd <= 0) return;
+                string textoPosicao = rankInfo.Rank > 0
+                  ? $"{emojiRoxo} **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints"
+                  : "💡 Você ainda não possui cpoints para aparecer no ranking.";
 
-                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valorAdd);
-                await msg.Channel.SendMessageAsync($"✅ {user.Mention} injetou `{EconomyHelper.FormatarSaldo(valorAdd)}` cpoints na conta de {alvo.Mention}!");
+                string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
+
+                var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
+
+                await msg.Channel.SendFileAsync(imagemPath, textoMensagem);
+                await loadingMsg.DeleteAsync();
+
+                File.Delete(imagemPath);
             }
         }
     }
