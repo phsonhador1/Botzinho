@@ -468,8 +468,11 @@ namespace Botzinho.Economy
             {
                 try
                 {
-                    var user = guild.GetUser(u.UserId);
-                    var url = user?.GetAvatarUrl(ImageFormat.Png, 128) ?? user?.GetDefaultAvatarUrl();
+                    // CORREÇÃO: Busca profunda na API do Discord caso o usuário esteja offline
+                    IUser discordUser = guild.GetUser(u.UserId);
+                    if (discordUser == null) discordUser = await ((IGuild)guild).GetUserAsync(u.UserId);
+
+                    var url = discordUser?.GetAvatarUrl(ImageFormat.Png, 128) ?? discordUser?.GetDefaultAvatarUrl();
                     if (url != null)
                     {
                         var bytes = await httpClient.GetByteArrayAsync(url);
@@ -497,7 +500,11 @@ namespace Botzinho.Economy
 
                 var rank = i + 1;
                 var user = topUsers[i];
-                var member = guild.GetUser(user.UserId);
+
+                // CORREÇÃO: Busca profunda também para pegar o Username corretamente
+                IUser member = guild.GetUser(user.UserId);
+                if (member == null) member = await ((IGuild)guild).GetUserAsync(user.UserId);
+
                 string username = member?.Username ?? "Desconhecido";
 
                 if (username.Length > 12) username = username.Substring(0, 10) + "...";
@@ -747,7 +754,7 @@ namespace Botzinho.Economy
                                      "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
                     .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                     .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Discord.Color(80, 0, 80))
+                    .WithColor(new Discord.Color(80, 0, 80)) // Cor do embed alterada
                     .Build();
 
                 var menu = new SelectMenuBuilder()
