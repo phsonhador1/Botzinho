@@ -780,6 +780,43 @@ namespace Botzinho.Admins
                     await AtualizarPainel(guild, editCmd);
                     break;
             }
+            // No AdminModule.cs, dentro do HandleSelectMenu
+
+            if (customId == "help_menu")
+            {
+                if (selected == "help_eco")
+                {
+                    var embedEco = new EmbedBuilder()
+                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl())
+                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl())
+                        .WithDescription(
+                            "• `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
+                            "• ↪ **zsaldo**:\n" +
+                            "  ◦ Veja seu saldo atual em cpoints.\n" +
+                            "• ↪ **zdaily**:\n" +
+                            "  ◦ Resgate seus cpoints diários.\n" +
+                            "• ↪ **zpay [@usuario] [valor]**:\n" +
+                            "  ◦ Transfira seus cpoints para outro usuário.\n" +
+                            "• ↪ **zrank**:\n" +
+                            "  ◦ Veja o ranking dos usuários mais ricos.\n" +
+                            "• ↪ **zaddsaldo [@usuario] [valor]**:\n" +
+                            "  ◦ (Staff) Adiciona saldo a um usuário.\n" +
+                            "• ↪ **zremovesaldo [@usuario] [valor]**:\n" +
+                            "  ◦ (Staff) Remove saldo de um usuário."
+                        )
+                        .WithFooter("Use os comandos com sabedoria!")
+                        .WithColor(new Color(120, 80, 220)) // Roxo Zoe
+                        .Build();
+
+                    await component.UpdateAsync(m => {
+                        m.Embed = embedEco;
+                        // Opcional: m.Components = (Botão de voltar se quiser)
+                    });
+                    return;
+                }
+
+                // Adicione aqui também as condições para "help_mod" e "help_admin" seguindo o mesmo estilo
+            }
         }
     }
 }
