@@ -653,9 +653,10 @@ namespace Botzinho.Admins
                 }
                 else if (selected == "help_admin")
                 {
+                    var roxo = "<:emoji_8:1491910148476899529>";
                     var embedAdmin = new EmbedBuilder()
                         .WithAuthor($"Configurações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription("• ↪ **/configserver**: Painel de controle de permissões e sistemas.")
+                        .WithDescription($"{roxo} ↪ **/configserver**: Painel de controle de permissões e sistemas.")
                         .WithColor(new Color(120, 80, 220))
                         .Build();
 
