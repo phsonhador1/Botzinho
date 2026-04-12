@@ -94,14 +94,12 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
 
 public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 {
-    // Alterado de "nuke" para "znuke"
-    [SlashCommand("znuke", "Limpa todas as mensagens do canal")]
+    [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
     public async Task NukeAsync()
     {
         var user = (SocketGuildUser)Context.User;
         var guildId = Context.Guild.Id;
 
-        // Mantenha "nuke" aqui se quiser continuar usando a mesma permissão no banco de dados
         var resultado = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
         if (resultado != null)
         {
@@ -126,7 +124,6 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 
         await channel.DeleteAsync();
 
-        // Mensagem de confirmação atualizada com o novo nome
         await newChannel.SendMessageAsync($"canal nukado por {Context.User.Username}");
     }
 }
