@@ -18,10 +18,11 @@ namespace Botzinho.Cassino
         // LINK DO SEU GIF (O link que você mandou)
         private const string GIF_ROLETA = "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=";
 
-      
+        
         public static readonly HashSet<ulong> IDsAutorizados = new HashSet<ulong>
         {
-            1472642376970404002, 
+            1472642376970404002,
+            
         };
 
         public CassinoHandler(DiscordSocketClient client)
@@ -96,7 +97,7 @@ namespace Botzinho.Cassino
                 // Adiciona no PostgreSQL
                 EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valorFinalParaAdicionar);
 
-                await msg.Channel.SendMessageAsync($"✅ **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(valorFinalParaAdicionar)}` cpoints para {alvo.Mention}.");
+                await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(valorFinalParaAdicionar)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                 return;
             }
 
