@@ -633,14 +633,15 @@ namespace Botzinho.Admins
                 }
                 else if (selected == "help_mod")
                 {
+                   var roxo = "<:emoji_8:1491910148476899529>";
                     var embedMod = new EmbedBuilder()
                         .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(
-                            "• ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
-                            "• ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
-                            "• ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
-                            "• ↪ **/clear [quantidade]**: Limpa mensagens do chat.\n" +
-                            "• ↪ **/nuke**: Redefine o canal atual."
+                            $"{roxo} ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
+                            $"{roxo} ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
+                            $"{roxo} ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
+                            $"{roxo} ↪ **/clear [quantidade]**: Limpa mensagens do chat.\n" +
+                            $"{roxo} ↪ **/nuke**: Redefine o canal atual."
                         )
                         .WithColor(new Color(120, 80, 220))
                         .Build();
