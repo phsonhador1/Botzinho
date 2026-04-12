@@ -255,7 +255,7 @@ namespace Botzinho.Economy
         {
             var itemBg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(38, 38, 48), IsAntialias = true };
             canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, width - 40, y + 40), 10, 10, itemBg);
-            
+
             var barPaint = new SkiaSharp.SKPaint { Color = accentColor, IsAntialias = true };
             canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 4, y + 40), 2, 2, barPaint);
 
@@ -292,7 +292,7 @@ namespace Botzinho.Economy
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_semanal", 168, 220000, 450000, "Semanal");
                     else if (content == "zmensal")
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
-                    
+
                     // --- COMANDO DEPÓSITO ---
                     else if (content == "zdep all")
                     {
@@ -325,7 +325,7 @@ namespace Botzinho.Economy
                         var top = EconomyHelper.GetTop10(guildId);
                         if (top.Count == 0) { await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio."); return; }
                         var path = await EconomyImageHelper.GerarImagemRank(user.Guild, top);
-                        await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**");
+                        await msg.Channel.SendFileAsync(path, "<a:lealdade:1493009439522033735> **Top Ricos do Servidor**");
                         try { await loading.DeleteAsync(); } catch { }
                         File.Delete(path);
                     }
