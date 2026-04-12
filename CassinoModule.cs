@@ -11,9 +11,12 @@ namespace Botzinho.Cassino
     public class CassinoHandler
     {
         private readonly DiscordSocketClient _client;
-
-        // Dicionário para gerenciar apostas em tempo real e evitar bugs de duplicação de saldo
+        
+        // Dicionário para gerenciar apostas em tempo real e evitar bugs de duplicação
         private static readonly Dictionary<ulong, long> ApostasAtivas = new();
+
+        // LINK DO SEU GIF (O link que você mandou)
+        private const string GIF_ROLETA = "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=";
 
         public CassinoHandler(DiscordSocketClient client)
         {
@@ -27,18 +30,18 @@ namespace Botzinho.Cassino
             if (msg.Author.IsBot || msg is not SocketUserMessage userMsg) return;
 
             var content = msg.Content.ToLower().Trim();
-
+            
             if (content.StartsWith("zroleta"))
             {
                 var user = msg.Author as SocketGuildUser;
                 if (user == null) return;
                 var guildId = user.Guild.Id;
 
-                // 1. Tratamento do valor da aposta
+                // 1. Tratamento do valor (Suporta 10k, 1m, all)
                 string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (partes.Length < 2)
                 {
-                    await msg.Channel.SendMessageAsync("❓ **Uso:** `zroleta [valor]` ou `zroleta all`.");
+                    await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zroleta [valor]` ou `zroleta all`.");
                     return;
                 }
 
@@ -62,25 +65,25 @@ namespace Botzinho.Cassino
                 // 2. Validações de Segurança
                 if (valorAposta <= 0)
                 {
-                    await msg.Channel.SendMessageAsync("❌ Você não pode apostar o vento, coloque um valor válido!");
+                    await msg.Channel.SendMessageAsync("❌ Você precisa apostar um valor maior que zero!");
                     return;
                 }
                 if (saldoAtual < valorAposta)
                 {
-                    await msg.Channel.SendMessageAsync($"❌ Saldo insuficiente. Você possui apenas `{EconomyHelper.FormatarSaldo(saldoAtual)}`.");
+                    await msg.Channel.SendMessageAsync($"❌ Saldo insuficiente. Você tem `{EconomyHelper.FormatarSaldo(saldoAtual)}`.");
                     return;
                 }
                 if (ApostasAtivas.ContainsKey(user.Id))
                 {
-                    await msg.Channel.SendMessageAsync("⚠️ Termine sua rodada atual antes de abrir outra!");
+                    await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!");
                     return;
                 }
 
-                // 3. Bloqueio de Saldo (Retira antes de começar para evitar trapaças)
+                // 3. Bloqueio de Saldo
                 ApostasAtivas[user.Id] = valorAposta;
                 EconomyHelper.RemoverSaldo(guildId, user.Id, valorAposta);
 
-                // 4. Construção do Painel Profissional
+                // 4. Painel Inicial
                 var embed = new EmbedBuilder()
                     .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
@@ -89,12 +92,12 @@ namespace Botzinho.Cassino
 💰 | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
 
 💡 | **Como funciona:**
-Ao escolher uma cor abaixo, representada pelos botões, você terá a chance de ganhar com base nos multiplicadores. Cada cor tem seu próprio multiplicador. Se a roleta parar na cor escolhida, você receberá uma recompensa de acordo com o multiplicador correspondente.
+Escolha uma cor abaixo. Se a roleta parar nela, você ganha o prêmio baseado no multiplicador!
 
-🧧 | **Desistir da aposta:**
-Se decidir não continuar, clique no ❌ para desistir da aposta.")
+🧧 | **Desistir:**
+Clique no ❌ para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl())
-                    .WithColor(new Color(43, 45, 49)) // Cor Dark do Discord
+                    .WithColor(new Color(43, 45, 49))
                     .Build();
 
                 var components = new ComponentBuilder()
@@ -124,67 +127,66 @@ Se decidir não continuar, clique no ❌ para desistir da aposta.")
 
             if (!ApostasAtivas.TryGetValue(userId, out long valorAposta))
             {
-                await component.RespondAsync("❌ Aposta não encontrada ou já finalizada.", ephemeral: true);
+                await component.RespondAsync("❌ Jogo finalizado ou erro no sistema.", ephemeral: true);
                 return;
             }
 
             var guildId = (component.User as SocketGuildUser).Guild.Id;
 
-            // --- OPÇÃO DESISTIR ---
+            // --- DESISTÊNCIA ---
             if (escolha == "cancel")
             {
                 ApostasAtivas.Remove(userId);
                 EconomyHelper.AdicionarSaldo(guildId, userId, valorAposta);
+                
                 await component.UpdateAsync(x => {
-                    x.Content = $"✅ {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints.";
-                    x.Embed = null;
-                    x.Components = null;
+                    x.Content = $"✅ {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}`.";
+                    x.Embed = null; x.Components = null;
                 });
                 return;
             }
 
-            // --- INÍCIO DA ANIMAÇÃO ---
-            ApostasAtivas.Remove(userId); // Remove das ativas para evitar cliques duplos durante o giro
+            // --- ANIMAÇÃO DE GIRO ---
+            ApostasAtivas.Remove(userId); // Evita bugs removendo o registro logo no início
 
-            // Criar o Embed da animação (Igual à imagem que você mandou)
             var embedAnimacao = new EmbedBuilder()
                 .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                 .WithDescription("⚫ **Girando roleta...**")
-                .WithImageUrl("https://i.imgur.com/your_roulette_animation.gif") // COLOQUE O LINK DO SEU GIF AQUI
+                .WithImageUrl(GIF_ROLETA)
                 .WithColor(new Color(43, 45, 49))
                 .Build();
 
-            // Atualiza a mensagem para mostrar a animação e remove os botões
             await component.UpdateAsync(x => {
                 x.Embed = embedAnimacao;
                 x.Components = null;
             });
 
-            // ESPERA 4 SEGUNDOS PARA O SUSPENSE
+            // SUSPENSE DE 4 SEGUNDOS
             await Task.Delay(4000);
 
-            // --- LÓGICA DO RESULTADO ---
-            var sorteio = new Random().Next(1, 101);
+            // --- RESULTADO ---
+            var random = new Random().Next(1, 101);
             string corSorteada;
             double multiplicador;
 
-            if (sorteio <= 10) { corSorteada = "branco"; multiplicador = 6.0; }
-            else if (sorteio <= 55) { corSorteada = "preto"; multiplicador = 1.5; }
+            // Chances: Branco (10%), Preto (45%), Vermelho (45%)
+            if (random <= 10) { corSorteada = "branco"; multiplicador = 6.0; }
+            else if (random <= 55) { corSorteada = "preto"; multiplicador = 1.5; }
             else { corSorteada = "vermelho"; multiplicador = 1.5; }
 
             bool ganhou = escolha == corSorteada;
             long premio = (long)(valorAposta * multiplicador);
             string emojiCor = corSorteada switch { "branco" => "⚪", "preto" => "⚫", _ => "🔴" };
 
-            var embedResultado = new EmbedBuilder()
-                .WithAuthor("Resultado da Roleta", "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=")
+            var embedFim = new EmbedBuilder()
+                .WithAuthor("Resultado da Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                 .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl())
                 .WithTimestamp(DateTime.Now);
 
             if (ganhou)
             {
                 EconomyHelper.AdicionarSaldo(guildId, userId, premio);
-                embedResultado.WithColor(Color.Green)
+                embedFim.WithColor(Color.Green)
                     .WithDescription($@"🎊 **Parabéns! Você ganhou!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
@@ -192,16 +194,15 @@ Se decidir não continuar, clique no ❌ para desistir da aposta.")
             }
             else
             {
-                embedResultado.WithColor(Color.Red)
+                embedFim.WithColor(Color.Red)
                     .WithDescription($@"💸 **Não foi dessa vez...**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 ❌ Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints");
             }
 
-            // Edita a mensagem da animação com o resultado final
             await component.ModifyOriginalResponseAsync(x => {
-                x.Embed = embedResultado.Build();
+                x.Embed = embedFim.Build();
                 x.Content = component.User.Mention;
             });
         }
