@@ -785,7 +785,8 @@ namespace Botzinho.Economy
                     var minutos = restante.Minutes;
                     var segundos = restante.Seconds;
 
-                    await msg.Channel.SendMessageAsync($"voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
+                    var negativo = "<a:negativo:1492950137587241114>";
+                    await msg.Channel.SendMessageAsync($"{negativo}Voce ja coletou seu daily hoje. volte em `{horas}h {minutos}m {segundos}s`.");
                     return;
                 }
 
