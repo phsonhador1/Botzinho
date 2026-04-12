@@ -11,7 +11,7 @@ namespace Botzinho.Cassino
     public class CassinoHandler
     {
         private readonly DiscordSocketClient _client;
-        
+
         // Dicionário para gerenciar apostas em tempo real e evitar bugs de duplicação
         private static readonly Dictionary<ulong, long> ApostasAtivas = new();
 
@@ -30,7 +30,7 @@ namespace Botzinho.Cassino
             if (msg.Author.IsBot || msg is not SocketUserMessage userMsg) return;
 
             var content = msg.Content.ToLower().Trim();
-            
+
             if (content.StartsWith("zroleta"))
             {
                 var user = msg.Author as SocketGuildUser;
@@ -138,7 +138,7 @@ Clique no ❌ para recuperar seu dinheiro agora.")
             {
                 ApostasAtivas.Remove(userId);
                 EconomyHelper.AdicionarSaldo(guildId, userId, valorAposta);
-                
+
                 await component.UpdateAsync(x => {
                     x.Content = $"✅ {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}`.";
                     x.Embed = null; x.Components = null;
@@ -187,7 +187,7 @@ Clique no ❌ para recuperar seu dinheiro agora.")
             {
                 EconomyHelper.AdicionarSaldo(guildId, userId, premio);
                 embedFim.WithColor(Color.Green)
-                    .WithDescription($@"🎊 **Parabéns! Você ganhou!**
+                    .WithDescription($@"<a:7moneyz:1493015410637930508> **Parabéns! Você ganhou!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 💰 Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints");
@@ -195,7 +195,7 @@ Clique no ❌ para recuperar seu dinheiro agora.")
             else
             {
                 embedFim.WithColor(Color.Red)
-                    .WithDescription($@"💸 **Não foi dessa vez...**
+                    .WithDescription($@"<a:negativo:1492950137587241114> **Não foi dessa vez...**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 ❌ Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints");
