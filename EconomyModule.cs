@@ -632,6 +632,9 @@ namespace Botzinho.Economy
     {
         private readonly DiscordSocketClient _client;
 
+        // ADICIONADO: Dicionário para guardar o tempo de cooldown de cada usuário
+        private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+
         public EconomyHandler(DiscordSocketClient client)
         {
             _client = client;
@@ -664,6 +667,37 @@ namespace Botzinho.Economy
             var content = msg.Content.ToLower().Trim();
             var guildId = user.Guild.Id;
 
+            // 1. Verifica se a mensagem é um comando do bot (para não dar cooldown no chat normal)
+            string[] comandos = { "zhelp", "zsaldo", "zdaily", "zpay", "zrank", "ztop coins" };
+            bool isComando = comandos.Any(c => content == c || content.StartsWith(c + " "));
+
+            if (!isComando) return;
+
+            // 2. SISTEMA DE COOLDOWN (5 Segundos)
+            if (_cooldowns.TryGetValue(user.Id, out var ultimaVez))
+            {
+                var tempoPassado = (DateTime.UtcNow - ultimaVez).TotalSeconds;
+                if (tempoPassado < 5) // Se passou menos de 5 segundos
+                {
+                    int restante = 5 - (int)tempoPassado;
+                    var aviso = await msg.Channel.SendMessageAsync($"⏳ Calma lá, {user.Mention}! Aguarde `{restante}s` para usar outro comando.");
+
+                    // Apaga a mensagem de aviso depois de 3 segundos para não poluir o chat
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(3000);
+                        try { await aviso.DeleteAsync(); } catch { }
+                    });
+
+                    return; // Bloqueia a execução do comando
+                }
+            }
+
+            // Atualiza o tempo da última vez que o usuário usou um comando
+            _cooldowns[user.Id] = DateTime.UtcNow;
+
+            // --- DAQUI PARA BAIXO É O SEU CÓDIGO ORIGINAL DOS COMANDOS ---
+
             if (content == "zhelp")
             {
                 var emojiAnimado = "<a:teste:1490570407307378712>";
@@ -674,7 +708,7 @@ namespace Botzinho.Economy
                                      "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
                     .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                     .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Discord.Color(80, 0, 80)) // Cor do embed alterada
+                    .WithColor(new Discord.Color(80, 0, 80))
                     .Build();
 
                 var menu = new SelectMenuBuilder()
@@ -764,6 +798,7 @@ namespace Botzinho.Economy
                     await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking de cpoints.");
                     return;
                 }
+
                 var carregando = "<a:carregandoportal:1492944498605686844>";
                 var loadingMsg = await msg.Channel.SendMessageAsync($"{carregando} Gerando o ranking, aguarde um instante...");
 
