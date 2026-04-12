@@ -170,56 +170,26 @@ namespace Botzinho.Admins
             {
                 using var conn = new NpgsqlConnection(GetConnectionString());
                 conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-                    CREATE TABLE IF NOT EXISTS command_config (
-                        guild_id TEXT,
-                        comando TEXT,
-                        ativado BOOLEAN DEFAULT FALSE,
-                        PRIMARY KEY (guild_id, comando)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
-                        guild_id TEXT,
-                        comando TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, comando, cargo_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_membros_permitidos (
-                        guild_id TEXT,
-                        comando TEXT,
-                        membro_id TEXT,
-                        PRIMARY KEY (guild_id, comando, membro_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
-                        guild_id TEXT,
-                        comando TEXT,
-                        usuario_id TEXT,
-                        PRIMARY KEY (guild_id, comando, usuario_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
-                        guild_id TEXT,
-                        comando TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, comando, cargo_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS configserver_usuarios_permitidos (
-                        guild_id TEXT,
-                        user_id TEXT,
-                        PRIMARY KEY (guild_id, user_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS configserver_cargos_permitidos (
-                        guild_id TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, cargo_id)
-                    );
-                ";
-                cmd.ExecuteNonQuery();
-                Console.WriteLine("Banco PostgreSQL inicializado.");
+
+                string[] queries = {
+            "CREATE TABLE IF NOT EXISTS command_config (guild_id TEXT, comando TEXT, ativado BOOLEAN DEFAULT FALSE, PRIMARY KEY (guild_id, comando))",
+            "CREATE TABLE IF NOT EXISTS command_cargos_permitidos (guild_id TEXT, comando TEXT, cargo_id TEXT, PRIMARY KEY (guild_id, comando, cargo_id))",
+            "CREATE TABLE IF NOT EXISTS command_membros_permitidos (guild_id TEXT, comando TEXT, membro_id TEXT, PRIMARY KEY (guild_id, comando, membro_id))",
+            "CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (guild_id TEXT, comando TEXT, usuario_id TEXT, PRIMARY KEY (guild_id, comando, usuario_id))",
+            "CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (guild_id TEXT, comando TEXT, cargo_id TEXT, PRIMARY KEY (guild_id, comando, cargo_id))",
+            "CREATE TABLE IF NOT EXISTS configserver_usuarios_permitidos (guild_id TEXT, user_id TEXT, PRIMARY KEY (guild_id, user_id))",
+            "CREATE TABLE IF NOT EXISTS configserver_cargos_permitidos (guild_id TEXT, cargo_id TEXT, PRIMARY KEY (guild_id, cargo_id))"
+        };
+
+                foreach (var sql in queries)
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = sql;
+                    cmd.ExecuteNonQuery();
+                }
+                Console.WriteLine("✅ [AdminDB] Tabelas verificadas.");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao inicializar banco: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"❌ [AdminDB] Erro: {ex.Message}"); }
         }
 
         private static void SalvarCommandConfig(ulong guildId, string comando)
