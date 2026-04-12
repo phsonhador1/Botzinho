@@ -25,6 +25,7 @@ var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
+var cassino = new Botzinho.Cassino.CassinoHandler(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
