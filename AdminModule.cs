@@ -19,7 +19,7 @@ namespace Botzinho.Admins
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerUsuariosPermitidos = new();
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerCargosPermitidos = new();
 
-        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "avisar", "clear", "lock" };
+        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "clear", "lock" };
 
         public AdminModule(DiscordSocketClient client)
         {
@@ -568,7 +568,6 @@ namespace Botzinho.Admins
                 .AddOption("Ban", "config_ban", "Configurar /ban")
                 .AddOption("Kick", "config_kick", "Configurar /kick")
                 .AddOption("Mute", "config_mute", "Configurar /mute")
-                .AddOption("Avisar", "config_avisar", "Configurar /avisar")
                 .AddOption("Clear", "config_clear", "Configurar /clear")
                 .AddOption("Lock/Unlock", "config_lock", "Configurar /lock e /unlock");
 
