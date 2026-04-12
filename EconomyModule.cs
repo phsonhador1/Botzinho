@@ -764,14 +764,14 @@ namespace Botzinho.Economy
                     await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking de cpoints.");
                     return;
                 }
-
-                var loadingMsg = await msg.Channel.SendMessageAsync("📊 Gerando o ranking, aguarde um instante...");
+                var carregando = "<a:carregandoportal:1492944498605686844>";
+                var loadingMsg = await msg.Channel.SendMessageAsync($"{carregando} Gerando o ranking, aguarde um instante...");
 
                 var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
                 var emojiRoxo = "<:emoji_8:1491910148476899529>";
 
                 string textoPosicao = rankInfo.Rank > 0
-                    ? $"💡 **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints"
+                    ? $"{emojiRoxo} **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints"
                     : "💡 Você ainda não possui cpoints para aparecer no ranking.";
 
                 string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
