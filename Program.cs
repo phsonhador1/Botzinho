@@ -79,15 +79,18 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
 
         if (!AdminModule.PodeUsarEconfigStatic(user))
         {
-            await RespondAsync("voce nao tem permissao para usar este comando.", ephemeral: true);
+            await RespondAsync("❌ Sem permissão.", ephemeral: true);
             return;
         }
+
+        // ISSO RESOLVE O "INTERAÇÃO FALHOU":
+        await DeferAsync();
 
         var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
         var components = AdminModule.CriarMenuPrincipal();
 
-        await RespondAsync(embed: embed, components: components);
-        var msg = await GetOriginalResponseAsync();
+        // Usa FollowupAsync porque usamos Defer antes
+        var msg = await FollowupAsync(embed: embed, components: components);
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
     }
 }
