@@ -21,21 +21,20 @@ namespace Botzinho.Economy
             conn.Open();
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = @"CREATE TABLE IF NOT EXISTS economy_users (
-                    guild_id TEXT, user_id TEXT, saldo BIGINT DEFAULT 0,
-                    ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
-                    PRIMARY KEY (guild_id, user_id));";
-                cmd.ExecuteNonQuery();
-            }
-            // Garante que as colunas de Semanal e Mensal existam no banco do Railway
-            string[] updates = {
-                "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';",
-                "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';"
-            };
-            foreach (var sql in updates)
-            {
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = sql;
+                cmd.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS economy_users (
+                        guild_id TEXT, 
+                        user_id TEXT, 
+                        saldo BIGINT DEFAULT 0, -- Carteira
+                        banco BIGINT DEFAULT 0, -- Banco
+                        ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
+                        PRIMARY KEY (guild_id, user_id)
+                    );
+                    -- Garante que as colunas existam em bancos já criados
+                    ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS banco BIGINT DEFAULT 0;
+                    ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';
+                    ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';
+                ";
                 cmd.ExecuteNonQuery();
             }
         }
@@ -46,6 +45,18 @@ namespace Botzinho.Economy
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT saldo FROM economy_users WHERE guild_id = @gid AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            var result = cmd.ExecuteScalar();
+            return result != null ? (long)result : 0;
+        }
+
+        public static long GetBanco(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT banco FROM economy_users WHERE guild_id = @gid AND user_id = @uid";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             var result = cmd.ExecuteScalar();
@@ -63,6 +74,24 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             cmd.Parameters.AddWithValue("@valor", valor);
             cmd.ExecuteNonQuery();
+        }
+
+        public static bool DepositarTudo(ulong guildId, ulong userId)
+        {
+            var saldoCarteira = GetSaldo(guildId, userId);
+            if (saldoCarteira <= 0) return false;
+
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE economy_users 
+                SET banco = banco + saldo, 
+                    saldo = 0 
+                WHERE guild_id = @gid AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            return cmd.ExecuteNonQuery() > 0;
         }
 
         public static bool RemoverSaldo(ulong guildId, ulong userId, long valor)
@@ -118,7 +147,7 @@ namespace Botzinho.Economy
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT user_id, saldo FROM economy_users WHERE guild_id = @gid AND saldo > 0 ORDER BY saldo DESC LIMIT 10";
+            cmd.CommandText = "SELECT user_id, (saldo + banco) as total FROM economy_users WHERE guild_id = @gid AND (saldo + banco) > 0 ORDER BY total DESC LIMIT 10";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             using var reader = cmd.ExecuteReader();
             while (reader.Read()) list.Add((ulong.Parse(reader.GetString(0)), reader.GetInt64(1)));
@@ -188,6 +217,51 @@ namespace Botzinho.Economy
             using (var stream = File.OpenWrite(path)) data.SaveTo(stream);
             return path;
         }
+
+        // --- IMAGEM DE SALDO (ZSALDO) ATUALIZADA ---
+        public static async Task<string> GerarImagemSaldo(SocketGuildUser user, long carteira, long banco)
+        {
+            int width = 400; int height = 320;
+            using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
+            var canvas = surface.Canvas;
+            var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold) ?? SkiaSharp.SKTypeface.Default;
+
+            canvas.Clear(new SkiaSharp.SKColor(25, 25, 35));
+            // Fundo degradê
+            var bgPaint = new SkiaSharp.SKPaint { Shader = SkiaSharp.SKShader.CreateLinearGradient(new SkiaSharp.SKPoint(0, 0), new SkiaSharp.SKPoint(width, height), new[] { new SkiaSharp.SKColor(25, 25, 35), new SkiaSharp.SKColor(35, 30, 55) }, null, SkiaSharp.SKShaderTileMode.Clamp) };
+            canvas.DrawRoundRect(new SkiaSharp.SKRect(0, 0, width, height), 20, 20, bgPaint);
+
+            // Borda Roxa
+            var borderPaint = new SkiaSharp.SKPaint { Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true, Color = new SkiaSharp.SKColor(80, 0, 80) };
+            canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 20, 20, borderPaint);
+
+            // Nome do usuário
+            var namePaint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.White, TextSize = 20, IsAntialias = true, Typeface = fontBold, TextAlign = SkiaSharp.SKTextAlign.Center };
+            canvas.DrawText(user.DisplayName, width / 2, 125, namePaint);
+
+            // Itens de Saldo
+            DrawItem(canvas, 40, 160, "Carteira", EconomyHelper.FormatarSaldo(carteira) + " cpoints", fontBold, new SkiaSharp.SKColor(80, 200, 120), width);
+            DrawItem(canvas, 40, 210, "Banco", EconomyHelper.FormatarSaldo(banco) + " cpoints", fontBold, new SkiaSharp.SKColor(100, 140, 230), width);
+            DrawItem(canvas, 40, 260, "Total", EconomyHelper.FormatarSaldo(carteira + banco) + " cpoints", fontBold, new SkiaSharp.SKColor(230, 180, 60), width);
+
+            var path = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
+            using (var image = surface.Snapshot())
+            using (var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100))
+            using (var stream = File.OpenWrite(path)) data.SaveTo(stream);
+            return path;
+        }
+
+        private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor, SkiaSharp.SKTypeface fontBold, SkiaSharp.SKColor accentColor, int width)
+        {
+            var itemBg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(38, 38, 48), IsAntialias = true };
+            canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, width - 40, y + 40), 10, 10, itemBg);
+            
+            var barPaint = new SkiaSharp.SKPaint { Color = accentColor, IsAntialias = true };
+            canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 4, y + 40), 2, 2, barPaint);
+
+            canvas.DrawText(label, x + 15, y + 17, new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.White, TextSize = 15, IsAntialias = true, Typeface = fontBold });
+            canvas.DrawText(valor, x + 15, y + 34, new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(170, 170, 180), TextSize = 13, IsAntialias = true });
+        }
     }
 
     public class EconomyHandler
@@ -207,7 +281,7 @@ namespace Botzinho.Economy
                     var content = msg.Content.ToLower().Trim();
                     var guildId = user.Guild.Id;
 
-                    string[] cmds = { "zhelp", "zsaldo", "zdaily", "zdiario", "zsemanal", "zmensal", "zrank", "zpay" };
+                    string[] cmds = { "zhelp", "zsaldo", "zdaily", "zdiario", "zsemanal", "zmensal", "zrank", "zpay", "zdep all" };
                     if (!cmds.Any(c => content == c || content.StartsWith(c + " "))) return;
                     if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 3) return;
                     _cooldowns[user.Id] = DateTime.UtcNow;
@@ -218,51 +292,32 @@ namespace Botzinho.Economy
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_semanal", 168, 220000, 450000, "Semanal");
                     else if (content == "zmensal")
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
-                    else if (content.StartsWith("zpay"))
+                    
+                    // --- COMANDO DEPÓSITO ---
+                    else if (content == "zdep all")
                     {
-                        // 1. Verifica se alguém foi mencionado
-                        if (msg.MentionedUsers.Count == 0)
+                        var carteiraAntes = EconomyHelper.GetSaldo(guildId, user.Id);
+                        if (EconomyHelper.DepositarTudo(guildId, user.Id))
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zpay @usuario [valor]`");
-                            return;
+                            await msg.Channel.SendMessageAsync($"🏦 **Depósito concluído!** {user.Mention}, você guardou `{EconomyHelper.FormatarSaldo(carteiraAntes)}` cpoints no banco.");
                         }
-
-                        // 2. Busca o alvo (Cache + REST API para não dar erro se estiver offline)
-                        var mencionado = msg.MentionedUsers.First();
-                        IGuildUser alvo = user.Guild.GetUser(mencionado.Id);
-                        if (alvo == null)
+                        else
                         {
-                            try { alvo = await ((IGuild)user.Guild).GetUserAsync(mencionado.Id); } catch { }
+                            await msg.Channel.SendMessageAsync($"❌ {user.Mention}, sua carteira está vazia.");
                         }
-
-                        // --- SEGURANÇA ---
-                        if (alvo == null) { await msg.Channel.SendMessageAsync("❌ Usuário não encontrado."); return; }
-                        if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("❌ Você não pode transferir para si mesmo."); return; }
-                        if (alvo.IsBot) { await msg.Channel.SendMessageAsync("❌ Você não pode transferir para um bot."); return; }
-
-                        // 3. Processa o valor (Suporta k e m)
-                        string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        string valorTexto = partes.Last();
-                        long valor = 0;
-
-                        if (valorTexto.EndsWith("k")) { if (double.TryParse(valorTexto.Replace("k", ""), out var vk)) valor = (long)(vk * 1000); }
-                        else if (valorTexto.EndsWith("m")) { if (double.TryParse(valorTexto.Replace("m", ""), out var vm)) valor = (long)(vm * 1000000); }
-                        else long.TryParse(valorTexto, out valor);
-
-                        if (valor <= 0) { await msg.Channel.SendMessageAsync("❌ Valor de transferência inválido."); return; }
-
-                        // 4. Executa no Banco de Dados
-                        if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
-                        {
-                            await msg.Channel.SendMessageAsync("❌ Você não tem saldo suficiente para essa transferência.");
-                            return;
-                        }
-
-                        EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
-
-                        // 5. RESPOSTA NORMAL NO CHAT
-                        await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Transferência concluída!** {user.Mention} Transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                     }
+
+                    // --- COMANDO SALDO (ZSALDO) ---
+                    else if (content == "zsaldo")
+                    {
+                        var carteira = EconomyHelper.GetSaldo(guildId, user.Id);
+                        var banco = EconomyHelper.GetBanco(guildId, user.Id);
+                        var path = await EconomyImageHelper.GerarImagemSaldo(user, carteira, banco);
+                        await msg.Channel.SendFileAsync(path, "");
+                        File.Delete(path);
+                    }
+
+                    // --- COMANDO RANK ---
                     else if (content == "zrank")
                     {
                         var loading = await msg.Channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Gerando o ranking, aguarde um instante...**");
@@ -291,9 +346,9 @@ namespace Botzinho.Economy
                 return;
             }
             long ganho = new Random().Next(min, max + 1);
-            EconomyHelper.AdicionarSaldo(guildId, user.Id, ganho);
+            EconomyHelper.AdicionarSaldo(guildId, user.Id, ganho); // Vai direto para saldo (CARTEIRA)
             EconomyHelper.SetUltimoTempo(guildId, user.Id, coluna);
-            await msg.Channel.SendMessageAsync($"✅ {user.Mention}, você ganhou `{EconomyHelper.FormatarSaldo(ganho)}` cpoints no **{nome}**!");
+            await msg.Channel.SendMessageAsync($"✅ {user.Mention}, você ganhou `{EconomyHelper.FormatarSaldo(ganho)}` cpoints no **{nome}**! Eles estão na sua **carteira**.");
         }
     }
 }
