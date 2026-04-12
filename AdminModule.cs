@@ -596,6 +596,7 @@ namespace Botzinho.Admins
 
         private async Task HandleSelectMenu(SocketMessageComponent component)
         {
+
             var user = component.User as SocketGuildUser;
             if (user == null) return;
 
@@ -780,15 +781,13 @@ namespace Botzinho.Admins
                     await AtualizarPainel(guild, editCmd);
                     break;
             }
-            // No AdminModule.cs, dentro do HandleSelectMenu
-
             if (customId == "help_menu")
             {
                 if (selected == "help_eco")
                 {
                     var embedEco = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl())
-                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl())
+                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(
                             "• `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
                             "• ↪ **zsaldo**:\n" +
@@ -805,17 +804,38 @@ namespace Botzinho.Admins
                             "  ◦ (Staff) Remove saldo de um usuário."
                         )
                         .WithFooter("Use os comandos com sabedoria!")
-                        .WithColor(new Color(120, 80, 220)) // Roxo Zoe
+                        .WithColor(new Color(120, 80, 220))
                         .Build();
 
                     await component.UpdateAsync(m => {
                         m.Embed = embedEco;
-                        // Opcional: m.Components = (Botão de voltar se quiser)
+                        // Aqui resolve o erro: Reconstruímos os componentes da mensagem
+                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
                     });
                     return;
                 }
 
-                // Adicione aqui também as condições para "help_mod" e "help_admin" seguindo o mesmo estilo
+                if (selected == "help_mod")
+                {
+                    var embedMod = new EmbedBuilder()
+                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithDescription(
+                            "• ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
+                            "• ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
+                            "• ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
+                            "• ↪ **/clear [quantidade]**: Limpa mensagens do chat.\n" +
+                            "• ↪ **/nuke**: Redefine o canal atual."
+                        )
+                        .WithColor(new Color(120, 80, 220))
+                        .Build();
+
+                    await component.UpdateAsync(m => {
+                        m.Embed = embedMod;
+                        // Aqui também, para manter o menu e botões ativos
+                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                    });
+                    return;
+                }
             }
         }
     }
