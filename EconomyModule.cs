@@ -19,8 +19,7 @@ namespace Botzinho.Economy
         {
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
-            using (var cmd = conn.CreateCommand())
-            {
+            using (var cmd = conn.CreateCommand()) {
                 cmd.CommandText = @"CREATE TABLE IF NOT EXISTS economy_users (
                     guild_id TEXT, user_id TEXT, saldo BIGINT DEFAULT 0,
                     ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
@@ -31,8 +30,7 @@ namespace Botzinho.Economy
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';",
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';"
             };
-            foreach (var sql in updates)
-            {
+            foreach (var sql in updates) {
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = sql;
                 cmd.ExecuteNonQuery();
@@ -88,15 +86,13 @@ namespace Botzinho.Economy
             cmd.ExecuteNonQuery();
         }
 
-        public static string FormatarSaldo(long valor)
-        {
+        public static string FormatarSaldo(long valor) {
             if (valor >= 1000000) return $"{valor / 1000000.0:F2}M";
             if (valor >= 1000) return $"{valor / 1000.0:F2}K";
             return valor.ToString();
         }
 
-        public static List<(ulong UserId, long Saldo)> GetTop10(ulong guildId)
-        {
+        public static List<(ulong UserId, long Saldo)> GetTop10(ulong guildId) {
             var list = new List<(ulong, long)>();
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
@@ -117,7 +113,7 @@ namespace Botzinho.Economy
             using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
             var canvas = surface.Canvas;
             var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold) ?? SkiaSharp.SKTypeface.Default;
-
+            
             canvas.Clear(new SkiaSharp.SKColor(20, 10, 30));
             var titleWhite = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.White, TextSize = 45, Typeface = fontBold, IsAntialias = true };
             var titleGold = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(255, 215, 0), TextSize = 45, Typeface = fontBold, IsAntialias = true };
@@ -130,7 +126,7 @@ namespace Botzinho.Economy
                 var userData = topUsers[i];
                 IUser member = guild.GetUser(userData.UserId);
                 if (member == null) { try { member = await ((IGuild)guild).GetUserAsync(userData.UserId); } catch { } }
-
+                
                 string username = member?.Username ?? "Desconhecido";
                 if (username.Length > 12) username = username.Substring(0, 10) + "..";
 
@@ -142,11 +138,9 @@ namespace Botzinho.Economy
                 var pillPaint = new SkiaSharp.SKPaint { Color = pillColor, IsAntialias = true };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 380, y + 90), 45, 45, pillPaint);
 
-                try
-                {
+                try {
                     var url = member?.GetAvatarUrl(ImageFormat.Png, 128) ?? member?.GetDefaultAvatarUrl();
-                    if (url != null)
-                    {
+                    if (url != null) {
                         var bytes = await httpClient.GetByteArrayAsync(url);
                         using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
                         var rect = new SkiaSharp.SKRect(x + 12, y + 12, x + 78, y + 78);
@@ -156,8 +150,7 @@ namespace Botzinho.Economy
                         var border = new SkiaSharp.SKPaint { Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 3, Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, IsAntialias = true };
                         canvas.DrawOval(x + 45f, y + 45f, 33f, 33f, border);
                     }
-                }
-                catch { }
+                } catch { }
 
                 var textPaint = new SkiaSharp.SKPaint { Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, TextSize = 24, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(username, x + 95, y + 55, textPaint);
@@ -183,8 +176,7 @@ namespace Botzinho.Economy
         private Task HandleMessage(SocketMessage msg)
         {
             _ = Task.Run(async () => {
-                try
-                {
+                try {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; if (user == null) return;
                     var content = msg.Content.ToLower().Trim();
@@ -201,27 +193,26 @@ namespace Botzinho.Economy
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_semanal", 168, 220000, 450000, "Semanal");
                     else if (content == "zmensal")
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
-                    else if (content == "zrank")
-                    {
-                        await Task.Delay(3000);
+                    else if (content == "zrank") {
                         // --- MENSAGEM DE CARREGAMENTO ---
                         var loading = await msg.Channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Gerando o ranking, aguarde um instante...**");
+                        
+                        // DELAY DE 3 SEGUNDOS PARA DAR ESTILO
+                        await Task.Delay(3000); 
 
                         var top = EconomyHelper.GetTop10(guildId);
-                        if (top.Count == 0)
-                        {
-                            await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio.");
-                            return;
+                        if (top.Count == 0) { 
+                            await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio."); 
+                            return; 
                         }
 
                         var path = await EconomyImageHelper.GerarImagemRank(user.Guild, top);
-                        await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**");
-
-                        try { await loading.DeleteAsync(); } catch { } // Deleta após enviar a imagem
+                        await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**"); 
+                        
+                        try { await loading.DeleteAsync(); } catch { }
                         File.Delete(path);
                     }
-                }
-                catch (Exception ex) { Console.WriteLine($"[Eco] {ex.Message}"); }
+                } catch (Exception ex) { Console.WriteLine($"[Eco] {ex.Message}"); }
             });
             return Task.CompletedTask;
         }
@@ -230,8 +221,7 @@ namespace Botzinho.Economy
         {
             var ultimo = EconomyHelper.GetUltimoTempo(guildId, user.Id, coluna);
             var tempoPassado = DateTime.UtcNow - ultimo;
-            if (tempoPassado.TotalHours < horas)
-            {
+            if (tempoPassado.TotalHours < horas) {
                 var faltam = TimeSpan.FromHours(horas) - tempoPassado;
                 await msg.Channel.SendMessageAsync($"❌ {user.Mention}, volte em `{faltam.Days}d {faltam.Hours}h {faltam.Minutes}m` para o {nome}.");
                 return;
