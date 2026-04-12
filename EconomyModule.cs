@@ -19,8 +19,6 @@ namespace Botzinho.Economy
         {
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
-            
-            // 1. Cria a tabela base
             using (var cmd = conn.CreateCommand()) {
                 cmd.CommandText = @"CREATE TABLE IF NOT EXISTS economy_users (
                     guild_id TEXT, user_id TEXT, saldo BIGINT DEFAULT 0,
@@ -28,19 +26,15 @@ namespace Botzinho.Economy
                     PRIMARY KEY (guild_id, user_id));";
                 cmd.ExecuteNonQuery();
             }
-
-            // 2. Adiciona colunas novas uma por uma (Garante que o zsemanal e zmensal funcionem)
             string[] updates = {
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';",
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';"
             };
-
             foreach (var sql in updates) {
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = sql;
                 cmd.ExecuteNonQuery();
             }
-            Console.WriteLine("✅ [Banco] Economia e Colunas sincronizadas.");
         }
 
         public static long GetSaldo(ulong guildId, ulong userId)
@@ -144,7 +138,6 @@ namespace Botzinho.Economy
                 var pillPaint = new SkiaSharp.SKPaint { Color = pillColor, IsAntialias = true };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 380, y + 90), 45, 45, pillPaint);
 
-                // Avatar Redondo
                 try {
                     var url = member?.GetAvatarUrl(ImageFormat.Png, 128) ?? member?.GetDefaultAvatarUrl();
                     if (url != null) {
@@ -201,9 +194,20 @@ namespace Botzinho.Economy
                     else if (content == "zmensal")
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
                     else if (content == "zrank") {
+                        // --- MENSAGEM DE CARREGAMENTO ---
+                        var loading = await msg.Channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Gerando o ranking, aguarde um instante...**");
+                        
                         var top = EconomyHelper.GetTop10(guildId);
+                        if (top.Count == 0) { 
+                            await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio."); 
+                            return; 
+                        }
+
                         var path = await EconomyImageHelper.GerarImagemRank(user.Guild, top);
-                        await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**"); File.Delete(path);
+                        await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**"); 
+                        
+                        try { await loading.DeleteAsync(); } catch { } // Deleta após enviar a imagem
+                        File.Delete(path);
                     }
                 } catch (Exception ex) { Console.WriteLine($"[Eco] {ex.Message}"); }
             });
