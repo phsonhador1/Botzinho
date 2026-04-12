@@ -582,7 +582,7 @@ namespace Botzinho.Economy
             else if (content.StartsWith("zpay"))
             {
                 if (msg.MentionedUsers.Count == 0)
-                { await msg.Channel.SendMessageAsync("use: `zpagar @usuario valor`"); return; }
+                { await msg.Channel.SendMessageAsync("use: `zpay @usuario valor`"); return; }
 
                 var alvo = user.Guild.GetUser(msg.MentionedUsers.First().Id);
                 if (alvo == null) { await msg.Channel.SendMessageAsync("usuario nao encontrado."); return; }
