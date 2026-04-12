@@ -27,6 +27,7 @@ namespace Botzinho.Economy
                     PRIMARY KEY (guild_id, user_id));";
                 cmd.ExecuteNonQuery();
             }
+            // Garante que as colunas de Semanal e Mensal existam no banco do Railway
             string[] updates = {
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';",
                 "ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';"
@@ -62,6 +63,22 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             cmd.Parameters.AddWithValue("@valor", valor);
             cmd.ExecuteNonQuery();
+        }
+
+        public static bool RemoverSaldo(ulong guildId, ulong userId, long valor)
+        {
+            var saldoAtual = GetSaldo(guildId, userId);
+            if (saldoAtual < valor) return false;
+            
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE economy_users SET saldo = saldo - @valor WHERE guild_id = @gid AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@valor", valor);
+            cmd.ExecuteNonQuery();
+            return true;
         }
 
         public static DateTime GetUltimoTempo(ulong guildId, ulong userId, string coluna)
@@ -156,8 +173,7 @@ namespace Botzinho.Economy
                         var border = new SkiaSharp.SKPaint { Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 3, Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, IsAntialias = true };
                         canvas.DrawOval(x + 45f, y + 45f, 33f, 33f, border);
                     }
-                }
-                catch { }
+                } catch { }
 
                 var textPaint = new SkiaSharp.SKPaint { Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, TextSize = 24, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(username, x + 95, y + 55, textPaint);
@@ -190,7 +206,7 @@ namespace Botzinho.Economy
                     var content = msg.Content.ToLower().Trim();
                     var guildId = user.Guild.Id;
 
-                    string[] cmds = { "zhelp", "zsaldo", "zdaily", "zdiario", "zsemanal", "zmensal", "zrank" };
+                    string[] cmds = { "zhelp", "zsaldo", "zdaily", "zdiario", "zsemanal", "zmensal", "zrank", "zpay" };
                     if (!cmds.Any(c => content == c || content.StartsWith(c + " "))) return;
                     if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 3) return;
                     _cooldowns[user.Id] = DateTime.UtcNow;
@@ -201,24 +217,48 @@ namespace Botzinho.Economy
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_semanal", 168, 220000, 450000, "Semanal");
                     else if (content == "zmensal")
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
+                    else if (content.StartsWith("zpay"))
+                    {
+                        if (msg.MentionedUsers.Count == 0) { await msg.Channel.SendMessageAsync("❓ **Como usar:** `zpay @usuario [valor]`"); return; }
+                        
+                        var mencionado = msg.MentionedUsers.First();
+                        IGuildUser alvo = user.Guild.GetUser(mencionado.Id);
+                        if (alvo == null) { try { alvo = await ((IGuild)user.Guild).GetUserAsync(mencionado.Id); } catch { } }
+
+                        if (alvo == null) { await msg.Channel.SendMessageAsync("❌ Usuário não encontrado."); return; }
+                        if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("❌ Você não pode pagar a si mesmo!"); return; }
+                        if (alvo.IsBot) { await msg.Channel.SendMessageAsync("❌ Você não pode transferir para um bot."); return; }
+
+                        string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        string valorTexto = partes.Last();
+                        long valor = 0;
+
+                        if (valorTexto.EndsWith("k")) { if (double.TryParse(valorTexto.Replace("k", ""), out var vk)) valor = (long)(vk * 1000); }
+                        else if (valorTexto.EndsWith("m")) { if (double.TryParse(valorTexto.Replace("m", ""), out var vm)) valor = (long)(vm * 1000000); }
+                        else long.TryParse(valorTexto, out valor);
+
+                        if (valor <= 0) { await msg.Channel.SendMessageAsync("❌ Informe um valor válido."); return; }
+                        if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor)) { await msg.Channel.SendMessageAsync("❌ Saldo insuficiente."); return; }
+
+                        EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
+                        
+                        var eb = new EmbedBuilder()
+                            .WithAuthor("Transferência", "https://cdn-icons-png.flaticon.com/512/116/116453.png")
+                            .WithDescription($@"✅ **Sucesso!**
+                            💸 **De:** {user.Mention}
+                            👤 **Para:** {alvo.Mention}
+                            💰 **Valor:** `{EconomyHelper.FormatarSaldo(valor)}` cpoints")
+                            .WithColor(Color.Green).WithTimestamp(DateTime.Now);
+                        await msg.Channel.SendMessageAsync(embed: eb.Build());
+                    }
                     else if (content == "zrank")
                     {
-                        // --- MENSAGEM DE CARREGAMENTO ---
                         var loading = await msg.Channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Gerando o ranking, aguarde um instante...**");
-
-                        // DELAY DE 3 SEGUNDOS PARA DAR ESTILO
                         await Task.Delay(3000);
-
                         var top = EconomyHelper.GetTop10(guildId);
-                        if (top.Count == 0)
-                        {
-                            await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio.");
-                            return;
-                        }
-
+                        if (top.Count == 0) { await loading.ModifyAsync(x => x.Content = "❌ O ranking está vazio."); return; }
                         var path = await EconomyImageHelper.GerarImagemRank(user.Guild, top);
                         await msg.Channel.SendFileAsync(path, "🏆 **Top Ricos do Servidor**");
-
                         try { await loading.DeleteAsync(); } catch { }
                         File.Delete(path);
                     }
