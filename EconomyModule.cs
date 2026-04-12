@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
-using System.Net.Http; // Necessário para baixar os avatares
+using System.Net.Http;
 
 namespace Botzinho.Economy
 {
@@ -108,13 +108,12 @@ namespace Botzinho.Economy
 
         public static string FormatarSaldo(long valor)
         {
-            if (valor >= 1000000000) return $"{valor / 1000000000.0:F2}B"; // Bilhões
-            if (valor >= 1000000) return $"{valor / 1000000.0:F2}M";       // Milhões
-            if (valor >= 1000) return $"{valor / 1000.0:F2}K";             // Milhares
+            if (valor >= 1000000000) return $"{valor / 1000000000.0:F2}B";
+            if (valor >= 1000000) return $"{valor / 1000000.0:F2}M";
+            if (valor >= 1000) return $"{valor / 1000.0:F2}K";
             return valor.ToString();
         }
 
-        // NOVO: Funções para puxar os dados do Ranking
         public static List<(ulong UserId, long Saldo)> GetTop10(ulong guildId)
         {
             var list = new List<(ulong, long)>();
@@ -144,13 +143,13 @@ namespace Botzinho.Economy
                 ) ranked WHERE user_id = @uid";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
-            
+
             using var reader = cmd.ExecuteReader();
             if (reader.Read())
             {
                 return (reader.GetInt32(0), reader.GetInt64(1));
             }
-            return (0, 0); // Não está no rank
+            return (0, 0);
         }
     }
 
@@ -187,7 +186,7 @@ namespace Botzinho.Economy
             borderPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
                 new SkiaSharp.SKPoint(0, 0),
                 new SkiaSharp.SKPoint(width, height),
-                new[] { new SkiaSharp.SKColor(120, 80, 220), new SkiaSharp.SKColor(80, 60, 180) },
+                new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) }, // Nova cor roxa escuro
                 null,
                 SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 20, 20, borderPaint);
@@ -216,7 +215,7 @@ namespace Botzinho.Economy
 
                     var glowPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(120, 80, 220, 80),
+                        Color = new SkiaSharp.SKColor(80, 0, 80, 80), // Glow roxo escuro
                         Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 6,
                         IsAntialias = true,
@@ -226,7 +225,7 @@ namespace Botzinho.Economy
 
                     var avatarBorderPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(120, 80, 220),
+                        Color = new SkiaSharp.SKColor(80, 0, 80), // Borda do avatar
                         Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 3,
                         IsAntialias = true
@@ -250,7 +249,7 @@ namespace Botzinho.Economy
             sepPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
                 new SkiaSharp.SKPoint(30, 0),
                 new SkiaSharp.SKPoint(width - 30, 0),
-                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(120, 80, 220), new SkiaSharp.SKColor(60, 60, 70, 0) },
+                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) }, // Linha divisória
                 null,
                 SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawLine(30, 140, width - 30, 140, sepPaint);
@@ -306,7 +305,7 @@ namespace Botzinho.Economy
             borderPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
                 new SkiaSharp.SKPoint(0, 0),
                 new SkiaSharp.SKPoint(width, 0),
-                new[] { new SkiaSharp.SKColor(180, 100, 255), new SkiaSharp.SKColor(100, 60, 200) },
+                new[] { new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(50, 0, 50) }, // Nova cor
                 null,
                 SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRoundRect(new SkiaSharp.SKRect(2, 2, width - 2, height - 2), 16, 16, borderPaint);
@@ -335,7 +334,7 @@ namespace Botzinho.Economy
 
                     var avatarBorderPaint = new SkiaSharp.SKPaint
                     {
-                        Color = new SkiaSharp.SKColor(180, 100, 255),
+                        Color = new SkiaSharp.SKColor(80, 0, 80), // Borda do avatar
                         Style = SkiaSharp.SKPaintStyle.Stroke,
                         StrokeWidth = 2,
                         IsAntialias = true
@@ -347,7 +346,7 @@ namespace Botzinho.Economy
 
             var titlePaint = new SkiaSharp.SKPaint
             {
-                Color = new SkiaSharp.SKColor(180, 100, 255),
+                Color = new SkiaSharp.SKColor(80, 0, 80), // Título Daily
                 TextSize = 20,
                 IsAntialias = true,
                 Typeface = fontBold
@@ -367,7 +366,7 @@ namespace Botzinho.Economy
             sepPaint.Shader = SkiaSharp.SKShader.CreateLinearGradient(
                 new SkiaSharp.SKPoint(20, 0),
                 new SkiaSharp.SKPoint(width - 20, 0),
-                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(180, 100, 255), new SkiaSharp.SKColor(60, 60, 70, 0) },
+                new[] { new SkiaSharp.SKColor(60, 60, 70, 0), new SkiaSharp.SKColor(80, 0, 80), new SkiaSharp.SKColor(60, 60, 70, 0) },
                 null,
                 SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawLine(20, 70, width - 20, 70, sepPaint);
@@ -444,7 +443,6 @@ namespace Botzinho.Economy
             return path;
         }
 
-        // NOVO: Gerador da imagem do Rank
         public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Saldo)> topUsers)
         {
             int width = 850;
@@ -456,17 +454,14 @@ namespace Botzinho.Economy
             var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold) ?? SkiaSharp.SKTypeface.Default;
             var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans") ?? SkiaSharp.SKTypeface.Default;
 
-            // Fundo escuro
             var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(20, 10, 30), IsAntialias = true };
             canvas.DrawRect(new SkiaSharp.SKRect(0, 0, width, height), bgPaint);
 
-            // Cabeçalho "Top Coins"
             var titleWhite = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.White, TextSize = 40, Typeface = fontBold, IsAntialias = true };
             var titleGold = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(255, 215, 0), TextSize = 40, Typeface = fontBold, IsAntialias = true };
             canvas.DrawText("Top", 40, 80, titleWhite);
             canvas.DrawText("Coins", 125, 80, titleGold);
 
-            // Baixar avatares em paralelo para ser rápido
             var avatares = new Dictionary<ulong, byte[]>();
             using var httpClient = new HttpClient();
             var tasks = topUsers.Select(async u =>
@@ -485,13 +480,12 @@ namespace Botzinho.Economy
             });
             await Task.WhenAll(tasks);
 
-            // Configurações do Grid
             int startX = 40;
             int startY = 120;
             int cardWidth = 370;
             int cardHeight = 85;
-            int marginX = 400; // Distância entre as colunas
-            int marginY = 105; // Distância entre as linhas
+            int marginX = 400;
+            int marginY = 105;
 
             for (int i = 0; i < topUsers.Count; i++)
             {
@@ -505,24 +499,20 @@ namespace Botzinho.Economy
                 var user = topUsers[i];
                 var member = guild.GetUser(user.UserId);
                 string username = member?.Username ?? "Desconhecido";
-                
-                // Truncar nome se for muito longo
+
                 if (username.Length > 12) username = username.Substring(0, 10) + "...";
 
-                // Cores dos Cards (Ouro, Prata, Bronze, Roxo)
                 SkiaSharp.SKColor bgColor;
                 SkiaSharp.SKColor textColor;
 
                 if (rank == 1) { bgColor = new SkiaSharp.SKColor(255, 180, 0); textColor = SkiaSharp.SKColors.Black; }
                 else if (rank == 2) { bgColor = new SkiaSharp.SKColor(220, 220, 230); textColor = SkiaSharp.SKColors.Black; }
                 else if (rank == 3) { bgColor = new SkiaSharp.SKColor(255, 120, 0); textColor = SkiaSharp.SKColors.Black; }
-                else { bgColor = new SkiaSharp.SKColor(140, 80, 190); textColor = SkiaSharp.SKColors.White; }
+                else { bgColor = new SkiaSharp.SKColor(80, 0, 80); textColor = SkiaSharp.SKColors.White; } // Pílulas 4-10 em roxo 80,0,80
 
-                // Desenhar Pílula (Card)
                 var cardPaint = new SkiaSharp.SKPaint { Color = bgColor, IsAntialias = true };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + cardWidth, y + cardHeight), cardHeight / 2, cardHeight / 2, cardPaint);
 
-                // Desenhar Avatar
                 int avatarSize = 65;
                 int avatarX = x + 10;
                 int avatarY = y + 10;
@@ -541,22 +531,18 @@ namespace Botzinho.Economy
                         canvas.DrawBitmap(avatarBitmap, avatarRect);
                         canvas.Restore();
 
-                        // Borda do avatar
                         var borderPaint = new SkiaSharp.SKPaint { Color = textColor, Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 3, IsAntialias = true };
                         canvas.DrawOval(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, avatarSize / 2, borderPaint);
                     }
                     catch { }
                 }
 
-                // Desenhar Nome
                 var namePaint = new SkiaSharp.SKPaint { Color = textColor, TextSize = 22, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(username, x + 90, y + 50, namePaint);
 
-                // Desenhar Valor (Alinhado à direita)
                 var valuePaint = new SkiaSharp.SKPaint { Color = textColor, TextSize = 22, Typeface = fontNormal, IsAntialias = true, TextAlign = SkiaSharp.SKTextAlign.Right };
                 canvas.DrawText(EconomyHelper.FormatarSaldo(user.Saldo), x + cardWidth - 25, y + 50, valuePaint);
 
-                // Desenhar Número do Rank (em cima do card, à esquerda)
                 var rankNumPaint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.LightGray, TextSize = 14, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(rank.ToString(), x, y - 5, rankNumPaint);
             }
@@ -688,7 +674,7 @@ namespace Botzinho.Economy
                                      "↪ **Selecione uma categoria abaixo** para ver os comandos disponíveis até o momento.")
                     .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                     .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Discord.Color(120, 80, 220))
+                    .WithColor(new Discord.Color(80, 0, 80)) // Cor do embed alterada
                     .Build();
 
                 var menu = new SelectMenuBuilder()
@@ -772,32 +758,29 @@ namespace Botzinho.Economy
             else if (content == "zrank" || content == "ztop coins")
             {
                 var top10 = EconomyHelper.GetTop10(guildId);
-                
+
                 if (top10.Count == 0)
                 {
                     await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking de cpoints.");
                     return;
                 }
 
-                // Mensagem de "loading" enquanto a imagem é gerada
                 var loadingMsg = await msg.Channel.SendMessageAsync("📊 Gerando o ranking, aguarde um instante...");
 
                 var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
-                var emojiRoxo = "<:emoji_8:1491910148476899529>"; // Ajuste para o seu emoji do bot
-                
-                string textoPosicao = rankInfo.Rank > 0 
-                    ? $"💡 **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints" 
+                var emojiRoxo = "<:emoji_8:1491910148476899529>";
+
+                string textoPosicao = rankInfo.Rank > 0
+                    ? $"💡 **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints"
                     : "💡 Você ainda não possui cpoints para aparecer no ranking.";
 
                 string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
 
-                // Gera a imagem profissional com SkiaSharp
                 var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
 
-                // Envia a imagem final e deleta a mensagem de loading
                 await msg.Channel.SendFileAsync(imagemPath, textoMensagem);
                 await loadingMsg.DeleteAsync();
-                
+
                 File.Delete(imagemPath);
             }
         }
