@@ -225,7 +225,7 @@ namespace Botzinho.Cassino
             {
                 EconomyHelper.AdicionarSaldo(guildId, userId, premio);
                 embedFim.WithColor(Color.Green)
-                    .WithDescription($@"<a:7moneyz:1493015410637930508> **Parabéns! O sorte passou por aqui!**
+                    .WithDescription($@"<a:7moneyz:1493015410637930508> **Parabéns! A sorte passou por aqui!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 💰 Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints");
