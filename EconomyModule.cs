@@ -69,7 +69,7 @@ namespace Botzinho.Economy
         {
             var saldoAtual = GetSaldo(guildId, userId);
             if (saldoAtual < valor) return false;
-            
+
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
@@ -173,7 +173,8 @@ namespace Botzinho.Economy
                         var border = new SkiaSharp.SKPaint { Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 3, Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, IsAntialias = true };
                         canvas.DrawOval(x + 45f, y + 45f, 33f, 33f, border);
                     }
-                } catch { }
+                }
+                catch { }
 
                 var textPaint = new SkiaSharp.SKPaint { Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, TextSize = 24, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(username, x + 95, y + 55, textPaint);
@@ -219,16 +220,27 @@ namespace Botzinho.Economy
                         await ExecutarRecompensa(msg, user, guildId, "ultimo_mensal", 720, 100000, 550000, "Mensal");
                     else if (content.StartsWith("zpay"))
                     {
-                        if (msg.MentionedUsers.Count == 0) { await msg.Channel.SendMessageAsync("❓ **Como usar:** `zpay @usuario [valor]`"); return; }
-                        
+                        // 1. Verifica se alguém foi mencionado
+                        if (msg.MentionedUsers.Count == 0)
+                        {
+                            await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zpay @usuario [valor]`");
+                            return;
+                        }
+
+                        // 2. Busca o alvo (Cache + REST API para não dar erro se estiver offline)
                         var mencionado = msg.MentionedUsers.First();
                         IGuildUser alvo = user.Guild.GetUser(mencionado.Id);
-                        if (alvo == null) { try { alvo = await ((IGuild)user.Guild).GetUserAsync(mencionado.Id); } catch { } }
+                        if (alvo == null)
+                        {
+                            try { alvo = await ((IGuild)user.Guild).GetUserAsync(mencionado.Id); } catch { }
+                        }
 
+                        // --- SEGURANÇA ---
                         if (alvo == null) { await msg.Channel.SendMessageAsync("❌ Usuário não encontrado."); return; }
-                        if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("❌ Você não pode pagar a si mesmo!"); return; }
+                        if (alvo.Id == user.Id) { await msg.Channel.SendMessageAsync("❌ Você não pode transferir para si mesmo."); return; }
                         if (alvo.IsBot) { await msg.Channel.SendMessageAsync("❌ Você não pode transferir para um bot."); return; }
 
+                        // 3. Processa o valor (Suporta k e m)
                         string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         string valorTexto = partes.Last();
                         long valor = 0;
@@ -237,19 +249,19 @@ namespace Botzinho.Economy
                         else if (valorTexto.EndsWith("m")) { if (double.TryParse(valorTexto.Replace("m", ""), out var vm)) valor = (long)(vm * 1000000); }
                         else long.TryParse(valorTexto, out valor);
 
-                        if (valor <= 0) { await msg.Channel.SendMessageAsync("❌ Informe um valor válido."); return; }
-                        if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor)) { await msg.Channel.SendMessageAsync("❌ Saldo insuficiente."); return; }
+                        if (valor <= 0) { await msg.Channel.SendMessageAsync("❌ Valor de transferência inválido."); return; }
+
+                        // 4. Executa no Banco de Dados
+                        if (!EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
+                        {
+                            await msg.Channel.SendMessageAsync("❌ Você não tem saldo suficiente para essa transferência.");
+                            return;
+                        }
 
                         EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valor);
-                        
-                        var eb = new EmbedBuilder()
-                            .WithAuthor("Transferência", "https://cdn-icons-png.flaticon.com/512/116/116453.png")
-                            .WithDescription($@"✅ **Sucesso!**
-                            💸 **De:** {user.Mention}
-                            👤 **Para:** {alvo.Mention}
-                            💰 **Valor:** `{EconomyHelper.FormatarSaldo(valor)}` cpoints")
-                            .WithColor(Color.Green).WithTimestamp(DateTime.Now);
-                        await msg.Channel.SendMessageAsync(embed: eb.Build());
+
+                        // 5. RESPOSTA NORMAL NO CHAT
+                        await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Transferência concluída!** {user.Mention} Transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                     }
                     else if (content == "zrank")
                     {
