@@ -714,7 +714,8 @@ namespace Botzinho.Economy
 
                     // Aviso normal de cooldown
                     int restante = 5 - (int)tempoPassado;
-                    var aviso = await msg.Channel.SendMessageAsync($"⏳ Calma lá, {user.Mention}! Aguarde `{restante}s` para usar outro comando.");
+                    var emojiteste = "<a:teste:1490570407307378712>";
+                    var aviso = await msg.Channel.SendMessageAsync($"{emojiteste} Calma lá, {user.Mention}! Aguarde `{restante}s` para usar outro comando.");
 
                     _ = Task.Run(async () =>
                     {
