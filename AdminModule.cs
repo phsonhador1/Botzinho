@@ -781,8 +781,14 @@ namespace Botzinho.Admins
                     await AtualizarPainel(guild, editCmd);
                     break;
             }
+            // No AdminModule.cs, dentro do método HandleSelectMenu
+
             if (customId == "help_menu")
             {
+                // Define os ícones para os botões conforme a imagem do seu servidor
+                var emoteMod = Emote.Parse("<:suporte:1492662681130373201>");
+                var emoteEco = Emote.Parse("<:botportal:1492661012682248212>");
+
                 if (selected == "help_eco")
                 {
                     var embedEco = new EmbedBuilder()
@@ -809,7 +815,7 @@ namespace Botzinho.Admins
 
                     await component.UpdateAsync(m => {
                         m.Embed = embedEco;
-                        // Aqui resolve o erro: Reconstruímos os componentes da mensagem
+                        // Mantém o menu e os botões ativos para o usuário navegar
                         m.Components = ComponentBuilder.FromMessage(component.Message).Build();
                     });
                     return;
@@ -818,12 +824,12 @@ namespace Botzinho.Admins
                 if (selected == "help_mod")
                 {
                     var embedMod = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl())
                         .WithDescription(
                             "• ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
                             "• ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
                             "• ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
-                            "• ↪ **/clear [quantidade]**: Limpa mensagens do chat.\n" +
+                            "• ↪ **/clear [quantidade]**: Limpa mensagens.\n" +
                             "• ↪ **/nuke**: Redefine o canal atual."
                         )
                         .WithColor(new Color(120, 80, 220))
@@ -831,7 +837,6 @@ namespace Botzinho.Admins
 
                     await component.UpdateAsync(m => {
                         m.Embed = embedMod;
-                        // Aqui também, para manter o menu e botões ativos
                         m.Components = ComponentBuilder.FromMessage(component.Message).Build();
                     });
                     return;
