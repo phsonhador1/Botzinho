@@ -1,4 +1,3 @@
-
 using Discord;
 using Discord.WebSocket;
 using Botzinho.Economy;
@@ -178,7 +177,7 @@ Se decidir não continuar, clique no ❌ para desistir da aposta.")
             string emojiCor = corSorteada switch { "branco" => "⚪", "preto" => "⚫", _ => "🔴" };
 
             var embedResultado = new EmbedBuilder()
-                .WithAuthor("Resultado da Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
+                .WithAuthor("Resultado da Roleta", "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=")
                 .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl())
                 .WithTimestamp(DateTime.Now);
 
