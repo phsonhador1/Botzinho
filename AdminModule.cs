@@ -607,243 +607,252 @@ namespace Botzinho.Admins
             // --- 1. PAINEL DE AJUDA ZHELP (Aberto a todos os usuários) ---
             if (customId == "help_menu")
             {
-                if (selected == "help_eco")
+                // --- 1. PAINEL DE AJUDA ZHELP (Aberto a todos os usuários) ---
+                if (customId == "help_menu")
                 {
-                    var roxo = "<:emoji_8:1491910148476899529>";
-                    var embedEco = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription(
-                            $"{roxo} `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
-                            $"{roxo} ↪ **zsaldo**:\n  -# ◦ Veja seu saldo atual em cpoints.\n" +
-                            $"{roxo} ↪ **zdaily**:\n  -# ◦ Resgate seus cpoints diários.\n" +
-                            $"{roxo} ↪ **zpay [@usuario] [valor]**:\n  -# ◦ Transfira seus cpoints para outro usuário.\n" +
-                            $"{roxo} ↪ **zrank**:\n  -# ◦ Veja o ranking dos usuários mais ricos.\n" 
-                        )
-                        .WithFooter("Use os comandos com sabedoria!")
-                        .WithColor(new Color(120, 80, 220)) // Roxo Zoe
-                        .Build();
+                    if (selected == "help_eco")
+                    {
+                        var roxo = "<:emoji_8:1491910148476899529>";
+                        var embedEco = new EmbedBuilder()
+                            .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                            .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                            .WithDescription(
+                                $"{roxo} `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
+                                $"{roxo} ↪ **zsaldo**:\n-# ◦ Veja seu saldo atual em cpoints.\n" +
+                                $"{roxo} ↪ **zdaily**:\n-# ◦ Resgate seus cpoints diários.\n" +
+                                $"{roxo} ↪ **zpay [@usuario] [valor]**:\n-# ◦ Transfira seus cpoints para outro usuário.\n" +
+                                $"{roxo} ↪ **zrank**:\n-# ◦ Veja o ranking dos usuários mais ricos.\n" +
+                                $"{roxo} ↪ **zaddsaldo [@usuario] [valor]**:\n-# ◦ (Staff) Adiciona saldo a um usuário.\n" +
+                                $"{roxo} ↪ **zremovesaldo [@usuario] [valor]**:\n-# ◦ (Staff) Remove saldo de um usuário."
+                            )
+                            .WithFooter("Use os comandos com sabedoria!")
+                            .WithColor(new Color(120, 80, 220)) // Roxo Zoe
+                            .Build();
 
-                    await component.UpdateAsync(m => {
-                        m.Embed = embedEco;
-                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
-                    });
-                }
-                else if (selected == "help_mod")
-                {
-                   var roxo = "<:emoji_8:1491910148476899529>";
-                    var embedMod = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription(
-                            $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n -# ◦ Bane um membro.\n" +
-                            $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n -# ◦ Expulsa um membro.\n" +
-                            $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n -# ◦ Silencia um membro.\n" +
-                            $"{roxo} ↪ **/clear [quantidade]**:\n -# ◦ Limpa mensagens do chat.\n" +
-                            $"{roxo} ↪ **/nuke**:\n -# ◦ Redefine o canal atual."
-                        )
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
-
-                    await component.UpdateAsync(m => {
-                        m.Embed = embedMod;
-                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
-                    });
-                }
-                else if (selected == "help_admin")
-                {
-                    var roxo = "<:emoji_8:1491910148476899529>";
-                    var embedAdmin = new EmbedBuilder()
-                        .WithAuthor($"Configurações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription($"{roxo} ↪ **/configserver**: -# ◦ Painel de controle de permissões e sistemas.")
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
-
-                    await component.UpdateAsync(m => {
-                        m.Embed = embedAdmin;
-                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
-                    });
-                }
-                return; // Impede que o código continue e bata nas restrições de administrador
-            }
-
-            // --- 2. CONFIGURAÇÕES DO SERVIDOR (Apenas para Staff/Admins) ---
-            if (!PodeUsarEconfigStatic(user))
-            {
-                await component.RespondAsync("sem permissao.", ephemeral: true);
-                return;
-            }
-
-            if (customId == "configserver_menu")
-            {
-                var comando = selected.Replace("config_", "");
-                EditandoComando[guild.Id] = comando;
-
-                await component.UpdateAsync(m =>
-                {
-                    m.Embed = CriarEmbedComando(guild, comando);
-                    m.Components = CriarMenuComando(comando);
-                });
-                return;
-            }
-
-            if (customId.StartsWith("cmd_config_"))
-            {
-                var comando = customId.Replace("cmd_config_", "");
-                EditandoComando[guild.Id] = comando;
-
-                if (!Configs.ContainsKey(guild.Id))
-                    Configs[guild.Id] = new ServerConfig();
-
-                switch (selected)
-                {
-                    case "back":
                         await component.UpdateAsync(m =>
                         {
-                            m.Embed = CriarEmbedPrincipal(guild);
-                            m.Components = CriarMenuPrincipal();
+                            m.Embed = embedEco;
+                            m.Components = ComponentBuilder.FromMessage(component.Message).Build();
                         });
+                    }
+                    else if (selected == "help_mod")
+                    {
+                        var roxo = "<:emoji_8:1491910148476899529>";
+                        var embedMod = new EmbedBuilder()
+                            .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                            .WithDescription(
+                                $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n-# ◦ Bane um membro.\n" +
+                                $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n-# ◦ Expulsa um membro.\n" +
+                                $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n-# ◦ Silencia um membro.\n" +
+                                $"{roxo} ↪ **/clear [quantidade]**:\n-# ◦ Limpa mensagens do chat.\n" +
+                                $"{roxo} ↪ **/nuke**:\n-# ◦ Redefine o canal atual."
+                            )
+                            .WithColor(new Color(120, 80, 220))
+                            .Build();
+
+                        await component.UpdateAsync(m =>
+                        {
+                            m.Embed = embedMod;
+                            m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                        });
+                    }
+                    else if (selected == "help_admin")
+                    {
+                        var roxo = "<:emoji_8:1491910148476899529>";
+                        var embedAdmin = new EmbedBuilder()
+                            .WithAuthor($"Configurações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                            .WithDescription($"{roxo} ↪ **/configserver**:\n-# ◦ Painel de controle de permissões e sistemas.")
+                            .WithColor(new Color(120, 80, 220))
+                            .Build();
+
+                        await component.UpdateAsync(m =>
+                        {
+                            m.Embed = embedAdmin;
+                            m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                        });
+                    }
+                    return; // Impede que o código continue e bata nas restrições de administrador
+                }
+
+                // --- 2. CONFIGURAÇÕES DO SERVIDOR (Apenas para Staff/Admins) ---
+                if (!PodeUsarEconfigStatic(user))
+                {
+                    await component.RespondAsync("sem permissao.", ephemeral: true);
+                    return;
+                }
+
+                if (customId == "configserver_menu")
+                {
+                    var comando = selected.Replace("config_", "");
+                    EditandoComando[guild.Id] = comando;
+
+                    await component.UpdateAsync(m =>
+                    {
+                        m.Embed = CriarEmbedComando(guild, comando);
+                        m.Components = CriarMenuComando(comando);
+                    });
+                    return;
+                }
+
+                if (customId.StartsWith("cmd_config_"))
+                {
+                    var comando = customId.Replace("cmd_config_", "");
+                    EditandoComando[guild.Id] = comando;
+
+                    if (!Configs.ContainsKey(guild.Id))
+                        Configs[guild.Id] = new ServerConfig();
+
+                    switch (selected)
+                    {
+                        case "back":
+                            await component.UpdateAsync(m =>
+                            {
+                                m.Embed = CriarEmbedPrincipal(guild);
+                                m.Components = CriarMenuPrincipal();
+                            });
+                            break;
+
+                        case "toggle":
+                            RecarregarComando(guild.Id, comando);
+                            var toggleConfig = Configs[guild.Id].GetCommand(comando);
+                            toggleConfig.Ativado = !toggleConfig.Ativado;
+                            SalvarCommandConfig(guild.Id, comando);
+                            await component.RespondAsync($"sistema /{comando} {(toggleConfig.Ativado ? "ativado" : "desativado")}.", ephemeral: true);
+                            await AtualizarPainel(guild, comando);
+                            break;
+
+                        case "add_role":
+                            await component.RespondAsync("selecione o cargo:",
+                                components: new ComponentBuilder().WithSelectMenu(
+                                    new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
+                                    .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                            break;
+
+                        case "remove_role":
+                            RecarregarComando(guild.Id, comando);
+                            var rrConfig = Configs[guild.Id].GetCommand(comando);
+                            if (rrConfig.CargosPermitidos.Count == 0) { await component.RespondAsync("nenhum cargo na lista.", ephemeral: true); break; }
+                            var rmRoleMenu = new SelectMenuBuilder().WithCustomId("srv_remove_role").WithPlaceholder("Selecione o cargo");
+                            foreach (var id in rrConfig.CargosPermitidos) { var role = guild.GetRole(id); rmRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
+                            await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(rmRoleMenu).Build(), ephemeral: true);
+                            break;
+
+                        case "add_member":
+                            await component.RespondAsync("selecione o membro:",
+                                components: new ComponentBuilder().WithSelectMenu(
+                                    new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
+                                    .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                            break;
+
+                        case "remove_member":
+                            RecarregarComando(guild.Id, comando);
+                            var rmConfig = Configs[guild.Id].GetCommand(comando);
+                            if (rmConfig.MembrosPermitidos.Count == 0) { await component.RespondAsync("nenhum membro na lista.", ephemeral: true); break; }
+                            var rmMemberMenu = new SelectMenuBuilder().WithCustomId("srv_remove_member").WithPlaceholder("Selecione o membro");
+                            foreach (var id in rmConfig.MembrosPermitidos) { var m = guild.GetUser(id); rmMemberMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
+                            await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(rmMemberMenu).Build(), ephemeral: true);
+                            break;
+
+                        case "block_user":
+                            await component.RespondAsync("selecione o usuario:",
+                                components: new ComponentBuilder().WithSelectMenu(
+                                    new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuario")
+                                    .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                            break;
+
+                        case "unblock_user":
+                            RecarregarComando(guild.Id, comando);
+                            var ubConfig = Configs[guild.Id].GetCommand(comando);
+                            if (ubConfig.UsuariosBloqueados.Count == 0) { await component.RespondAsync("nenhum usuario bloqueado.", ephemeral: true); break; }
+                            var unblockMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_user").WithPlaceholder("Selecione o usuario");
+                            foreach (var id in ubConfig.UsuariosBloqueados) { var m = guild.GetUser(id); unblockMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
+                            await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
+                            break;
+
+                        case "block_role":
+                            await component.RespondAsync("selecione o cargo:",
+                                components: new ComponentBuilder().WithSelectMenu(
+                                    new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
+                                    .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                            break;
+
+                        case "unblock_role":
+                            RecarregarComando(guild.Id, comando);
+                            var urConfig = Configs[guild.Id].GetCommand(comando);
+                            if (urConfig.CargosBloqueados.Count == 0) { await component.RespondAsync("nenhum cargo bloqueado.", ephemeral: true); break; }
+                            var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_role").WithPlaceholder("Selecione o cargo");
+                            foreach (var id in urConfig.CargosBloqueados) { var role = guild.GetRole(id); unblockRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
+                            await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
+                            break;
+                    }
+                    return;
+                }
+
+                // --- 3. AÇÕES DE CONFIGURAÇÃO (Adicionar/Remover Cargos e Membros) ---
+                if (!EditandoComando.TryGetValue(guild.Id, out var editCmd)) return;
+                if (!Configs.ContainsKey(guild.Id)) Configs[guild.Id] = new ServerConfig();
+
+                RecarregarComando(guild.Id, editCmd);
+                var cmdConfig = Configs[guild.Id].GetCommand(editCmd);
+
+                switch (customId)
+                {
+                    case "srv_add_role":
+                        var roleId = ulong.Parse(component.Data.Values.First());
+                        if (!cmdConfig.CargosPermitidos.Contains(roleId)) { cmdConfig.CargosPermitidos.Add(roleId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"cargo <@&{roleId}> adicionado ao /{editCmd}.", ephemeral: true); }
+                        else await component.RespondAsync("ja esta na lista.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "toggle":
-                        RecarregarComando(guild.Id, comando);
-                        var toggleConfig = Configs[guild.Id].GetCommand(comando);
-                        toggleConfig.Ativado = !toggleConfig.Ativado;
-                        SalvarCommandConfig(guild.Id, comando);
-                        await component.RespondAsync($"sistema /{comando} {(toggleConfig.Ativado ? "ativado" : "desativado")}.", ephemeral: true);
-                        await AtualizarPainel(guild, comando);
+                    case "srv_remove_role":
+                        cmdConfig.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync("cargo removido.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "add_role":
-                        await component.RespondAsync("selecione o cargo:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
-                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                    case "srv_add_member":
+                        var memberId = ulong.Parse(component.Data.Values.First());
+                        if (!cmdConfig.MembrosPermitidos.Contains(memberId)) { cmdConfig.MembrosPermitidos.Add(memberId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"membro <@{memberId}> adicionado ao /{editCmd}.", ephemeral: true); }
+                        else await component.RespondAsync("ja esta na lista.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "remove_role":
-                        RecarregarComando(guild.Id, comando);
-                        var rrConfig = Configs[guild.Id].GetCommand(comando);
-                        if (rrConfig.CargosPermitidos.Count == 0) { await component.RespondAsync("nenhum cargo na lista.", ephemeral: true); break; }
-                        var rmRoleMenu = new SelectMenuBuilder().WithCustomId("srv_remove_role").WithPlaceholder("Selecione o cargo");
-                        foreach (var id in rrConfig.CargosPermitidos) { var role = guild.GetRole(id); rmRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(rmRoleMenu).Build(), ephemeral: true);
+                    case "srv_remove_member":
+                        cmdConfig.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync("membro removido.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "add_member":
-                        await component.RespondAsync("selecione o membro:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
-                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                    case "srv_block_user":
+                        var blockId = ulong.Parse(component.Data.Values.First());
+                        if (!cmdConfig.UsuariosBloqueados.Contains(blockId)) { cmdConfig.UsuariosBloqueados.Add(blockId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"usuario <@{blockId}> bloqueado do /{editCmd}.", ephemeral: true); }
+                        else await component.RespondAsync("ja esta bloqueado.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "remove_member":
-                        RecarregarComando(guild.Id, comando);
-                        var rmConfig = Configs[guild.Id].GetCommand(comando);
-                        if (rmConfig.MembrosPermitidos.Count == 0) { await component.RespondAsync("nenhum membro na lista.", ephemeral: true); break; }
-                        var rmMemberMenu = new SelectMenuBuilder().WithCustomId("srv_remove_member").WithPlaceholder("Selecione o membro");
-                        foreach (var id in rmConfig.MembrosPermitidos) { var m = guild.GetUser(id); rmMemberMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(rmMemberMenu).Build(), ephemeral: true);
+                    case "srv_unblock_user":
+                        cmdConfig.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync("usuario desbloqueado.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "block_user":
-                        await component.RespondAsync("selecione o usuario:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuario")
-                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                    case "srv_block_role":
+                        var blockRoleId = ulong.Parse(component.Data.Values.First());
+                        if (!cmdConfig.CargosBloqueados.Contains(blockRoleId)) { cmdConfig.CargosBloqueados.Add(blockRoleId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"cargo <@&{blockRoleId}> bloqueado do /{editCmd}.", ephemeral: true); }
+                        else await component.RespondAsync("ja esta bloqueado.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
 
-                    case "unblock_user":
-                        RecarregarComando(guild.Id, comando);
-                        var ubConfig = Configs[guild.Id].GetCommand(comando);
-                        if (ubConfig.UsuariosBloqueados.Count == 0) { await component.RespondAsync("nenhum usuario bloqueado.", ephemeral: true); break; }
-                        var unblockMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_user").WithPlaceholder("Selecione o usuario");
-                        foreach (var id in ubConfig.UsuariosBloqueados) { var m = guild.GetUser(id); unblockMenu.AddOption(m?.Username ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(unblockMenu).Build(), ephemeral: true);
-                        break;
-
-                    case "block_role":
-                        await component.RespondAsync("selecione o cargo:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
-                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
-                        break;
-
-                    case "unblock_role":
-                        RecarregarComando(guild.Id, comando);
-                        var urConfig = Configs[guild.Id].GetCommand(comando);
-                        if (urConfig.CargosBloqueados.Count == 0) { await component.RespondAsync("nenhum cargo bloqueado.", ephemeral: true); break; }
-                        var unblockRoleMenu = new SelectMenuBuilder().WithCustomId("srv_unblock_role").WithPlaceholder("Selecione o cargo");
-                        foreach (var id in urConfig.CargosBloqueados) { var role = guild.GetRole(id); unblockRoleMenu.AddOption(role?.Name ?? id.ToString(), id.ToString()); }
-                        await component.RespondAsync("selecione:", components: new ComponentBuilder().WithSelectMenu(unblockRoleMenu).Build(), ephemeral: true);
+                    case "srv_unblock_role":
+                        cmdConfig.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
+                        SalvarCommandConfig(guild.Id, editCmd);
+                        await component.RespondAsync("cargo desbloqueado.", ephemeral: true);
+                        await AtualizarPainel(guild, editCmd);
                         break;
                 }
-                return;
-            }
-
-            // --- 3. AÇÕES DE CONFIGURAÇÃO (Adicionar/Remover Cargos e Membros) ---
-            if (!EditandoComando.TryGetValue(guild.Id, out var editCmd)) return;
-            if (!Configs.ContainsKey(guild.Id)) Configs[guild.Id] = new ServerConfig();
-
-            RecarregarComando(guild.Id, editCmd);
-            var cmdConfig = Configs[guild.Id].GetCommand(editCmd);
-
-            switch (customId)
-            {
-                case "srv_add_role":
-                    var roleId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig.CargosPermitidos.Contains(roleId)) { cmdConfig.CargosPermitidos.Add(roleId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"cargo <@&{roleId}> adicionado ao /{editCmd}.", ephemeral: true); }
-                    else await component.RespondAsync("ja esta na lista.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_remove_role":
-                    cmdConfig.CargosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
-                    SalvarCommandConfig(guild.Id, editCmd);
-                    await component.RespondAsync("cargo removido.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_add_member":
-                    var memberId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig.MembrosPermitidos.Contains(memberId)) { cmdConfig.MembrosPermitidos.Add(memberId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"membro <@{memberId}> adicionado ao /{editCmd}.", ephemeral: true); }
-                    else await component.RespondAsync("ja esta na lista.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_remove_member":
-                    cmdConfig.MembrosPermitidos.Remove(ulong.Parse(component.Data.Values.First()));
-                    SalvarCommandConfig(guild.Id, editCmd);
-                    await component.RespondAsync("membro removido.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_block_user":
-                    var blockId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig.UsuariosBloqueados.Contains(blockId)) { cmdConfig.UsuariosBloqueados.Add(blockId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"usuario <@{blockId}> bloqueado do /{editCmd}.", ephemeral: true); }
-                    else await component.RespondAsync("ja esta bloqueado.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_unblock_user":
-                    cmdConfig.UsuariosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
-                    SalvarCommandConfig(guild.Id, editCmd);
-                    await component.RespondAsync("usuario desbloqueado.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_block_role":
-                    var blockRoleId = ulong.Parse(component.Data.Values.First());
-                    if (!cmdConfig.CargosBloqueados.Contains(blockRoleId)) { cmdConfig.CargosBloqueados.Add(blockRoleId); SalvarCommandConfig(guild.Id, editCmd); await component.RespondAsync($"cargo <@&{blockRoleId}> bloqueado do /{editCmd}.", ephemeral: true); }
-                    else await component.RespondAsync("ja esta bloqueado.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
-
-                case "srv_unblock_role":
-                    cmdConfig.CargosBloqueados.Remove(ulong.Parse(component.Data.Values.First()));
-                    SalvarCommandConfig(guild.Id, editCmd);
-                    await component.RespondAsync("cargo desbloqueado.", ephemeral: true);
-                    await AtualizarPainel(guild, editCmd);
-                    break;
             }
         }
     }
