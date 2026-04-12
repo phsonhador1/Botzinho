@@ -799,9 +799,14 @@ namespace Botzinho.Economy
                     return;
                 }
 
+                // 1. Envia a mensagem de carregamento imediatamente
                 var carregando = "<a:carregandoportal:1492944498605686844>";
                 var loadingMsg = await msg.Channel.SendMessageAsync($"{carregando} Gerando o ranking, aguarde um instante...");
 
+                // 2. ESPERA 3 SEGUNDOS (O delay que você pediu)
+                await Task.Delay(3000);
+
+                // 3. Só depois da espera ele começa a preparar os dados e a imagem
                 var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
                 var emojiRoxo = "<:emoji_8:1491910148476899529>";
 
@@ -811,8 +816,10 @@ namespace Botzinho.Economy
 
                 string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
 
+                // 4. Gera a imagem profissional
                 var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
 
+                // 5. Envia a imagem e apaga o carregando
                 await msg.Channel.SendFileAsync(imagemPath, textoMensagem);
                 await loadingMsg.DeleteAsync();
 
