@@ -615,10 +615,10 @@ namespace Botzinho.Admins
                         .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(
                             $"{roxo} `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
-                            $"{roxo} ↪ **zsaldo**:\n  ◦ -# Veja seu saldo atual em cpoints.\n" +
-                            $"{roxo} ↪ **zdaily**:\n  ◦ -# Resgate seus cpoints diários.\n" +
-                            $"{roxo} ↪ **zpay [@usuario] [valor]**:\n  ◦ -# Transfira seus cpoints para outro usuário.\n" +
-                            $"{roxo} ↪ **zrank**:\n  ◦ -# Veja o ranking dos usuários mais ricos.\n" 
+                            $"{roxo} ↪ **zsaldo**:\n  -# ◦ Veja seu saldo atual em cpoints.\n" +
+                            $"{roxo} ↪ **zdaily**:\n  -# ◦ Resgate seus cpoints diários.\n" +
+                            $"{roxo} ↪ **zpay [@usuario] [valor]**:\n  -# ◦ Transfira seus cpoints para outro usuário.\n" +
+                            $"{roxo} ↪ **zrank**:\n  -# ◦ Veja o ranking dos usuários mais ricos.\n" 
                         )
                         .WithFooter("Use os comandos com sabedoria!")
                         .WithColor(new Color(120, 80, 220)) // Roxo Zoe
@@ -635,11 +635,11 @@ namespace Botzinho.Admins
                     var embedMod = new EmbedBuilder()
                         .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(
-                            $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n ◦ -# Bane um membro.\n" +
-                            $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n ◦ -# Expulsa um membro.\n" +
-                            $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n ◦ -# Silencia um membro.\n" +
-                            $"{roxo} ↪ **/clear [quantidade]**:\n ◦ -# Limpa mensagens do chat.\n" +
-                            $"{roxo} ↪ **/nuke**:\n ◦ -# Redefine o canal atual."
+                            $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n -# ◦ Bane um membro.\n" +
+                            $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n -# ◦ Expulsa um membro.\n" +
+                            $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n -# ◦ Silencia um membro.\n" +
+                            $"{roxo} ↪ **/clear [quantidade]**:\n -# ◦ Limpa mensagens do chat.\n" +
+                            $"{roxo} ↪ **/nuke**:\n -# ◦ Redefine o canal atual."
                         )
                         .WithColor(new Color(120, 80, 220))
                         .Build();
@@ -654,7 +654,7 @@ namespace Botzinho.Admins
                     var roxo = "<:emoji_8:1491910148476899529>";
                     var embedAdmin = new EmbedBuilder()
                         .WithAuthor($"Configurações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription($"{roxo} ↪ **/configserver**: Painel de controle de permissões e sistemas.")
+                        .WithDescription($"{roxo} ↪ **/configserver**: -# ◦ Painel de controle de permissões e sistemas.")
                         .WithColor(new Color(120, 80, 220))
                         .Build();
 
