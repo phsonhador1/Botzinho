@@ -632,8 +632,10 @@ namespace Botzinho.Economy
     {
         private readonly DiscordSocketClient _client;
 
-        // ADICIONADO: Dicionário para guardar o tempo de cooldown de cada usuário
+        // Dicionários para controle de Spam/Flood
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+        private static readonly Dictionary<ulong, int> _floodCount = new();
+        private static readonly Dictionary<ulong, DateTime> _botMutes = new();
 
         public EconomyHandler(DiscordSocketClient client)
         {
@@ -667,22 +669,53 @@ namespace Botzinho.Economy
             var content = msg.Content.ToLower().Trim();
             var guildId = user.Guild.Id;
 
-            // 1. Verifica se a mensagem é um comando do bot (para não dar cooldown no chat normal)
+            // 1. Verifica se a mensagem é um comando do bot
             string[] comandos = { "zhelp", "zsaldo", "zdaily", "zpay", "zrank", "ztop coins" };
             bool isComando = comandos.Any(c => content == c || content.StartsWith(c + " "));
 
             if (!isComando) return;
 
-            // 2. SISTEMA DE COOLDOWN (5 Segundos)
-            if (_cooldowns.TryGetValue(user.Id, out var ultimaVez))
+            var userId = user.Id;
+            var agora = DateTime.UtcNow;
+
+            // 2. Verifica se o usuário está de castigo (Mutado no Bot)
+            if (_botMutes.TryGetValue(userId, out var muteFim))
             {
-                var tempoPassado = (DateTime.UtcNow - ultimaVez).TotalSeconds;
-                if (tempoPassado < 5) // Se passou menos de 5 segundos
+                if (agora < muteFim)
                 {
+                    // Ainda está de castigo. O bot simplesmente ignora silenciosamente para não gerar flood de avisos.
+                    return;
+                }
+                else
+                {
+                    // Castigo acabou, limpa os registros dele
+                    _botMutes.Remove(userId);
+                    _floodCount.Remove(userId);
+                }
+            }
+
+            // 3. Sistema de Cooldown e Punição de Flood
+            if (_cooldowns.TryGetValue(userId, out var ultimaVez))
+            {
+                var tempoPassado = (agora - ultimaVez).TotalSeconds;
+                if (tempoPassado < 5) // Usou antes de 5 segundos
+                {
+                    // Aumenta o contador de flood dele
+                    int count = _floodCount.ContainsKey(userId) ? _floodCount[userId] + 1 : 1;
+                    _floodCount[userId] = count;
+
+                    // Se ele spammou 4 vezes ignorando o aviso de cooldown: Toma Mute de 10 minutos
+                    if (count >= 4)
+                    {
+                        _botMutes[userId] = agora.AddMinutes(10);
+                        await msg.Channel.SendMessageAsync($"🚨 {user.Mention} exagerou no spam! Como punição, você ficará **10 minutos** sem poder usar meus comandos.");
+                        return;
+                    }
+
+                    // Aviso normal de cooldown
                     int restante = 5 - (int)tempoPassado;
                     var aviso = await msg.Channel.SendMessageAsync($"⏳ Calma lá, {user.Mention}! Aguarde `{restante}s` para usar outro comando.");
 
-                    // Apaga a mensagem de aviso depois de 3 segundos para não poluir o chat
                     _ = Task.Run(async () =>
                     {
                         await Task.Delay(3000);
@@ -691,12 +724,17 @@ namespace Botzinho.Economy
 
                     return; // Bloqueia a execução do comando
                 }
+                else
+                {
+                    // Se ele esperou os 5 segundos certinho, zeramos o contador de flood dele
+                    _floodCount.Remove(userId);
+                }
             }
 
-            // Atualiza o tempo da última vez que o usuário usou um comando
-            _cooldowns[user.Id] = DateTime.UtcNow;
+            // Atualiza o tempo do último uso
+            _cooldowns[userId] = agora;
 
-            // --- DAQUI PARA BAIXO É O SEU CÓDIGO ORIGINAL DOS COMANDOS ---
+            // --- CÓDIGO ORIGINAL DOS COMANDOS ABAIXO ---
 
             if (content == "zhelp")
             {
@@ -738,7 +776,6 @@ namespace Botzinho.Economy
             else if (content == "zdaily")
             {
                 var ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
-                var agora = DateTime.UtcNow;
                 var diferenca = agora - ultimoDaily;
 
                 if (diferenca.TotalHours < 24)
@@ -799,14 +836,11 @@ namespace Botzinho.Economy
                     return;
                 }
 
-                // 1. Envia a mensagem de carregamento imediatamente
                 var carregando = "<a:carregandoportal:1492944498605686844>";
                 var loadingMsg = await msg.Channel.SendMessageAsync($"{carregando} Gerando o ranking, aguarde um instante...");
 
-                // 2. ESPERA 3 SEGUNDOS (O delay que você pediu)
                 await Task.Delay(3000);
 
-                // 3. Só depois da espera ele começa a preparar os dados e a imagem
                 var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
                 var emojiRoxo = "<:emoji_8:1491910148476899529>";
 
@@ -816,10 +850,8 @@ namespace Botzinho.Economy
 
                 string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
 
-                // 4. Gera a imagem profissional
                 var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
 
-                // 5. Envia a imagem e apaga o carregando
                 await msg.Channel.SendFileAsync(imagemPath, textoMensagem);
                 await loadingMsg.DeleteAsync();
 
