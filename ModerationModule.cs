@@ -13,13 +13,13 @@ namespace Botzinho.Moderation
         public static string GetConnectionString()
         {
             return Environment.GetEnvironmentVariable("DATABASE_URL")
-                ?? throw new Exception("DATABASE_URL nao configurado!");
+              ?? throw new Exception("DATABASE_URL nao configurado!");
         }
 
         public static void InicializarTabelas()
         {
-            // sem tabelas de warns
-        }
+            // sem tabelas de warns
+        }
 
         public static TimeSpan? ParseDuration(string input)
         {
@@ -35,9 +35,9 @@ namespace Botzinho.Moderation
         [SlashCommand("ban", "Bane um usuario do servidor")]
         [RequireBotPermission(GuildPermission.BanMembers)]
         public async Task BanAsync(
-            [Summary("usuario", "Usuario para banir")] SocketGuildUser alvo,
-            [Summary("motivo", "Motivo do ban")] string motivo = "Sem motivo informado",
-            [Summary("dias", "Dias de mensagens para apagar (0-7)")] int dias = 0)
+          [Summary("usuario", "Usuario para banir")] SocketGuildUser alvo,
+          [Summary("motivo", "Motivo do ban")] string motivo = "Sem motivo informado",
+          [Summary("dias", "Dias de mensagens para apagar (0-7)")] int dias = 0)
         {
             var user = (SocketGuildUser)Context.User;
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "ban", GuildPermission.BanMembers);
@@ -74,8 +74,8 @@ namespace Botzinho.Moderation
         [SlashCommand("kick", "Expulsa um usuario")]
         [RequireBotPermission(GuildPermission.KickMembers)]
         public async Task KickAsync(
-            [Summary("usuario", "Usuario para expulsar")] SocketGuildUser alvo,
-            [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
+          [Summary("usuario", "Usuario para expulsar")] SocketGuildUser alvo,
+          [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "kick", GuildPermission.KickMembers);
@@ -96,9 +96,9 @@ namespace Botzinho.Moderation
         [SlashCommand("mute", "Silencia um usuario")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task MuteAsync(
-            [Summary("usuario", "Usuario")] SocketGuildUser alvo,
-            [Summary("duracao", "Duracao (10m, 1h, 1d)")] string duracao,
-            [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
+          [Summary("usuario", "Usuario")] SocketGuildUser alvo,
+          [Summary("duracao", "Duracao (10m, 1h, 1d)")] string duracao,
+          [Summary("motivo", "Motivo")] string motivo = "Sem motivo informado")
         {
             var user = (SocketGuildUser)Context.User;
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
