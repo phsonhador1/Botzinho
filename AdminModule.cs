@@ -609,17 +609,18 @@ namespace Botzinho.Admins
             {
                 if (selected == "help_eco")
                 {
+                    var roxo = "<:emoji_8:1491910148476899529>";
                     var embedEco = new EmbedBuilder()
                         .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(
-                            "• `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
-                            "• ↪ **zsaldo**:\n  ◦ Veja seu saldo atual em cpoints.\n" +
-                            "• ↪ **zdaily**:\n  ◦ Resgate seus cpoints diários.\n" +
-                            "• ↪ **zpay [@usuario] [valor]**:\n  ◦ Transfira seus cpoints para outro usuário.\n" +
-                            "• ↪ **zrank**:\n  ◦ Veja o ranking dos usuários mais ricos.\n" +
-                            "• ↪ **zaddsaldo [@usuario] [valor]**:\n  ◦ (Staff) Adiciona saldo a um usuário.\n" +
-                            "• ↪ **zremovesaldo [@usuario] [valor]**:\n  ◦ (Staff) Remove saldo de um usuário."
+                            $"{roxo} `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
+                            $"{roxo} ↪ **zsaldo**:\n  ◦ Veja seu saldo atual em cpoints.\n" +
+                            $"{roxo} ↪ **zdaily**:\n  ◦ Resgate seus cpoints diários.\n" +
+                            $"{roxo} ↪ **zpay [@usuario] [valor]**:\n  ◦ Transfira seus cpoints para outro usuário.\n" +
+                            $"{roxo} ↪ **zrank**:\n  ◦ Veja o ranking dos usuários mais ricos.\n" +
+                            $"{roxo} ↪ **zaddsaldo [@usuario] [valor]**:\n  ◦ (Staff) Adiciona saldo a um usuário.\n" +
+                            $"{roxo} ↪ **zremovesaldo [@usuario] [valor]**:\n  ◦ (Staff) Remove saldo de um usuário."
                         )
                         .WithFooter("Use os comandos com sabedoria!")
                         .WithColor(new Color(120, 80, 220)) // Roxo Zoe
