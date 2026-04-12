@@ -1,12 +1,12 @@
 using Discord;
 using Discord.WebSocket;
 using Npgsql;
-using Botzinho.Admins;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
+using System.Net.Http; // Necessário para baixar os avatares
 
 namespace Botzinho.Economy
 {
@@ -108,9 +108,49 @@ namespace Botzinho.Economy
 
         public static string FormatarSaldo(long valor)
         {
-            if (valor >= 1000000) return $"{valor / 1000000.0:F1}M";
-            if (valor >= 1000) return $"{valor / 1000.0:F1}K";
+            if (valor >= 1000000000) return $"{valor / 1000000000.0:F2}B"; // Bilhões
+            if (valor >= 1000000) return $"{valor / 1000000.0:F2}M";       // Milhões
+            if (valor >= 1000) return $"{valor / 1000.0:F2}K";             // Milhares
             return valor.ToString();
+        }
+
+        // NOVO: Funções para puxar os dados do Ranking
+        public static List<(ulong UserId, long Saldo)> GetTop10(ulong guildId)
+        {
+            var list = new List<(ulong, long)>();
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT user_id, saldo FROM economy_users WHERE guild_id = @gid AND saldo > 0 ORDER BY saldo DESC LIMIT 10";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add((ulong.Parse(reader.GetString(0)), reader.GetInt64(1)));
+            }
+            return list;
+        }
+
+        public static (int Rank, long Saldo) GetUserRankInfo(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT rank_pos, saldo FROM (
+                    SELECT user_id, saldo, RANK() OVER(ORDER BY saldo DESC) as rank_pos
+                    FROM economy_users
+                    WHERE guild_id = @gid AND saldo > 0
+                ) ranked WHERE user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+            {
+                return (reader.GetInt32(0), reader.GetInt64(1));
+            }
+            return (0, 0); // Não está no rank
         }
     }
 
@@ -404,6 +444,132 @@ namespace Botzinho.Economy
             return path;
         }
 
+        // NOVO: Gerador da imagem do Rank
+        public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Saldo)> topUsers)
+        {
+            int width = 850;
+            int height = 680;
+
+            using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
+            var canvas = surface.Canvas;
+
+            var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold) ?? SkiaSharp.SKTypeface.Default;
+            var fontNormal = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans") ?? SkiaSharp.SKTypeface.Default;
+
+            // Fundo escuro
+            var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(20, 10, 30), IsAntialias = true };
+            canvas.DrawRect(new SkiaSharp.SKRect(0, 0, width, height), bgPaint);
+
+            // Cabeçalho "Top Coins"
+            var titleWhite = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.White, TextSize = 40, Typeface = fontBold, IsAntialias = true };
+            var titleGold = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(255, 215, 0), TextSize = 40, Typeface = fontBold, IsAntialias = true };
+            canvas.DrawText("Top", 40, 80, titleWhite);
+            canvas.DrawText("Coins", 125, 80, titleGold);
+
+            // Baixar avatares em paralelo para ser rápido
+            var avatares = new Dictionary<ulong, byte[]>();
+            using var httpClient = new HttpClient();
+            var tasks = topUsers.Select(async u =>
+            {
+                try
+                {
+                    var user = guild.GetUser(u.UserId);
+                    var url = user?.GetAvatarUrl(ImageFormat.Png, 128) ?? user?.GetDefaultAvatarUrl();
+                    if (url != null)
+                    {
+                        var bytes = await httpClient.GetByteArrayAsync(url);
+                        avatares[u.UserId] = bytes;
+                    }
+                }
+                catch { }
+            });
+            await Task.WhenAll(tasks);
+
+            // Configurações do Grid
+            int startX = 40;
+            int startY = 120;
+            int cardWidth = 370;
+            int cardHeight = 85;
+            int marginX = 400; // Distância entre as colunas
+            int marginY = 105; // Distância entre as linhas
+
+            for (int i = 0; i < topUsers.Count; i++)
+            {
+                int col = i % 2;
+                int row = i / 2;
+
+                int x = startX + (col * marginX);
+                int y = startY + (row * marginY);
+
+                var rank = i + 1;
+                var user = topUsers[i];
+                var member = guild.GetUser(user.UserId);
+                string username = member?.Username ?? "Desconhecido";
+                
+                // Truncar nome se for muito longo
+                if (username.Length > 12) username = username.Substring(0, 10) + "...";
+
+                // Cores dos Cards (Ouro, Prata, Bronze, Roxo)
+                SkiaSharp.SKColor bgColor;
+                SkiaSharp.SKColor textColor;
+
+                if (rank == 1) { bgColor = new SkiaSharp.SKColor(255, 180, 0); textColor = SkiaSharp.SKColors.Black; }
+                else if (rank == 2) { bgColor = new SkiaSharp.SKColor(220, 220, 230); textColor = SkiaSharp.SKColors.Black; }
+                else if (rank == 3) { bgColor = new SkiaSharp.SKColor(255, 120, 0); textColor = SkiaSharp.SKColors.Black; }
+                else { bgColor = new SkiaSharp.SKColor(140, 80, 190); textColor = SkiaSharp.SKColors.White; }
+
+                // Desenhar Pílula (Card)
+                var cardPaint = new SkiaSharp.SKPaint { Color = bgColor, IsAntialias = true };
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + cardWidth, y + cardHeight), cardHeight / 2, cardHeight / 2, cardPaint);
+
+                // Desenhar Avatar
+                int avatarSize = 65;
+                int avatarX = x + 10;
+                int avatarY = y + 10;
+
+                if (avatares.TryGetValue(user.UserId, out var avatarBytes))
+                {
+                    try
+                    {
+                        using var avatarBitmap = SkiaSharp.SKBitmap.Decode(avatarBytes);
+                        var avatarRect = new SkiaSharp.SKRect(avatarX, avatarY, avatarX + avatarSize, avatarY + avatarSize);
+                        var clipPath = new SkiaSharp.SKPath();
+                        clipPath.AddOval(avatarRect);
+
+                        canvas.Save();
+                        canvas.ClipPath(clipPath);
+                        canvas.DrawBitmap(avatarBitmap, avatarRect);
+                        canvas.Restore();
+
+                        // Borda do avatar
+                        var borderPaint = new SkiaSharp.SKPaint { Color = textColor, Style = SkiaSharp.SKPaintStyle.Stroke, StrokeWidth = 3, IsAntialias = true };
+                        canvas.DrawOval(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, avatarSize / 2, borderPaint);
+                    }
+                    catch { }
+                }
+
+                // Desenhar Nome
+                var namePaint = new SkiaSharp.SKPaint { Color = textColor, TextSize = 22, Typeface = fontBold, IsAntialias = true };
+                canvas.DrawText(username, x + 90, y + 50, namePaint);
+
+                // Desenhar Valor (Alinhado à direita)
+                var valuePaint = new SkiaSharp.SKPaint { Color = textColor, TextSize = 22, Typeface = fontNormal, IsAntialias = true, TextAlign = SkiaSharp.SKTextAlign.Right };
+                canvas.DrawText(EconomyHelper.FormatarSaldo(user.Saldo), x + cardWidth - 25, y + 50, valuePaint);
+
+                // Desenhar Número do Rank (em cima do card, à esquerda)
+                var rankNumPaint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.LightGray, TextSize = 14, Typeface = fontBold, IsAntialias = true };
+                canvas.DrawText(rank.ToString(), x, y - 5, rankNumPaint);
+            }
+
+            var path = Path.Combine(Path.GetTempPath(), $"rank_{guild.Id}_{DateTime.Now.Ticks}.png");
+            using var image = surface.Snapshot();
+            using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(path);
+            data.SaveTo(stream);
+
+            return path;
+        }
+
         private static void DrawItem(SkiaSharp.SKCanvas canvas, float x, float y, string label, string valor,
             SkiaSharp.SKTypeface fontBold, SkiaSharp.SKTypeface fontNormal,
             SkiaSharp.SKColor accentColor, SkiaSharp.SKColor bgTint, int width,
@@ -514,7 +680,6 @@ namespace Botzinho.Economy
 
             if (content == "zhelp")
             {
-                
                 var emojiAnimado = "<a:teste:1490570407307378712>";
 
                 var embed = new EmbedBuilder()
@@ -604,36 +769,36 @@ namespace Botzinho.Economy
                     $"{user.Mention} transferiu `{EconomyHelper.FormatarSaldo(valor)}` cpoints para {alvo.Mention}\n" +
                     $"**Seu saldo:** `{EconomyHelper.FormatarSaldo(saldoRemetente)}` cpoints");
             }
-            else if (content == "zrank")
+            else if (content == "zrank" || content == "ztop coins")
             {
-                using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
-                conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT user_id, saldo FROM economy_users WHERE guild_id = @gid AND saldo > 0 ORDER BY saldo DESC LIMIT 10";
-                cmd.Parameters.AddWithValue("@gid", guildId.ToString());
-                using var reader = cmd.ExecuteReader();
-
-                var ranking = new List<string>();
-                int pos = 1;
-                while (reader.Read())
+                var top10 = EconomyHelper.GetTop10(guildId);
+                
+                if (top10.Count == 0)
                 {
-                    var userId = reader.GetString(0);
-                    var saldo = reader.GetInt64(1);
-                    ranking.Add($"`#{pos}` <@{userId}> - `{EconomyHelper.FormatarSaldo(saldo)}` cpoints");
-                    pos++;
+                    await msg.Channel.SendMessageAsync("Ainda não há ninguém no ranking de cpoints.");
+                    return;
                 }
 
-                if (ranking.Count == 0)
-                { await msg.Channel.SendMessageAsync("ninguem tem cpoints ainda."); return; }
+                // Mensagem de "loading" enquanto a imagem é gerada
+                var loadingMsg = await msg.Channel.SendMessageAsync("📊 Gerando o ranking, aguarde um instante...");
 
-                var embed = new EmbedBuilder()
-                    .WithAuthor($"Ranking | {user.Guild.Name}")
-                    .WithDescription(string.Join("\n", ranking))
-                    .WithFooter($"Top {ranking.Count} mais ricos")
-                    .WithColor(new Discord.Color(0x2B2D31))
-                    .Build();
+                var rankInfo = EconomyHelper.GetUserRankInfo(guildId, user.Id);
+                var emojiRoxo = "<:emoji_8:1491910148476899529>"; // Ajuste para o seu emoji do bot
+                
+                string textoPosicao = rankInfo.Rank > 0 
+                    ? $"💡 **Posição #{rankInfo.Rank}** - **{EconomyHelper.FormatarSaldo(rankInfo.Saldo)}** cpoints" 
+                    : "💡 Você ainda não possui cpoints para aparecer no ranking.";
 
-                await msg.Channel.SendMessageAsync(embed: embed);
+                string textoMensagem = $"{emojiRoxo} Os usuários mais **ricos** do servidor! 💰\n{textoPosicao}";
+
+                // Gera a imagem profissional com SkiaSharp
+                var imagemPath = await EconomyImageHelper.GerarImagemRank(user.Guild, top10);
+
+                // Envia a imagem final e deleta a mensagem de loading
+                await msg.Channel.SendFileAsync(imagemPath, textoMensagem);
+                await loadingMsg.DeleteAsync();
+                
+                File.Delete(imagemPath);
             }
         }
     }
