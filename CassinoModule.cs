@@ -2,31 +2,20 @@ using Discord;
 using Discord.WebSocket;
 using Botzinho.Economy;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace Botzinho.Cassino
 {
-    // Classe para guardar as informações da aposta enquanto o botão não é clicado
-    public class ApostaRoleta
-    {
-        public ulong UserId { get; set; }
-        public long Valor { get; set; }
-    }
-
     public class CassinoHandler
     {
         private readonly DiscordSocketClient _client;
-
-        // Dicionário para rastrear as apostas ativas pelos IDs das mensagens
-        private static readonly Dictionary<ulong, ApostaRoleta> _apostasAtivas = new();
 
         public CassinoHandler(DiscordSocketClient client)
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
-            _client.ButtonExecuted += HandleButton; // Escuta os cliques nos botões
+            _client.ButtonExecuted += HandleButton;
         }
 
         private Task HandleMessage(SocketMessage msg)
@@ -84,11 +73,9 @@ namespace Botzinho.Cassino
                     return;
                 }
 
-                // 1. Remove o dinheiro antecipadamente (se cancelar, ele recebe de volta)
+                // Remove o dinheiro antecipadamente
                 EconomyHelper.RemoverSaldo(guildId, user.Id, valorAposta);
 
-                // 2. Cria o Embed profissional idêntico à foto
-                var emojiRoleta = "<:roleta:123456789012345678>"; // Substitua pelo ID do seu emoji de roleta, se tiver
                 var embed = new EmbedBuilder()
                     .WithTitle("🎰 Roleta")
                     .WithDescription(
@@ -99,70 +86,56 @@ namespace Botzinho.Cassino
                         $"🛑 | **Desistir da aposta:**\n" +
                         "Se decidir não continuar, clique no ❌ para desistir da aposta."
                     )
-                    // URL da imagem da ficha que você enviou
                     .WithThumbnailUrl("https://i.imgur.com/gK9JXXh.png")
                     .WithColor(new Discord.Color(80, 0, 80))
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .Build();
 
-                // 3. Cria os Botões
+                // Salvamos os dados DENTRO do botão (ID_Usuario + Valor)
+                var configAposta = $"{user.Id}_{valorAposta}";
                 var botoes = new ComponentBuilder()
-                    .WithButton("Branco (6.0x)", "rol_branco", ButtonStyle.Secondary, new Emoji("⚪"))
-                    .WithButton("Preto (1.5x)", "rol_preto", ButtonStyle.Secondary, new Emoji("⚫"))
-                    .WithButton("Vermelho (1.5x)", "rol_vermelho", ButtonStyle.Danger, new Emoji("🔴"))
-                    .WithButton("", "rol_cancelar", ButtonStyle.Secondary, new Emoji("❌"))
+                    .WithButton("Branco (6.0x)", $"rol_branco_{configAposta}", ButtonStyle.Secondary, new Emoji("⚪"))
+                    .WithButton("Preto (1.5x)", $"rol_preto_{configAposta}", ButtonStyle.Secondary, new Emoji("⚫"))
+                    .WithButton("Vermelho (1.5x)", $"rol_vermelho_{configAposta}", ButtonStyle.Danger, new Emoji("🔴"))
+                    .WithButton("", $"rol_cancelar_{configAposta}", ButtonStyle.Secondary, new Emoji("❌"))
                     .Build();
 
-                // 4. Envia a mensagem e guarda o ID
-                var mensagemEnviada = await msg.Channel.SendMessageAsync(embed: embed, components: botoes);
-
-                _apostasAtivas[mensagemEnviada.Id] = new ApostaRoleta
-                {
-                    UserId = user.Id,
-                    Valor = valorAposta
-                };
+                await msg.Channel.SendMessageAsync(embed: embed, components: botoes);
             }
         }
 
-        // --- SISTEMA DE CLIQUE NOS BOTÕES ---
         private async Task HandleButton(SocketMessageComponent component)
         {
             var customId = component.Data.CustomId;
-            var messageId = component.Message.Id;
             var guildId = ((SocketGuildUser)component.User).Guild.Id;
 
             if (!customId.StartsWith("rol_")) return;
 
-            if (!_apostasAtivas.TryGetValue(messageId, out var aposta))
-            {
-                await component.RespondAsync("Esta aposta já foi finalizada ou expirou.", ephemeral: true);
-                return;
-            }
+            // Decodifica a aposta salva no botão (rol_cor_userid_valor)
+            var partes = customId.Split('_');
+            if (partes.Length != 4) return;
 
-            if (component.User.Id != aposta.UserId)
+            string corEscolhida = partes[1]; // branco, preto, vermelho ou cancelar
+            ulong donoApostaId = ulong.Parse(partes[2]);
+            long valorAposta = long.Parse(partes[3]);
+
+            if (component.User.Id != donoApostaId)
             {
                 await component.RespondAsync("Você não pode clicar na aposta de outra pessoa!", ephemeral: true);
                 return;
             }
 
-            // Confirma o recebimento da interação para não dar "Interação Falhou"
-            await component.DeferAsync();
-
-            // CORREÇÃO: Desativa os botões reconstruindo-os com a tipagem estrita do Discord.Net
+            // Desativa os botões criando uma cópia cinza deles
             var botoesDesativados = new ComponentBuilder();
-
             foreach (var messageComponent in component.Message.Components)
             {
-                // Verifica se o componente base é realmente uma linha de botões
                 if (messageComponent is ActionRowComponent actionRow)
                 {
                     var rowBuilder = new ActionRowBuilder();
-
                     foreach (var innerComp in actionRow.Components)
                     {
                         if (innerComp is ButtonComponent btn)
                         {
-                            // Passa o Builder do botão diretamente (SEM o .Build() no final)
                             rowBuilder.AddComponent(btn.ToBuilder().WithDisabled(true));
                         }
                     }
@@ -171,21 +144,20 @@ namespace Botzinho.Cassino
             }
 
             // CANCELAR APOSTA
-            if (customId == "rol_cancelar")
+            if (corEscolhida == "cancelar")
             {
-                EconomyHelper.AdicionarSaldo(guildId, aposta.UserId, aposta.Valor);
-                _apostasAtivas.Remove(messageId);
+                EconomyHelper.AdicionarSaldo(guildId, donoApostaId, valorAposta);
 
                 var embedCancelado = component.Message.Embeds.First().ToEmbedBuilder()
-                    .WithDescription($"❌ | {component.User.Mention} desistiu da aposta. O valor de `{EconomyHelper.FormatarSaldo(aposta.Valor)}` foi devolvido para a carteira.")
+                    .WithDescription($"❌ | {component.User.Mention} desistiu da aposta. O valor de `{EconomyHelper.FormatarSaldo(valorAposta)}` foi devolvido para a carteira.")
                     .WithColor(Color.Red)
                     .Build();
 
-                await component.Message.ModifyAsync(m => { m.Embed = embedCancelado; m.Components = botoesDesativados.Build(); });
+                await component.UpdateAsync(m => { m.Embed = embedCancelado; m.Components = botoesDesativados.Build(); });
                 return;
             }
 
-            // LÓGICA DE GIRAR A ROLETA (Sorteio)
+            // LÓGICA DE GIRAR A ROLETA
             var random = new Random();
             int numeroCorte = random.Next(1, 101); // 1 a 100
 
@@ -193,30 +165,23 @@ namespace Botzinho.Cassino
             double multiplicadorSorteado = 0;
             string emojiSorteado;
 
-            // Probabilidades ajustadas aos multiplicadores:
-            // Branco (6.0x) = ~16% chance
-            // Vermelho (1.5x) = ~42% chance
-            // Preto (1.5x) = ~42% chance
-            if (numeroCorte <= 16) { corSorteada = "rol_branco"; emojiSorteado = "⚪"; multiplicadorSorteado = 6.0; }
-            else if (numeroCorte <= 58) { corSorteada = "rol_vermelho"; emojiSorteado = "🔴"; multiplicadorSorteado = 1.5; }
-            else { corSorteada = "rol_preto"; emojiSorteado = "⚫"; multiplicadorSorteado = 1.5; }
+            if (numeroCorte <= 16) { corSorteada = "branco"; emojiSorteado = "⚪"; multiplicadorSorteado = 6.0; }
+            else if (numeroCorte <= 58) { corSorteada = "vermelho"; emojiSorteado = "🔴"; multiplicadorSorteado = 1.5; }
+            else { corSorteada = "preto"; emojiSorteado = "⚫"; multiplicadorSorteado = 1.5; }
 
-            // Verificação de Ganho ou Perda
-            string nomeCor = corSorteada.Replace("rol_", "").ToUpper();
-            bool ganhou = (customId == corSorteada);
-
+            bool ganhou = (corEscolhida == corSorteada);
             EmbedBuilder embedFinal;
 
             if (ganhou)
             {
-                long premio = (long)(aposta.Valor * multiplicadorSorteado);
-                EconomyHelper.AdicionarSaldo(guildId, aposta.UserId, premio);
-                var saldoAtual = EconomyHelper.GetSaldo(guildId, aposta.UserId);
+                long premio = (long)(valorAposta * multiplicadorSorteado);
+                EconomyHelper.AdicionarSaldo(guildId, donoApostaId, premio);
+                var saldoAtual = EconomyHelper.GetSaldo(guildId, donoApostaId);
 
                 embedFinal = component.Message.Embeds.First().ToEmbedBuilder()
                     .WithTitle("🎰 Roleta - VITÓRIA!")
                     .WithDescription(
-                        $"{emojiSorteado} A roleta girou e parou no **{nomeCor}**!\n\n" +
+                        $"{emojiSorteado} A roleta girou e parou no **{corSorteada.ToUpper()}**!\n\n" +
                         $"🎉 Parabéns {component.User.Mention}! Você multiplicou sua aposta por **{multiplicadorSorteado}x** e ganhou `{EconomyHelper.FormatarSaldo(premio)}` cpoints!\n" +
                         $"-# ◦ Novo saldo: {EconomyHelper.FormatarSaldo(saldoAtual)} cpoints"
                     )
@@ -224,21 +189,19 @@ namespace Botzinho.Cassino
             }
             else
             {
-                var saldoAtual = EconomyHelper.GetSaldo(guildId, aposta.UserId);
+                var saldoAtual = EconomyHelper.GetSaldo(guildId, donoApostaId);
 
                 embedFinal = component.Message.Embeds.First().ToEmbedBuilder()
                     .WithTitle("🎰 Roleta - DERROTA")
                     .WithDescription(
-                        $"{emojiSorteado} A roleta girou e parou no **{nomeCor}**!\n\n" +
-                        $"💸 Que pena, {component.User.Mention}. Você perdeu `{EconomyHelper.FormatarSaldo(aposta.Valor)}` cpoints nessa rodada.\n" +
+                        $"{emojiSorteado} A roleta girou e parou no **{corSorteada.ToUpper()}**!\n\n" +
+                        $"💸 Que pena, {component.User.Mention}. Você perdeu `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints nessa rodada.\n" +
                         $"-# ◦ Novo saldo: {EconomyHelper.FormatarSaldo(saldoAtual)} cpoints"
                     )
                     .WithColor(Color.Red);
             }
 
-            // Atualiza a mensagem
-            _apostasAtivas.Remove(messageId);
-            await component.Message.ModifyAsync(m => { m.Embed = embedFinal.Build(); m.Components = botoesDesativados.Build(); });
+            await component.UpdateAsync(m => { m.Embed = embedFinal.Build(); m.Components = botoesDesativados.Build(); });
         }
     }
 }
