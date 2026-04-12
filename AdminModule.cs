@@ -19,7 +19,7 @@ namespace Botzinho.Admins
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerUsuariosPermitidos = new();
         private static readonly Dictionary<ulong, List<ulong>> ConfigServerCargosPermitidos = new();
 
-        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "clear", "lock" };
+        public static readonly string[] Sistemas = { "nuke", "ban", "kick", "mute", "avisar", "clear", "lock" };
 
         public AdminModule(DiscordSocketClient client)
         {
@@ -568,6 +568,7 @@ namespace Botzinho.Admins
                 .AddOption("Ban", "config_ban", "Configurar /ban")
                 .AddOption("Kick", "config_kick", "Configurar /kick")
                 .AddOption("Mute", "config_mute", "Configurar /mute")
+                .AddOption("Avisar", "config_avisar", "Configurar /avisar")
                 .AddOption("Clear", "config_clear", "Configurar /clear")
                 .AddOption("Lock/Unlock", "config_lock", "Configurar /lock e /unlock");
 
@@ -596,19 +597,80 @@ namespace Botzinho.Admins
 
         private async Task HandleSelectMenu(SocketMessageComponent component)
         {
-
             var user = component.User as SocketGuildUser;
             if (user == null) return;
 
+            var guild = user.Guild;
+            var customId = component.Data.CustomId;
+            var selected = component.Data.Values.FirstOrDefault();
+
+            // --- 1. PAINEL DE AJUDA ZHELP (Aberto a todos os usuários) ---
+            if (customId == "help_menu")
+            {
+                if (selected == "help_eco")
+                {
+                    var embedEco = new EmbedBuilder()
+                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithDescription(
+                            "• `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
+                            "• ↪ **zsaldo**:\n  ◦ Veja seu saldo atual em cpoints.\n" +
+                            "• ↪ **zdaily**:\n  ◦ Resgate seus cpoints diários.\n" +
+                            "• ↪ **zpay [@usuario] [valor]**:\n  ◦ Transfira seus cpoints para outro usuário.\n" +
+                            "• ↪ **zrank**:\n  ◦ Veja o ranking dos usuários mais ricos.\n" +
+                            "• ↪ **zaddsaldo [@usuario] [valor]**:\n  ◦ (Staff) Adiciona saldo a um usuário.\n" +
+                            "• ↪ **zremovesaldo [@usuario] [valor]**:\n  ◦ (Staff) Remove saldo de um usuário."
+                        )
+                        .WithFooter("Use os comandos com sabedoria!")
+                        .WithColor(new Color(120, 80, 220)) // Roxo Zoe
+                        .Build();
+
+                    await component.UpdateAsync(m => {
+                        m.Embed = embedEco;
+                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                    });
+                }
+                else if (selected == "help_mod")
+                {
+                    var embedMod = new EmbedBuilder()
+                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithDescription(
+                            "• ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
+                            "• ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
+                            "• ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
+                            "• ↪ **/clear [quantidade]**: Limpa mensagens do chat.\n" +
+                            "• ↪ **/nuke**: Redefine o canal atual."
+                        )
+                        .WithColor(new Color(120, 80, 220))
+                        .Build();
+
+                    await component.UpdateAsync(m => {
+                        m.Embed = embedMod;
+                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                    });
+                }
+                else if (selected == "help_admin")
+                {
+                    var embedAdmin = new EmbedBuilder()
+                        .WithAuthor($"Configurações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                        .WithDescription("• ↪ **/configserver**: Painel de controle de permissões e sistemas.")
+                        .WithColor(new Color(120, 80, 220))
+                        .Build();
+
+                    await component.UpdateAsync(m => {
+                        m.Embed = embedAdmin;
+                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
+                    });
+                }
+                return; // Impede que o código continue e bata nas restrições de administrador
+            }
+
+            // --- 2. CONFIGURAÇÕES DO SERVIDOR (Apenas para Staff/Admins) ---
             if (!PodeUsarEconfigStatic(user))
             {
                 await component.RespondAsync("sem permissao.", ephemeral: true);
                 return;
             }
-
-            var guild = user.Guild;
-            var customId = component.Data.CustomId;
-            var selected = component.Data.Values.First();
 
             if (customId == "configserver_menu")
             {
@@ -717,6 +779,7 @@ namespace Botzinho.Admins
                 return;
             }
 
+            // --- 3. AÇÕES DE CONFIGURAÇÃO (Adicionar/Remover Cargos e Membros) ---
             if (!EditandoComando.TryGetValue(guild.Id, out var editCmd)) return;
             if (!Configs.ContainsKey(guild.Id)) Configs[guild.Id] = new ServerConfig();
 
@@ -780,67 +843,6 @@ namespace Botzinho.Admins
                     await component.RespondAsync("cargo desbloqueado.", ephemeral: true);
                     await AtualizarPainel(guild, editCmd);
                     break;
-            }
-            // No AdminModule.cs, dentro do método HandleSelectMenu
-
-            if (customId == "help_menu")
-            {
-                // Define os ícones para os botões conforme a imagem do seu servidor
-                var emoteMod = Emote.Parse("<:suporte:1492662681130373201>");
-                var emoteEco = Emote.Parse("<:botportal:1492661012682248212>");
-
-                if (selected == "help_eco")
-                {
-                    var embedEco = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription(
-                            "• `[]` = **Obrigatório** / `()` = **Opcional**\n\n" +
-                            "• ↪ **zsaldo**:\n" +
-                            "  ◦ Veja seu saldo atual em cpoints.\n" +
-                            "• ↪ **zdaily**:\n" +
-                            "  ◦ Resgate seus cpoints diários.\n" +
-                            "• ↪ **zpay [@usuario] [valor]**:\n" +
-                            "  ◦ Transfira seus cpoints para outro usuário.\n" +
-                            "• ↪ **zrank**:\n" +
-                            "  ◦ Veja o ranking dos usuários mais ricos.\n" +
-                            "• ↪ **zaddsaldo [@usuario] [valor]**:\n" +
-                            "  ◦ (Staff) Adiciona saldo a um usuário.\n" +
-                            "• ↪ **zremovesaldo [@usuario] [valor]**:\n" +
-                            "  ◦ (Staff) Remove saldo de um usuário."
-                        )
-                        .WithFooter("Use os comandos com sabedoria!")
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
-
-                    await component.UpdateAsync(m => {
-                        m.Embed = embedEco;
-                        // Mantém o menu e os botões ativos para o usuário navegar
-                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
-                    });
-                    return;
-                }
-
-                if (selected == "help_mod")
-                {
-                    var embedMod = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Moderação | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl())
-                        .WithDescription(
-                            "• ↪ **/ban [@usuario] (motivo)**: Bane um membro.\n" +
-                            "• ↪ **/kick [@usuario] (motivo)**: Expulsa um membro.\n" +
-                            "• ↪ **/mute [@usuario] [tempo]**: Silencia um membro.\n" +
-                            "• ↪ **/clear [quantidade]**: Limpa mensagens.\n" +
-                            "• ↪ **/nuke**: Redefine o canal atual."
-                        )
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
-
-                    await component.UpdateAsync(m => {
-                        m.Embed = embedMod;
-                        m.Components = ComponentBuilder.FromMessage(component.Message).Build();
-                    });
-                    return;
-                }
             }
         }
     }
