@@ -121,7 +121,7 @@ Clique no ❌ para recuperar seu dinheiro agora.")
 
             if (component.User.Id != userId)
             {
-                await component.RespondAsync("❌ Essa roleta não é sua!", ephemeral: true);
+                await component.RespondAsync("<a:negativo:1492950137587241114> Essa roleta não é sua!", ephemeral: true);
                 return;
             }
 
