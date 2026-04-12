@@ -1,34 +1,10 @@
-using Discord;
-using Discord.Interactions;
-using Discord.WebSocket;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Botzinho.Admins;
-using Botzinho.Moderation;
-using Botzinho.Economy;
-
-var client = new DiscordSocketClient(new DiscordSocketConfig
+using Discord;using Discord.Interactions;using Discord.WebSocket;using Microsoft.Extensions.DependencyInjection;using System;using System.Linq;using System.Threading;using System.Threading.Tasks;using System.Collections.Generic;using Botzinho.Admins;using Botzinho.Moderation;using Botzinho.Economy;var client = new DiscordSocketClient(new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent | GatewayIntents.GuildMembers
-});
-
-var services = new ServiceCollection()
+});var services = new ServiceCollection()
     .AddSingleton(client)
-    .BuildServiceProvider();
-
-var interactionService = new InteractionService(client);
-var adminModule = new AdminModule(client);
-ModerationHelper.InicializarTabelas();
-var economyHandler = new Botzinho.Economy.EconomyHandler(client);
-Botzinho.Economy.EconomyHelper.InicializarTabelas();
-var cassinoHandler = new Botzinho.Cassino.CassinoHandler(client);
-
-client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-client.Ready += async () =>
+    .BuildServiceProvider();var interactionService = new InteractionService(client);var adminModule = new AdminModule(client);ModerationHelper.InicializarTabelas();var economyHandler = new Botzinho.Economy.EconomyHandler(client);
+Botzinho.Economy.EconomyHelper.InicializarTabelas();client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };client.Ready += async () =>
 {
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
@@ -57,21 +33,12 @@ client.Ready += async () =>
             }
         }
     });
-};
-client.InteractionCreated += async interaction =>
+};client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
     await interactionService.ExecuteCommandAsync(ctx, services);
-};
-
-var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-    ?? throw new Exception("DISCORD_TOKEN nao configurado!");
-
-await client.LoginAsync(TokenType.Bot, token);
-await client.StartAsync();
-await Task.Delay(Timeout.Infinite);
-
-public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
+};var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+    ?? throw new Exception("DISCORD_TOKEN nao configurado!");await client.LoginAsync(TokenType.Bot, token);await client.StartAsync();await Task.Delay(Timeout.Infinite);public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("configserver", "Configura permissoes do servidor")]
     public async Task ConfigServerAsync()
@@ -91,9 +58,7 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
         var msg = await GetOriginalResponseAsync();
         AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
     }
-}
-
-public class NukeModule : InteractionModuleBase<SocketInteractionContext>
+}public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
     public async Task NukeAsync()
