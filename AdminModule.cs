@@ -54,7 +54,7 @@ namespace Botzinho.Admins
         private static string GetConnectionString()
         {
             return Environment.GetEnvironmentVariable("DATABASE_URL")
-                ?? throw new Exception("DATABASE_URL nao configurado!");
+              ?? throw new Exception("DATABASE_URL nao configurado!");
         }
 
         public static void RegistrarPainel(ulong guildId, ulong channelId, ulong messageId)
@@ -81,11 +81,11 @@ namespace Botzinho.Admins
         public static bool PodeUsarEconfigStatic(SocketGuildUser user)
         {
             List<ulong> idsPermitidos = new()
-            {
-                1472642376970404002
-                // adicione outros IDs aqui
-                // 123456789012345678,
-            };
+      {
+        1472642376970404002
+                // adicione outros IDs aqui
+                // 123456789012345678,
+            };
 
             return idsPermitidos.Contains(user.Id);
         }
@@ -164,47 +164,47 @@ namespace Botzinho.Admins
                 conn.Open();
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-                    CREATE TABLE IF NOT EXISTS command_config (
-                        guild_id TEXT,
-                        comando TEXT,
-                        ativado BOOLEAN DEFAULT FALSE,
-                        PRIMARY KEY (guild_id, comando)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
-                        guild_id TEXT,
-                        comando TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, comando, cargo_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_membros_permitidos (
-                        guild_id TEXT,
-                        comando TEXT,
-                        membro_id TEXT,
-                        PRIMARY KEY (guild_id, comando, membro_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
-                        guild_id TEXT,
-                        comando TEXT,
-                        usuario_id TEXT,
-                        PRIMARY KEY (guild_id, comando, usuario_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
-                        guild_id TEXT,
-                        comando TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, comando, cargo_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS configserver_usuarios_permitidos (
-                        guild_id TEXT,
-                        user_id TEXT,
-                        PRIMARY KEY (guild_id, user_id)
-                    );
-                    CREATE TABLE IF NOT EXISTS configserver_cargos_permitidos (
-                        guild_id TEXT,
-                        cargo_id TEXT,
-                        PRIMARY KEY (guild_id, cargo_id)
-                    );
-                ";
+                    CREATE TABLE IF NOT EXISTS command_config (
+                        guild_id TEXT,
+                        comando TEXT,
+                        ativado BOOLEAN DEFAULT FALSE,
+                        PRIMARY KEY (guild_id, comando)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_cargos_permitidos (
+                        guild_id TEXT,
+                        comando TEXT,
+                        cargo_id TEXT,
+                        PRIMARY KEY (guild_id, comando, cargo_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_membros_permitidos (
+                        guild_id TEXT,
+                        comando TEXT,
+                        membro_id TEXT,
+                        PRIMARY KEY (guild_id, comando, membro_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_usuarios_bloqueados (
+                        guild_id TEXT,
+                        comando TEXT,
+                        usuario_id TEXT,
+                        PRIMARY KEY (guild_id, comando, usuario_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS command_cargos_bloqueados (
+                        guild_id TEXT,
+                        comando TEXT,
+                        cargo_id TEXT,
+                        PRIMARY KEY (guild_id, comando, cargo_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS configserver_usuarios_permitidos (
+                        guild_id TEXT,
+                        user_id TEXT,
+                        PRIMARY KEY (guild_id, user_id)
+                    );
+                    CREATE TABLE IF NOT EXISTS configserver_cargos_permitidos (
+                        guild_id TEXT,
+                        cargo_id TEXT,
+                        PRIMARY KEY (guild_id, cargo_id)
+                    );
+                ";
                 cmd.ExecuteNonQuery();
                 Console.WriteLine("Banco PostgreSQL inicializado.");
             }
@@ -229,10 +229,10 @@ namespace Botzinho.Admins
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        INSERT INTO command_config (guild_id, comando, ativado)
-                        VALUES (@gid, @cmd, @ativado)
-                        ON CONFLICT (guild_id, comando)
-                        DO UPDATE SET ativado = @ativado";
+                        INSERT INTO command_config (guild_id, comando, ativado)
+                        VALUES (@gid, @cmd, @ativado)
+                        ON CONFLICT (guild_id, comando)
+                        DO UPDATE SET ativado = @ativado";
                     cmd.Parameters.AddWithValue("@gid", gid);
                     cmd.Parameters.AddWithValue("@cmd", comando);
                     cmd.Parameters.AddWithValue("@ativado", config.Ativado);
@@ -410,9 +410,9 @@ namespace Botzinho.Admins
 
                 using var guildCmd = conn.CreateCommand();
                 guildCmd.CommandText = @"
-                    SELECT DISTINCT guild_id FROM configserver_usuarios_permitidos
-                    UNION
-                    SELECT DISTINCT guild_id FROM configserver_cargos_permitidos";
+                    SELECT DISTINCT guild_id FROM configserver_usuarios_permitidos
+                    UNION
+                    SELECT DISTINCT guild_id FROM configserver_cargos_permitidos";
                 using var reader = guildCmd.ExecuteReader();
                 var guildIds = new List<ulong>();
                 while (reader.Read())
@@ -483,52 +483,52 @@ namespace Botzinho.Admins
 
             var statusText = config.Ativado ? "`Ativado`" : "`Desativado`";
             var cargosText = config.CargosPermitidos.Count > 0
-                ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
-                : "`Nenhum`";
+              ? string.Join(", ", config.CargosPermitidos.Select(x => $"<@&{x}>"))
+              : "`Nenhum`";
             var membrosText = config.MembrosPermitidos.Count > 0
-                ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
-                : "`Nenhum`";
+              ? string.Join(", ", config.MembrosPermitidos.Select(x => $"<@{x}>"))
+              : "`Nenhum`";
             var bloqueadosText = config.UsuariosBloqueados.Count > 0
-                ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
-                : "`Nenhum`";
+              ? string.Join(", ", config.UsuariosBloqueados.Select(x => $"<@{x}>"))
+              : "`Nenhum`";
             var cargosBloqText = config.CargosBloqueados.Count > 0
-                ? string.Join(", ", config.CargosBloqueados.Select(x => $"<@&{x}>"))
-                : "`Nenhum`";
+              ? string.Join(", ", config.CargosBloqueados.Select(x => $"<@&{x}>"))
+              : "`Nenhum`";
 
             return new EmbedBuilder()
-                .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-                .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-                .WithDescription(
-                    $"**{comando.ToUpper()}** - Configuracao de Permissoes\n\n" +
-                    $"Configure quem pode usar o comando `/{comando}`.\n" +
-                    "Quando **ativado**, apenas cargos/membros da lista podem usar.\n" +
-                    "Quando **desativado**, ninguem pode usar o comando.\n\n" +
-                    $"**Status**: {statusText}\n" +
-                    $"**Cargos Permitidos**: {cargosText}\n" +
-                    $"**Membros Permitidos**: {membrosText}\n" +
-                    $"**Usuarios Bloqueados**: {bloqueadosText}\n" +
-                    $"**Cargos Bloqueados**: {cargosBloqText}"
-                )
-                .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name}")
-                .WithColor(new Discord.Color(0x2B2D31))
-                .Build();
+              .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+              .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+              .WithDescription(
+                $"**{comando.ToUpper()}** - Configuracao de Permissoes\n\n" +
+                $"Configure quem pode usar o comando `/{comando}`.\n" +
+                "Quando **ativado**, apenas cargos/membros da lista podem usar.\n" +
+                "Quando **desativado**, ninguem pode usar o comando.\n\n" +
+                $"**Status**: {statusText}\n" +
+                $"**Cargos Permitidos**: {cargosText}\n" +
+                $"**Membros Permitidos**: {membrosText}\n" +
+                $"**Usuarios Bloqueados**: {bloqueadosText}\n" +
+                $"**Cargos Bloqueados**: {cargosBloqText}"
+              )
+              .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name}")
+              .WithColor(new Discord.Color(0x2B2D31))
+              .Build();
         }
 
         public static MessageComponent CriarMenuComando(string comando)
         {
             var menu = new SelectMenuBuilder()
-                .WithCustomId($"cmd_config_{comando}")
-                .WithPlaceholder("Selecione a opcao desejada para configurar.")
-                .AddOption("Ativar/Desativar", "toggle", "Ative ou desative o sistema")
-                .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos")
-                .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos")
-                .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros")
-                .AddOption("Remover membros permitidos", "remove_member", "Remova membros")
-                .AddOption("Bloquear usuario", "block_user", "Bloqueie um usuario")
-                .AddOption("Desbloquear usuario", "unblock_user", "Desbloqueie um usuario")
-                .AddOption("Bloquear cargo", "block_role", "Bloqueie um cargo")
-                .AddOption("Desbloquear cargo", "unblock_role", "Desbloqueie um cargo")
-                .AddOption("Voltar ao menu principal", "back", "Voltar");
+              .WithCustomId($"cmd_config_{comando}")
+              .WithPlaceholder("Selecione a opcao desejada para configurar.")
+              .AddOption("Ativar/Desativar", "toggle", "Ative ou desative o sistema")
+              .AddOption("Adicionar cargos permitidos", "add_role", "Adicione cargos")
+              .AddOption("Remover cargos permitidos", "remove_role", "Remova cargos")
+              .AddOption("Adicionar membros permitidos", "add_member", "Adicione membros")
+              .AddOption("Remover membros permitidos", "remove_member", "Remova membros")
+              .AddOption("Bloquear usuario", "block_user", "Bloqueie um usuario")
+              .AddOption("Desbloquear usuario", "unblock_user", "Desbloqueie um usuario")
+              .AddOption("Bloquear cargo", "block_role", "Bloqueie um cargo")
+              .AddOption("Desbloquear cargo", "unblock_role", "Desbloqueie um cargo")
+              .AddOption("Voltar ao menu principal", "back", "Voltar");
 
             return new ComponentBuilder().WithSelectMenu(menu).Build();
         }
@@ -537,32 +537,32 @@ namespace Botzinho.Admins
         {
             var botUser = guild.CurrentUser;
             return new EmbedBuilder()
-                .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-                .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-                .WithDescription(
-                    "**Painel de Configuracao do Servidor**\n\n" +
-                    "Selecione abaixo qual sistema voce deseja configurar.\n" +
-                    "Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
-                    "Quando **desativado**, ninguem pode usar o comando.\n" +
-                    "Quando **ativado**, apenas cargos/membros da lista podem usar."
-                )
-                .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name}")
-                .WithColor(new Discord.Color(0x2B2D31))
-                .Build();
+              .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+              .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
+              .WithDescription(
+                "**Painel de Configuracao do Servidor**\n\n" +
+                "Selecione abaixo qual sistema voce deseja configurar.\n" +
+                "Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
+                "Quando **desativado**, ninguem pode usar o comando.\n" +
+                "Quando **ativado**, apenas cargos/membros da lista podem usar."
+              )
+              .WithFooter($"Servidor de {guild.Owner?.Username ?? guild.Name}")
+              .WithColor(new Discord.Color(0x2B2D31))
+              .Build();
         }
 
         public static MessageComponent CriarMenuPrincipal()
         {
             var menu = new SelectMenuBuilder()
-                .WithCustomId("configserver_menu")
-                .WithPlaceholder("Selecione o sistema para configurar")
-                .AddOption("Nuke", "config_nuke", "Configurar /nuke")
-                .AddOption("Ban", "config_ban", "Configurar /ban")
-                .AddOption("Kick", "config_kick", "Configurar /kick")
-                .AddOption("Mute", "config_mute", "Configurar /mute")
-                .AddOption("Avisar", "config_avisar", "Configurar /avisar")
-                .AddOption("Clear", "config_clear", "Configurar /clear")
-                .AddOption("Lock/Unlock", "config_lock", "Configurar /lock e /unlock");
+              .WithCustomId("configserver_menu")
+              .WithPlaceholder("Selecione o sistema para configurar")
+              .AddOption("Nuke", "config_nuke", "Configurar /nuke")
+              .AddOption("Ban", "config_ban", "Configurar /ban")
+              .AddOption("Kick", "config_kick", "Configurar /kick")
+              .AddOption("Mute", "config_mute", "Configurar /mute")
+              .AddOption("Avisar", "config_avisar", "Configurar /avisar")
+              .AddOption("Clear", "config_clear", "Configurar /clear")
+              .AddOption("Lock/Unlock", "config_lock", "Configurar /lock e /unlock");
 
             return new ComponentBuilder().WithSelectMenu(menu).Build();
         }
@@ -596,25 +596,25 @@ namespace Botzinho.Admins
             var customId = component.Data.CustomId;
             var selected = component.Data.Values.FirstOrDefault();
 
-            // MENU ZHELP
-            if (customId == "help_menu")
+            // MENU ZHELP
+            if (customId == "help_menu")
             {
                 if (selected == "help_eco")
                 {
                     var roxo = "<:emoji_8:1491910148476899529>";
                     var embedEco = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription(
-                            $"{roxo} `[]` = **Obrigatorio** / `()` = **Opcional**\n\n" +
-                            $"{roxo} ↪ **zsaldo**:\n-# ◦ Veja seu saldo atual em cpoints.\n" +
-                            $"{roxo} ↪ **zdaily**:\n-# ◦ Resgate seus cpoints diarios.\n" +
-                            $"{roxo} ↪ **zpay [@usuario] [valor]**:\n-# ◦ Transfira seus cpoints para outro usuario.\n" +
-                            $"{roxo} ↪ **zrank**:\n-# ◦ Veja o ranking dos usuarios mais ricos.\n"
-                        )
-                        .WithFooter("Use os comandos com sabedoria!")
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
+                      .WithAuthor($"Comandos de Economia | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                      .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                      .WithDescription(
+                        $"{roxo} `[]` = **Obrigatorio** / `()` = **Opcional**\n\n" +
+                        $"{roxo} ↪ **zsaldo**:\n-# ◦ Veja seu saldo atual em cpoints.\n" +
+                        $"{roxo} ↪ **zdaily**:\n-# ◦ Resgate seus cpoints diarios.\n" +
+                        $"{roxo} ↪ **zpay [@usuario] [valor]**:\n-# ◦ Transfira seus cpoints para outro usuario.\n" +
+                        $"{roxo} ↪ **zrank**:\n-# ◦ Veja o ranking dos usuarios mais ricos.\n"
+                      )
+                      .WithFooter("Use os comandos com sabedoria!")
+                      .WithColor(new Color(120, 80, 220))
+                      .Build();
 
                     await component.UpdateAsync(m =>
                     {
@@ -626,16 +626,16 @@ namespace Botzinho.Admins
                 {
                     var roxo = "<:emoji_8:1491910148476899529>";
                     var embedMod = new EmbedBuilder()
-                        .WithAuthor($"Comandos de Moderacao | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription(
-                            $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n-# ◦ Bane um membro.\n" +
-                            $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n-# ◦ Expulsa um membro.\n" +
-                            $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n-# ◦ Silencia um membro.\n" +
-                            $"{roxo} ↪ **/clear [quantidade]**:\n-# ◦ Limpa mensagens do chat.\n" +
-                            $"{roxo} ↪ **/nuke**:\n-# ◦ Redefine o canal atual."
-                        )
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
+                      .WithAuthor($"Comandos de Moderacao | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                      .WithDescription(
+                        $"{roxo} ↪ **/ban [@usuario] (motivo)**:\n-# ◦ Bane um membro.\n" +
+                        $"{roxo} ↪ **/kick [@usuario] (motivo)**:\n-# ◦ Expulsa um membro.\n" +
+                        $"{roxo} ↪ **/mute [@usuario] [tempo]**:\n-# ◦ Silencia um membro.\n" +
+                        $"{roxo} ↪ **/clear [quantidade]**:\n-# ◦ Limpa mensagens do chat.\n" +
+                        $"{roxo} ↪ **/nuke**:\n-# ◦ Redefine o canal atual."
+                      )
+                      .WithColor(new Color(120, 80, 220))
+                      .Build();
 
                     await component.UpdateAsync(m =>
                     {
@@ -647,10 +647,10 @@ namespace Botzinho.Admins
                 {
                     var roxo = "<:emoji_8:1491910148476899529>";
                     var embedAdmin = new EmbedBuilder()
-                        .WithAuthor($"Configuracoes | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription($"{roxo} ↪ **/configserver**:\n-# ◦ Painel de controle de permissoes e sistemas.")
-                        .WithColor(new Color(120, 80, 220))
-                        .Build();
+                      .WithAuthor($"Configuracoes | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                      .WithDescription($"{roxo} ↪ **/configserver**:\n-# ◦ Painel de controle de permissoes e sistemas.")
+                      .WithColor(new Color(120, 80, 220))
+                      .Build();
 
                     await component.UpdateAsync(m =>
                     {
@@ -661,8 +661,8 @@ namespace Botzinho.Admins
                 return;
             }
 
-            // CONFIGSERVER
-            if (customId == "configserver_menu")
+            // CONFIGSERVER
+            if (customId == "configserver_menu")
             {
                 if (!PodeUsarEconfigStatic(user))
                 {
@@ -716,9 +716,9 @@ namespace Botzinho.Admins
 
                     case "add_role":
                         await component.RespondAsync("selecione o cargo:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
-                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                          components: new ComponentBuilder().WithSelectMenu(
+                            new SelectMenuBuilder().WithCustomId("srv_add_role").WithPlaceholder("Selecione o cargo")
+                            .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
                         break;
 
                     case "remove_role":
@@ -732,9 +732,9 @@ namespace Botzinho.Admins
 
                     case "add_member":
                         await component.RespondAsync("selecione o membro:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
-                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                          components: new ComponentBuilder().WithSelectMenu(
+                            new SelectMenuBuilder().WithCustomId("srv_add_member").WithPlaceholder("Selecione o membro")
+                            .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
                         break;
 
                     case "remove_member":
@@ -748,9 +748,9 @@ namespace Botzinho.Admins
 
                     case "block_user":
                         await component.RespondAsync("selecione o usuario:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuario")
-                                .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                          components: new ComponentBuilder().WithSelectMenu(
+                            new SelectMenuBuilder().WithCustomId("srv_block_user").WithPlaceholder("Selecione o usuario")
+                            .WithType(ComponentType.UserSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
                         break;
 
                     case "unblock_user":
@@ -764,9 +764,9 @@ namespace Botzinho.Admins
 
                     case "block_role":
                         await component.RespondAsync("selecione o cargo:",
-                            components: new ComponentBuilder().WithSelectMenu(
-                                new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
-                                .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
+                          components: new ComponentBuilder().WithSelectMenu(
+                            new SelectMenuBuilder().WithCustomId("srv_block_role").WithPlaceholder("Selecione o cargo")
+                            .WithType(ComponentType.RoleSelect).WithMinValues(1).WithMaxValues(1)).Build(), ephemeral: true);
                         break;
 
                     case "unblock_role":
