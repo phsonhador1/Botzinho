@@ -621,9 +621,8 @@ namespace Botzinho.Admins
                                 $"{roxo} ↪ **zsaldo**:\n-# ◦ Veja seu saldo atual em cpoints.\n" +
                                 $"{roxo} ↪ **zdaily**:\n-# ◦ Resgate seus cpoints diários.\n" +
                                 $"{roxo} ↪ **zpay [@usuario] [valor]**:\n-# ◦ Transfira seus cpoints para outro usuário.\n" +
-                                $"{roxo} ↪ **zrank**:\n-# ◦ Veja o ranking dos usuários mais ricos.\n" +
-                                $"{roxo} ↪ **zaddsaldo [@usuario] [valor]**:\n-# ◦ (Staff) Adiciona saldo a um usuário.\n" +
-                                $"{roxo} ↪ **zremovesaldo [@usuario] [valor]**:\n-# ◦ (Staff) Remove saldo de um usuário."
+                                $"{roxo} ↪ **zrank**:\n-# ◦ Veja o ranking dos usuários mais ricos.\n"
+                                
                             )
                             .WithFooter("Use os comandos com sabedoria!")
                             .WithColor(new Color(120, 80, 220)) // Roxo Zoe
