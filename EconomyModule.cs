@@ -24,18 +24,24 @@ namespace Botzinho.Economy
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
+
+            // Primeiro garante que a tabela base existe
             cmd.CommandText = @"
-                CREATE TABLE IF NOT EXISTS economy_users (
-                    guild_id TEXT,
-                    user_id TEXT,
-                    saldo BIGINT DEFAULT 0,
-                    ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
-                    ultimo_semanal TIMESTAMP DEFAULT '2000-01-01',
-                    ultimo_mensal TIMESTAMP DEFAULT '2000-01-01',
-                    PRIMARY KEY (guild_id, user_id)
-                );
-            ";
+        CREATE TABLE IF NOT EXISTS economy_users (
+            guild_id TEXT,
+            user_id TEXT,
+            saldo BIGINT DEFAULT 0,
+            ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
+            PRIMARY KEY (guild_id, user_id)
+        );
+
+        -- ESSAS LINHAS ABAIXO RESOLVEM O ERRO:
+        -- Elas verificam se a coluna NÃO existe e adicionam ela na tabela antiga
+        ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_semanal TIMESTAMP DEFAULT '2000-01-01';
+        ALTER TABLE economy_users ADD COLUMN IF NOT EXISTS ultimo_mensal TIMESTAMP DEFAULT '2000-01-01';
+    ";
             cmd.ExecuteNonQuery();
+            Console.WriteLine("✅ [Banco] Tabelas e Colunas de Economia atualizadas.");
         }
 
         public static long GetSaldo(ulong guildId, ulong userId)
@@ -252,7 +258,7 @@ namespace Botzinho.Economy
             using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(width, height));
             var canvas = surface.Canvas;
             var fontBold = SkiaSharp.SKTypeface.FromFamilyName("DejaVu Sans", SkiaSharp.SKFontStyle.Bold) ?? SkiaSharp.SKTypeface.Default;
-            
+
             var bgPaint = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(20, 10, 30), IsAntialias = true };
             canvas.DrawRect(new SkiaSharp.SKRect(0, 0, width, height), bgPaint);
 
@@ -262,14 +268,14 @@ namespace Botzinho.Economy
                 var userData = topUsers[i];
                 IUser member = guild.GetUser(userData.UserId);
                 if (member == null) member = await ((IGuild)guild).GetUserAsync(userData.UserId);
-                
+
                 string username = member?.Username ?? "Desconhecido";
                 int col = i % 2; int row = i / 2;
                 int x = 40 + (col * 400); int y = 120 + (row * 105);
 
                 var cardPaint = new SkiaSharp.SKPaint { Color = i < 3 ? new SkiaSharp.SKColor(255, 180, 0) : new SkiaSharp.SKColor(80, 0, 80), IsAntialias = true };
                 canvas.DrawRoundRect(new SkiaSharp.SKRect(x, y, x + 370, y + 85), 42, 42, cardPaint);
-                
+
                 var namePaint = new SkiaSharp.SKPaint { Color = i < 3 ? SkiaSharp.SKColors.Black : SkiaSharp.SKColors.White, TextSize = 22, Typeface = fontBold, IsAntialias = true };
                 canvas.DrawText(username, x + 90, y + 50, namePaint);
             }
