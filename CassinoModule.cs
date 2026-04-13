@@ -67,7 +67,7 @@ namespace Botzinho.Cassino
 ⚫ **Preto:** 1.5x
 🔴 **Vermelho:** 1.5x
 
-🧧 | **Desistir da aposta:** Clique no ❌ para recuperar seu dinheiro agora.")
+🧧 | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49)).Build();
 
@@ -75,7 +75,7 @@ namespace Botzinho.Cassino
                     .WithButton("Branco (6.0x)", $"roleta_branco_{user.Id}", ButtonStyle.Secondary, new Emoji("⚪"))
                     .WithButton("Preto (1.5x)", $"roleta_preto_{user.Id}", ButtonStyle.Secondary, new Emoji("⚫"))
                     .WithButton("Vermelho (1.5x)", $"roleta_vermelho_{user.Id}", ButtonStyle.Danger, new Emoji("🔴"))
-                    .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, new Emoji("❌"));
+                    .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, new Emoji("<:erro:1493078898462949526>"));
 
                 await msg.Channel.SendMessageAsync(embed: embed, components: components.Build());
             }
