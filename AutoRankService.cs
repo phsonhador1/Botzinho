@@ -29,11 +29,14 @@ namespace Botzinho.Core
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
+            // 👇 CORREÇÃO: Espera 5 minutos após o bot ligar antes de mandar o primeiro Rank
+            await Task.Delay(TimeSpan.FromMinutes(5));
+
             while (true)
             {
                 try
                 {
-                    // 1. Procura o canal pelo ID
+                    // Procura o canal pelo ID
                     var channel = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
 
                     if (channel != null)
@@ -44,7 +47,7 @@ namespace Botzinho.Core
                         // Gera a imagem do rank
                         string path = await EconomyImageHelper.GerarImagemRank(guild, top10);
 
-                        // 3. Envia a mensagem
+                        // Envia a mensagem com a formatação idêntica
                         var msg = await channel.SendFileAsync(path,
                             "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**\n" +
                             "<:whitemoney:1493119805534900346> Confira quem são os membros mais <:coroa:1493119946547396689> **Magnatas** do momento!");
@@ -52,7 +55,7 @@ namespace Botzinho.Core
                         // Deleta o arquivo temporário
                         if (File.Exists(path)) File.Delete(path);
 
-                        // 4. Agenda a exclusão para daqui a 5 minutos
+                        // Agenda a exclusão para daqui a 5 minutos
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(TimeSpan.FromMinutes(5));
@@ -65,18 +68,20 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro AutoRank]: {ex.Message}");
                 }
 
-                // 5. Espera 30 minutos para a próxima execução do Rank
+                // Espera 30 minutos para a próxima execução do Rank
                 await Task.Delay(TimeSpan.FromMinutes(30));
             }
         }
 
-        // --- SISTEMA DE SORTEIO AUTOMÁTICO ---
         // --- SISTEMA DE SORTEIO AUTOMÁTICO ---
         private static async Task LoopSorteio(DiscordSocketClient client)
         {
             // Aguarda o bot conectar
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
+
+            // 👇 CORREÇÃO: Espera 10 minutos após o bot ligar antes de fazer o primeiro Sorteio
+            await Task.Delay(TimeSpan.FromMinutes(10));
 
             while (true)
             {
@@ -92,7 +97,7 @@ namespace Botzinho.Core
                         // 2. Aguarda 5 segundos para gerar expectativa
                         await Task.Delay(5000);
 
-                        // 3. BAIXA A LISTA DE USUÁRIOS E JUNTA TUDO (CORREÇÃO AQUI 👇)
+                        // 3. BAIXA A LISTA DE USUÁRIOS E JUNTA TUDO (FlattenAsync)
                         var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
                         var membros = listaUsuarios.Where(u => !u.IsBot).ToList();
 
@@ -128,8 +133,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                // 8. Espera para fazer o próximo sorteio (Ajuste para o seu tempo de teste)
-                await Task.Delay(TimeSpan.FromSeconds(20));
+                // 8. Espera 25 minutos para fazer o próximo sorteio
+                await Task.Delay(TimeSpan.FromMinutes(25));
             }
         }
     }
