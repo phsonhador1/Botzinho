@@ -121,43 +121,47 @@ namespace Botzinho.Cassino
 
         public static async Task<string> GerarImagemCoinflip(bool deuCara, bool ganhou, long valor)
         {
-            int width = 550; int height = 220;
+            // Aumentamos um pouco o canvas para acomodar o texto centralizado
+            int width = 600; int height = 250;
             string fileName = Path.Combine(Path.GetTempPath(), $"cf_{Guid.NewGuid()}.png");
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
-            var bgPaint = new SKPaint
-            {
-                Shader = SKShader.CreateLinearGradient(
-                    new SKPoint(0, 0),
-                    new SKPoint(0, height),
-                    new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) },
-                    null,
-                    (SkiaSharp.SKShaderTileMode)0)
-            };
+            // Fundo Gradiente Cassino
+            var bgPaint = new SKPaint { Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(0, height), new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) }, null, (SkiaSharp.SKShaderTileMode)0) };
             canvas.DrawRect(new SKRect(0, 0, width, height), bgPaint);
 
+            // Moldura Neon
             var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = ganhou ? SKColors.LimeGreen.WithAlpha(120) : SKColors.Red.WithAlpha(120), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 3) };
             canvas.DrawRoundRect(new SKRect(10, 10, width - 10, height - 10), 15, 15, borderPaint);
 
+            // --- CÁLCULO DE CENTRALIZAÇÃO HORIZONTAL ---
+            float centroX = width / 2f;
+
+            // Desenhar Moeda (Centralizada)
             string coinAsset = deuCara ? "coin_cara.png" : "coin_coroa.png";
             string coinPath = Path.Combine(AppContext.BaseDirectory, "Assets", coinAsset);
             if (File.Exists(coinPath))
             {
                 using var stream = new FileStream(coinPath, FileMode.Open, FileAccess.Read);
                 using var bitmap = SKBitmap.Decode(stream);
-                canvas.DrawBitmap(bitmap, new SKRect(40, 35, 190, 185), new SKPaint { IsAntialias = true });
+                // Centraliza a moeda horizontalmente (X)
+                float moedaWidth = 130; float moedaHeight = 130;
+                float moedaX = centroX - (moedaWidth / 2f);
+                canvas.DrawBitmap(bitmap, new SKRect(moedaX, 25, moedaX + moedaWidth, 25 + moedaHeight), new SKPaint { IsAntialias = true });
             }
 
             var bold = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
-            var paintRes = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 50, Typeface = bold, IsAntialias = true };
-            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", 220, 80, paintRes);
 
-            var paintSub = new SKPaint { Color = SKColors.LightGray, TextSize = 25, IsAntialias = true };
-            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", 220, 115, paintSub);
+            // --- PINCÉIS COM ALINHAMENTO CENTRAL ---
+            var paintRes = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 45, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
+            var paintSub = new SKPaint { Color = SKColors.LightGray, TextSize = 22, IsAntialias = true, TextAlign = SKTextAlign.Center };
+            var paintVal = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 38, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
 
-            var paintVal = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 40, Typeface = bold, IsAntialias = true };
-            canvas.DrawText($"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}", 220, 170, paintVal);
+            // --- DESENHAR TEXTOS USANDO O centroX ---
+            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", centroX, 185, paintRes);
+            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", centroX, 215, paintSub);
+            canvas.DrawText($"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}", centroX, 240, paintVal); // Ajustado para não cortar
 
             using (var img = surface.Snapshot()) using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var str = File.OpenWrite(fileName)) data.SaveTo(str);
