@@ -5,17 +5,17 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Botzinho.Core
 {
     public static class AutoRankService
     {
-        // --- 🟢 AGORA TUDO AQUI É 'PUBLIC' PARA O SEU ADMIN MODULE CONSEGUIR LER ---
+        // Variáveis de tempo públicas para o Zpainel
         public static long UnixProximoSorteio = 0;
         public static long UnixProximoRank = 0;
 
+        // Sua Whitelist
         public static readonly List<ulong> IdsPermitidos = new()
         {
             1431655151105474755, 1472642376970404002, 1437491644286107838,
@@ -24,8 +24,10 @@ namespace Botzinho.Core
             1445779233052823604
         };
 
-        // ⚠️ IDs PÚBLICOS PARA O ADMIN CONSEGUIR USAR O 'zsortear'
+        // ⚠️ CANAL PÚBLICO DO SERVIDOR (Para o Sorteio e Rank)
         public const ulong ID_CANAL_RANK = 1487905632261505024;
+
+        // ⚠️ CANAL PRIVADO (SEU SERVIDOR DE LOGS) - VERIFIQUE ESSE ID
         public const ulong ID_CANAL_LOGS = 1492995092166869002;
 
         public static void Iniciar(DiscordSocketClient client)
@@ -39,7 +41,6 @@ namespace Botzinho.Core
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
-            // Marca a hora do primeiro rank
             UnixProximoRank = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
             await Task.Delay(TimeSpan.FromMinutes(5));
 
@@ -74,7 +75,6 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro AutoRank]: {ex.Message}");
                 }
 
-                // Atualiza a variável para o 'zpainel' conseguir ler a próxima hora
                 UnixProximoRank = DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds();
                 await Task.Delay(TimeSpan.FromMinutes(30));
             }
@@ -85,10 +85,10 @@ namespace Botzinho.Core
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
-            // Log de inicialização privado
+            // Tenta enviar o log apenas pro privado
             await EnviarLogPrivado(client, "🟢 **Monitoramento Ativo:** Primeiro sorteio em 10 minutos.");
 
-            // Mensagem do primeiro sorteio com contador
+            // Mensagem Inicial do Contador no Público
             var channelInit = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
             if (channelInit != null)
             {
@@ -108,13 +108,14 @@ namespace Botzinho.Core
                     {
                         var mensagensAntigas = await channel.GetMessagesAsync(30).FlattenAsync();
 
+                        // Limpa qualquer vestígio de sorteios antigos para o chat ficar limpo
                         var lixoParaApagar = mensagensAntigas.Where(m =>
                             m.Author.Id == client.CurrentUser.Id &&
                             (m.Content.Contains("O magnata sortudo") ||
                              m.Content.Contains("Sorteando...") ||
-                             m.Content.Contains("SORTEIO CONCLUÍDO!") ||
                              m.Content.Contains("O próximo sorteio acontecerá") ||
-                             m.Content.Contains("O primeiro sorteio acontecerá"))
+                             m.Content.Contains("O primeiro sorteio acontecerá") ||
+                             m.Content.Contains("Monitoramento iniciado!"))
                         );
 
                         foreach (var msgAntiga in lixoParaApagar)
@@ -122,6 +123,7 @@ namespace Botzinho.Core
                             try { await msgAntiga.DeleteAsync(); } catch { }
                         }
 
+                        // Animação de Sorteio
                         var msgStatus = await channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Sorteando...** Vamos ver quem vai ser o sortudo.");
                         await Task.Delay(5000);
 
@@ -139,13 +141,14 @@ namespace Botzinho.Core
 
                             try { await msgStatus.DeleteAsync(); } catch { }
 
-                            // Mensagem do vencedor
+                            // Anúncio do Ganhador
                             await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
 
-                            // Atualiza a variável para o 'zpainel' conseguir ler a próxima hora
+                            // Envia o novo contador
                             UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
                             await channel.SendMessageAsync($"⏳ **Fique de olho!** O próximo sorteio acontecerá <t:{UnixProximoSorteio}:R>.");
 
+                            // Tenta logar no privado
                             var proximo = DateTime.Now.AddMinutes(15);
                             await EnviarLogPrivado(client, $"✅ **Sorteio Realizado!**\n🏆 Ganhador: <@{ganhador.Id}>\n⏰ Próximo sorteio às: **{proximo:HH:mm:ss}**");
                         }
@@ -154,25 +157,29 @@ namespace Botzinho.Core
                             try { await msgStatus.DeleteAsync(); } catch { }
                             await EnviarLogPrivado(client, "⚠️ **Aviso:** Nenhum ID da whitelist encontrado para o sorteio.");
 
-                            // Atualiza mesmo se falhar para não travar o zpainel
+                            // Mantém o ciclo vivo
                             UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
+                            await channel.SendMessageAsync($"⏳ **Fique de olho!** O próximo sorteio acontecerá <t:{UnixProximoSorteio}:R>.");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
-                    await EnviarLogPrivado(client, $"❌ **Erro no Loop de Sorteio:** {ex.Message}");
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(15));
             }
         }
 
+        // Método blindado para nunca enviar logs no chat público
         private static async Task EnviarLogPrivado(DiscordSocketClient client, string texto)
         {
             try
             {
+                // TRAVA DE SEGURANÇA: Se o ID do log for o mesmo do Rank, aborta.
+                if (ID_CANAL_LOGS == ID_CANAL_RANK) return;
+
                 var logChannel = client.GetChannel(ID_CANAL_LOGS) as SocketTextChannel;
                 if (logChannel != null)
                 {
