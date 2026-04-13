@@ -538,9 +538,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<a:ganhador:1493088070923452599> **BlackJack!** **VITÓRIA CONFIRMADA!**
 
-• <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:moedazoe:1493359715420340364> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
 
-  ◦ <a:7moneyz:1493015410637930508> **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
+  ◦ <:dinheiro:1493360319928733838> **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
                     else if (pS == dS)
                     {
@@ -550,9 +550,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"<:perdeu:1493361130075328754> **EMPATE!**
 
-• <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:moedazoe:1493359715420340364> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
 
-  ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
+  ◦ <:dinheiro:1493360319928733838> **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
                     else
                     {
