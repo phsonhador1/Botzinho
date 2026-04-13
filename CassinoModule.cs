@@ -174,6 +174,71 @@ namespace Botzinho.Cassino
             canvas.DrawText(displayValue, x + 92, y + 130, paintTextRight);
             canvas.DrawText(suitSymbol, x + 92, y + 112, paintSmallSuitRight);
         }
+
+        // --- GERADOR DE IMAGEM DO CRASH ---
+        public static async Task<string> GerarImagemCrash(double multiplicador, string status)
+        {
+            int w = 600; int h = 300;
+            using var surface = SKSurface.Create(new SKImageInfo(w, h));
+            var canvas = surface.Canvas;
+
+            // Define as cores com base no status do jogo
+            SKColor corFundo, corLinha;
+            string textoTopo = "";
+
+            if (status == "JOGANDO") { corFundo = new SKColor(140, 82, 255); corLinha = SKColors.White; textoTopo = "⚙️ EM JOGO"; }
+            else if (status == "CRASH") { corFundo = new SKColor(235, 59, 59); corLinha = new SKColor(255, 150, 150); textoTopo = "💥 CRASH!"; }
+            else { corFundo = new SKColor(46, 204, 113); corLinha = SKColors.White; textoTopo = "✅ RETIROU!"; } // CASH OUT
+
+            // Fundo Arredondado
+            var rect = new SKRect(0, 0, w, h);
+            using (var paintFundo = new SKPaint { Color = corFundo, IsAntialias = true })
+            {
+                canvas.DrawRoundRect(rect, 20, 20, paintFundo);
+            }
+
+            // Fonte Principal
+            var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+
+            // Texto do Topo Esquerdo
+            canvas.DrawText(textoTopo, 40, 60, new SKPaint { Color = new SKColor(255, 255, 255, 200), TextSize = 24, Typeface = fontBold, IsAntialias = true });
+
+            // Multiplicador Gigante na Direita
+            canvas.DrawText($"{multiplicador:F2}x", w - 40, 160, new SKPaint { Color = SKColors.White, TextSize = 80, Typeface = fontBold, TextAlign = SKTextAlign.Right, IsAntialias = true });
+
+            // --- DESENHO DO GRÁFICO (Simulação visual) ---
+            float startX = 60; float startY = h - 60;
+            float endX = w / 2.5f; 
+            
+            // A altura da linha sobe conforme o multiplicador cresce
+            float heightOffset = Math.Min((float)(multiplicador * 15), 120); 
+            float endY = startY - heightOffset;
+
+            using (var paintLinha = new SKPaint { Color = corLinha, StrokeWidth = 6, Style = SKPaintStyle.Stroke, IsAntialias = true })
+            {
+                canvas.DrawLine(startX, startY, endX, endY, paintLinha);
+            }
+
+            // Bolinha na ponta do gráfico se estiver jogando
+            if (status == "JOGANDO" || status == "WIN")
+            {
+                canvas.DrawCircle(endX, endY, 8, new SKPaint { Color = SKColors.White, IsAntialias = true });
+            }
+
+            // Linha pontilhada de base
+            using (var paintBase = new SKPaint { Color = new SKColor(255, 255, 255, 100), StrokeWidth = 2, Style = SKPaintStyle.Stroke, IsAntialias = true })
+            {
+                paintBase.PathEffect = SKPathEffect.CreateDash(new float[] { 10, 10 }, 0);
+                canvas.DrawLine(startX, startY + 20, w - 60, startY + 20, paintBase);
+            }
+
+            // Salvar imagem
+            var pathImg = Path.Combine(Path.GetTempPath(), $"crash_{Guid.NewGuid()}.png");
+            using (var img = surface.Snapshot()) using (var d = img.Encode(SKEncodedImageFormat.Png, 100))
+            using (var s = File.OpenWrite(pathImg)) d.SaveTo(s);
+            
+            return pathImg;
+        }
     }
 
 
@@ -190,6 +255,9 @@ namespace Botzinho.Cassino
 
         // Alterado para suportar o baralho de objetos da nova versão do BJ
         private static readonly Dictionary<ulong, (List<Card> Player, List<Card> Dealer, List<Card> Deck, long Bet)> BlackjackAtivo = new();
+
+        // Variável de controle do CRASH
+        private static readonly Dictionary<ulong, (double MultiplicadorAtual, bool Retirou, long Aposta)> CrashGamesAtivos = new();
 
         private const string GIF_ROLETA = "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=";
         private const string IMG_MOEDA = "https://cdn.discordapp.net/attachments/1110495236716773447/1163499638461042831/coin_1540515.png";
@@ -208,7 +276,8 @@ namespace Botzinho.Cassino
             var user = msg.Author as SocketGuildUser;
             var guildId = user.Guild.Id;
 
-            string[] cmds = { "zroleta", "zcf", "zcoinflip", "zbj", "zblackjack" };
+            // ADICIONADO "zcrash" AQUI
+            string[] cmds = { "zroleta", "zcf", "zcoinflip", "zbj", "zblackjack", "zcrash" };
             if (!cmds.Any(c => content.StartsWith(c))) return;
             if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
             {
@@ -346,7 +415,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     .WithAuthor($"Blackjack | {user.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                     .WithDescription($@"• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(val)}
   ◦ 💵 **Possível ganho:** {EconomyHelper.FormatarSaldo(val * 2)}")
-                    .WithImageUrl($"attachment://bj.png")
+                    .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}")
                     .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithColor(new Color(160, 80, 220));
 
@@ -356,10 +425,108 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 using (var stream = File.OpenRead(imgPath))
                 {
-                    await msg.Channel.SendFileAsync(stream, "bj.png", embed: eb.Build(), components: cb.Build());
+                    await msg.Channel.SendFileAsync(stream, Path.GetFileName(imgPath), embed: eb.Build(), components: cb.Build());
                 }
 
                 if (File.Exists(imgPath)) File.Delete(imgPath);
+            }
+
+            // --- ZCRASH ---
+            else if (content.StartsWith("zcrash"))
+            {
+                string[] p = content.Split(' ');
+                if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Uso:** `zcrash [valor]` ou `zcrash all`"); return; }
+                
+                long banco = EconomyHelper.GetBanco(guildId, user.Id);
+                string valTxt = p[1].ToLower();
+                long aposta = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var v) ? v : 0);
+                
+                if (aposta < 10) { await msg.Channel.SendMessageAsync("❌ Aposta mínima: 10 cpoints."); return; }
+                if (aposta > banco) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Saldo no banco insuficiente."); return; }
+                if (CrashGamesAtivos.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo de Crash em andamento!"); return; }
+
+                EconomyHelper.RemoverBanco(guildId, user.Id, aposta);
+
+                double rand = new Random().NextDouble();
+                double crashPoint = Math.Max(1.0, 0.99 / (1.0 - rand));
+                if (crashPoint > 50.0) crashPoint = 50.0;
+                if (crashPoint < 1.05) crashPoint = 1.0; 
+
+                CrashGamesAtivos[user.Id] = (1.0, false, aposta);
+
+                string imgPath = await CasinoImageHelper.GerarImagemCrash(1.0, "JOGANDO");
+                
+                var eb = new EmbedBuilder()
+                    .WithAuthor($"Crash | {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithDescription($"• 💸 **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`\n• 💰 **Ganhos:** `{EconomyHelper.FormatarSaldo(aposta)}`")
+                    .WithColor(new Color(140, 82, 255))
+                    .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}");
+
+                var cb = new ComponentBuilder().WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"));
+
+                Discord.Rest.RestUserMessage jogoMsg;
+                using (var stream = File.OpenRead(imgPath))
+                {
+                    jogoMsg = await msg.Channel.SendFileAsync(stream, Path.GetFileName(imgPath), embed: eb.Build(), components: cb.Build());
+                }
+                if (File.Exists(imgPath)) File.Delete(imgPath); 
+
+                // LOOP DO CRASH
+                _ = Task.Run(async () =>
+                {
+                    double currentMult = 1.0;
+                    bool bateuCrash = false;
+
+                    while (!bateuCrash)
+                    {
+                        await Task.Delay(2000);
+
+                        if (CrashGamesAtivos.TryGetValue(user.Id, out var state) && state.Retirou) break;
+
+                        currentMult += 0.15 + (currentMult * 0.05);
+
+                        if (currentMult >= crashPoint)
+                        {
+                            currentMult = crashPoint;
+                            bateuCrash = true;
+                        }
+
+                        if (CrashGamesAtivos.TryGetValue(user.Id, out var currentState) && currentState.Retirou) break;
+                        CrashGamesAtivos[user.Id] = (currentMult, false, aposta);
+
+                        string newStatus = bateuCrash ? "CRASH" : "JOGANDO";
+                        string newImg = await CasinoImageHelper.GerarImagemCrash(currentMult, newStatus);
+                        
+                        var newEb = new EmbedBuilder()
+                            .WithAuthor($"Crash | {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                            .WithColor(bateuCrash ? Color.Red : new Color(140, 82, 255))
+                            .WithImageUrl($"attachment://{Path.GetFileName(newImg)}");
+
+                        using (var stream = File.OpenRead(newImg))
+                        {
+                            var attachment = new FileAttachment(stream, Path.GetFileName(newImg));
+                            
+                            if (bateuCrash)
+                            {
+                                CrashGamesAtivos.Remove(user.Id);
+                                EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
+                                newEb.WithDescription($"💥 **CRASH!**\n• 💸 **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
+                                var btnPerdeu = new ComponentBuilder().WithButton("Perdeu", "btn_disabled", ButtonStyle.Danger, disabled: true);
+                                
+                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = btnPerdeu.Build(); }); } catch { }
+                            }
+                            else
+                            {
+                                long ganhoAtual = (long)(aposta * currentMult);
+                                newEb.WithDescription($"• 💸 **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`\n• 💰 **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
+                                var btnAtivo = new ComponentBuilder().WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"));
+                                
+                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = btnAtivo.Build(); }); } catch { }
+                            }
+                        }
+                        if (File.Exists(newImg)) File.Delete(newImg);
+                    }
+                });
             }
         }
 
@@ -371,8 +538,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
             var prefix = partes[0];
 
-            // 👇 ADICIONE ESTA LINHA AQUI! Ela faz o Cassino ignorar os botões da Aposta
-            if (prefix != "roleta" && prefix != "cf" && prefix != "bj") return;
+            // ADICIONADO "crash" AQUI PARA O BOTÃO FUNCIONAR
+            if (prefix != "roleta" && prefix != "cf" && prefix != "bj" && prefix != "crash") return;
 
             var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
@@ -487,13 +654,13 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                             .WithDescription($@"<:explosao:1493358933610332342> **ESTOUROU!**
 
 • <:moedazoe:1493359715420340364> **Aposta Perdida:** {EconomyHelper.FormatarSaldo(game.Bet)}")
-                            .WithImageUrl($"attachment://bj.png")
+                            .WithImageUrl($"attachment://{Path.GetFileName(imgLose)}")
                             .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                             .WithColor(Color.Red);
 
                         using (var stream = File.OpenRead(imgLose))
                         {
-                            var attachment = new FileAttachment(stream, "bj.png");
+                            var attachment = new FileAttachment(stream, Path.GetFileName(imgLose));
                             await component.UpdateAsync(x => { x.Embed = ebLose.Build(); x.Attachments = new[] { attachment }; x.Components = null; });
                         }
                         if (File.Exists(imgLose)) File.Delete(imgLose);
@@ -506,13 +673,13 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ <:dinheiro:1493360319928733838> **Possível ganho:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}")
-                        .WithImageUrl($"attachment://bj.png")
+                        .WithImageUrl($"attachment://{Path.GetFileName(imgPlay)}")
                         .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                         .WithColor(new Color(160, 80, 220));
 
                     using (var stream = File.OpenRead(imgPlay))
                     {
-                        var attachment = new FileAttachment(stream, "bj.png");
+                        var attachment = new FileAttachment(stream, Path.GetFileName(imgPlay));
                         await component.UpdateAsync(x => { x.Embed = ebPlay.Build(); x.Attachments = new[] { attachment }; });
                     }
                     if (File.Exists(imgPlay)) File.Delete(imgPlay);
@@ -563,23 +730,64 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         statusDesc = $@"<:perdeu:1493361130075328754> **DERROTA!**
 
 • <:moedazoe:1493359715420340364> **Aposta Perdida:** {EconomyHelper.FormatarSaldo(game.Bet)}";
-  }
+                    }
 
                     string imgEnd = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, true, resT, bgCol);
 
                     var ebEnd = new EmbedBuilder()
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(statusDesc)
-                        .WithImageUrl($"attachment://bj.png")
+                        .WithImageUrl($"attachment://{Path.GetFileName(imgEnd)}")
                         .WithFooter($" Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                         .WithColor(ebCol);
 
                     using (var stream = File.OpenRead(imgEnd))
                     {
-                        var attachment = new FileAttachment(stream, "bj.png");
+                        var attachment = new FileAttachment(stream, Path.GetFileName(imgEnd));
                         await component.UpdateAsync(x => { x.Embed = ebEnd.Build(); x.Attachments = new[] { attachment }; x.Components = null; });
                     }
                     if (File.Exists(imgEnd)) File.Delete(imgEnd);
+                }
+            }
+
+            // --- BOTÕES CRASH ---
+            else if (prefix == "crash")
+            {
+                if (escolha == "retirar")
+                {
+                    if (CrashGamesAtivos.TryGetValue(userId, out var state))
+                    {
+                        if (state.Retirou) return; // Se já retirou, ignora
+                        
+                        CrashGamesAtivos[userId] = (state.MultiplicadorAtual, true, state.Aposta);
+                        long lucroTotal = (long)(state.Aposta * state.MultiplicadorAtual);
+                        
+                        EconomyHelper.AdicionarBanco(guildId, userId, lucroTotal);
+                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, lucroTotal, "CRASH_GANHO");
+
+                        string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
+
+                        var ebWin = new EmbedBuilder()
+                            .WithAuthor($"Crash | {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
+                            .WithDescription($"✅ **VOCÊ RETIROU!**\n• 💸 **Aposta:** `{EconomyHelper.FormatarSaldo(state.Aposta)}`\n• 💰 **Lucro Total:** `{EconomyHelper.FormatarSaldo(lucroTotal)}`")
+                            .WithColor(new Color(46, 204, 113))
+                            .WithImageUrl($"attachment://{Path.GetFileName(imgWin)}");
+
+                        var btnWin = new ComponentBuilder().WithButton($"Ganhou {EconomyHelper.FormatarSaldo(lucroTotal)}", "btn_win", ButtonStyle.Success, disabled: true);
+
+                        using (var stream = File.OpenRead(imgWin))
+                        {
+                            var attachment = new FileAttachment(stream, Path.GetFileName(imgWin));
+                            await component.UpdateAsync(x => { x.Embed = ebWin.Build(); x.Attachments = new[] { attachment }; x.Components = btnWin.Build(); });
+                        }
+                        if (File.Exists(imgWin)) File.Delete(imgWin);
+
+                        CrashGamesAtivos.Remove(userId);
+                    }
+                    else
+                    {
+                        await component.RespondAsync("❌ Esse jogo já terminou ou você tomou Crash.", ephemeral: true);
+                    }
                 }
             }
         }
