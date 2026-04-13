@@ -406,7 +406,7 @@ namespace Botzinho.Economy
                         // Cooldown de 2 segundos (Padrão para comandos de economia)
                         if (_cooldowns.TryGetValue(user.Id, out var lastZpay) && (DateTime.UtcNow - lastZpay).TotalSeconds < 2)
                         {
-                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
+                            var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, Da pra esperar Filho da Puta? Aguarde **2 segundos** para usar outro comando.");
                             _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
                         }
@@ -431,7 +431,7 @@ namespace Botzinho.Economy
 
                         if (mencionado.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode transferir para você mesmo.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ae arrombado, ta querendo transferir cpoints para você mesmo?");
                             return;
                         }
 
@@ -474,7 +474,7 @@ namespace Botzinho.Economy
 
                             // --- MENSAGEM DE SUCESSO (SEM EMBED, IGUAL À IMAGEM) ---
                             // Aqui está a adaptação fiel ao exemplo
-                            await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para 👤 {mencionado.Mention}.");
+                            await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para <:pessoa:1493010183352483840> {mencionado.Mention}.");
                         }
                         catch (Exception ex)
                         {
