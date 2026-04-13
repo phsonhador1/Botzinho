@@ -12,8 +12,11 @@ namespace Botzinho.Core
 {
     public static class AutoRankService
     {
-        // ⚠️ COLOQUE O ID DO CANAL AQUI
+        // ⚠️ ID DO CANAL DE RANK (PÚBLICO)
         private const ulong ID_CANAL_RANK = 1487905632261505024;
+
+        // ⚠️ COLOQUE O ID DO SEU CANAL DE LOGS PRIVADO AQUI
+        private const ulong ID_CANAL_LOGS = 1492995092166869002;
 
         public static void Iniciar(DiscordSocketClient client)
         {
@@ -26,7 +29,6 @@ namespace Botzinho.Core
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
-            // Atraso de inicialização para evitar spam no redeploy
             await Task.Delay(TimeSpan.FromMinutes(5));
 
             while (true)
@@ -64,13 +66,11 @@ namespace Botzinho.Core
             }
         }
 
-        // --- SISTEMA DE SORTEIO AUTOMÁTICO (VERSÃO PROFISSIONAL) ---
         private static async Task LoopSorteio(DiscordSocketClient client)
         {
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
-            // 👇 ADICIONE OS IDs QUE PODEM SER SORTEADOS AQUI
             var idsPermitidos = new List<ulong>
             {
                 1431655151105474755,
@@ -85,7 +85,9 @@ namespace Botzinho.Core
                 1445779233052823604
             };
 
-            // Atraso de 10 minutos após o bot ligar para não disparar instantaneamente
+            // Log de inicialização privado
+            await EnviarLogPrivado(client, "🟢 **Monitoramento Ativo:** Primeiro sorteio em 10 minutos.");
+
             await Task.Delay(TimeSpan.FromMinutes(10));
 
             while (true)
@@ -96,28 +98,22 @@ namespace Botzinho.Core
 
                     if (channel != null)
                     {
-                        // 1. LIMPEZA PROFISSIONAL: Lê as últimas 30 mensagens do canal
                         var mensagensAntigas = await channel.GetMessagesAsync(30).FlattenAsync();
 
-                        // 2. Filtra as mensagens antigas (SORTEIO CONCLUÍDO ou a nova frase de Magnata)
                         var lixoParaApagar = mensagensAntigas.Where(m =>
                             m.Author.Id == client.CurrentUser.Id &&
                             (m.Content.Contains("O magnata sortudo") || m.Content.Contains("Sorteando...") || m.Content.Contains("SORTEIO CONCLUÍDO!"))
                         );
 
-                        // 3. Apaga qualquer resquício de sorteios passados
                         foreach (var msgAntiga in lixoParaApagar)
                         {
                             try { await msgAntiga.DeleteAsync(); } catch { }
                         }
 
-                        // 4. Inicia o novo sorteio
                         var msgStatus = await channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Sorteando...** Vamos ver quem vai ser o sortudo.");
-                        await Task.Delay(5000); // Suspense
+                        await Task.Delay(5000);
 
                         var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
-
-                        // FILTRA APENAS QUEM NÃO É BOT E ESTÁ NA LISTA DE IDs PERMITIDOS
                         var membros = listaUsuarios.Where(u => !u.IsBot && idsPermitidos.Contains(u.Id)).ToList();
 
                         if (membros.Count > 0)
@@ -131,23 +127,41 @@ namespace Botzinho.Core
 
                             try { await msgStatus.DeleteAsync(); } catch { }
 
-                            // Manda a mensagem nova em uma única linha conforme solicitado
                             await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
+
+                            // Envia log para o seu servidor privado
+                            var proximo = DateTime.Now.AddMinutes(15);
+                            await EnviarLogPrivado(client, $"✅ **Sorteio Realizado!**\n🏆 Ganhador: <@{ganhador.Id}>\n⏰ Próximo sorteio às: **{proximo:HH:mm:ss}**");
                         }
                         else
                         {
                             try { await msgStatus.DeleteAsync(); } catch { }
+                            await EnviarLogPrivado(client, "⚠️ **Aviso:** Nenhum ID da whitelist encontrado para o sorteio.");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
+                    await EnviarLogPrivado(client, $"❌ **Erro no Loop de Sorteio:** {ex.Message}");
                 }
 
-                // 5. Aguarda 15 minutos (tempo conforme seu código atual)
                 await Task.Delay(TimeSpan.FromMinutes(15));
             }
+        }
+
+        // Método para enviar os Logs para o seu servidor separado
+        private static async Task EnviarLogPrivado(DiscordSocketClient client, string texto)
+        {
+            try
+            {
+                var logChannel = client.GetChannel(ID_CANAL_LOGS) as SocketTextChannel;
+                if (logChannel != null)
+                {
+                    await logChannel.SendMessageAsync($"[LOG ZOE] | {texto}");
+                }
+            }
+            catch { }
         }
     }
 }
