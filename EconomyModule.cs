@@ -331,7 +331,7 @@ Se decidir não continuar, clique no ❌ para desistir da aposta.")
             if (choice == "cancel")
             {
                 EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, val);
-                await comp.UpdateAsync(x => { x.Content = $"✅ {user.Mention} desistiu e recuperou seu saldo."; x.Embed = null; x.Components = null; });
+                await comp.UpdateAsync(x => { x.Content = $"<a:teste:1490570407307378712> {user.Mention} desistiu e recuperou seu saldo."; x.Embed = null; x.Components = null; });
                 return;
             }
             string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa"; bool win = choice == res;
@@ -342,9 +342,9 @@ Se decidir não continuar, clique no ❌ para desistir da aposta.")
                 eb.WithColor(Color.Green).WithDescription($@"Você escolheu **{choice}** e o resultado foi **{res}**!
 
 **Você ganhou:**
-💰 +{EconomyHelper.FormatarSaldo(val * 2)}
+<a:7moneyz:1493015410637930508> +{EconomyHelper.FormatarSaldo(val * 2)}
 
-🎊 **Parabéns! A sorte estava do seu lado desta vez!**");
+<a:lealdade:1493009439522033735> **Parabéns! A sorte estava do seu lado desta vez!**");
             }
             else
             {
