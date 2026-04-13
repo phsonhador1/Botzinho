@@ -35,18 +35,19 @@ namespace Botzinho.Core
 
                     if (channel != null)
                     {
-                        var guild = channel.Guild; // Agora ele sabe que é um SocketGuild!
+                        var guild = channel.Guild;
                         var top10 = EconomyHelper.GetTop10(guild.Id);
 
-                        // 2. Gera a imagem do rank
+                        // Gera a imagem do rank
                         string path = await EconomyImageHelper.GerarImagemRank(guild, top10);
 
-                        // 3. Envia a mensagem
+                        // 3. Envia a mensagem com a formatação idêntica à foto
+                        // Usei o emoji de troféu padrão, mas se você tiver um customizado, pode trocar o ID
                         var msg = await channel.SendFileAsync(path,
-                            "<a:trofeu:1493063952060387479> **RANKING AUTOMÁTICO - TOP RICOS**\n" +
-                            "💡 *Esta mensagem será apagada em 5 minutos para manter o chat limpo.*");
+                            "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**\n" +
+                            "<:whitemoney:1493119805534900346> Confira quem são os membros mais <:coroa:1493119946547396689> **Magnatas** do momento!");
 
-                        // Deleta o arquivo temporário do PC/Railway
+                        // Deleta o arquivo temporário
                         if (File.Exists(path)) File.Delete(path);
 
                         // 4. Agenda a exclusão para daqui a 5 minutos
