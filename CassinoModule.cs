@@ -11,6 +11,10 @@ namespace Botzinho.Cassino
     public class CassinoModule
     {
         private readonly DiscordSocketClient _client;
+        
+        // Cooldown exclusivo para os jogos (5 segundos)
+        private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+        
         private static readonly Dictionary<ulong, long> CoinflipAtivo = new();
         private static readonly Dictionary<ulong, long> RoletaAtiva = new();
         private static readonly Dictionary<ulong, (List<int> Player, List<int> Dealer, long Bet)> BlackjackAtivo = new();
@@ -31,6 +35,19 @@ namespace Botzinho.Cassino
             var content = msg.Content.ToLower().Trim();
             var user = msg.Author as SocketGuildUser;
             var guildId = user.Guild.Id;
+
+            string[] cmds = { "zroleta", "zcf", "zcoinflip", "zbj", "zblackjack" };
+            if (!cmds.Any(c => content.StartsWith(c))) return;
+
+            // --- TRAVA DE 5 SEGUNDOS ---
+            if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5) 
+            {
+                var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para apostar novamente.");
+                _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync()); // Apaga a mensagem depois de 3 segundos
+                return;
+            }
+            _cooldowns[user.Id] = DateTime.UtcNow;
+            // ---------------------------
 
             // --- ZROLETA ---
             if (content.StartsWith("zroleta"))
