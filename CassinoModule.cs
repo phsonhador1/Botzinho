@@ -143,7 +143,7 @@ namespace Botzinho.Cassino
                 // Desenha o verso da carta (um quadrado roxo com borda branca)
                 var innerRect = new SKRect(x + 6, y + 6, x + 94, y + 134);
                 canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true }); // Cor roxa
-                
+
                 // Letra "Z" no meio para simbolizar a Zoe/Zany
                 var paintLogo = new SKPaint { Color = SKColors.White, TextSize = 40, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
                 canvas.DrawText("Z", x + 50, y + 85, paintLogo);
@@ -163,14 +163,14 @@ namespace Botzinho.Cassino
             // Canto Superior Esquerdo (Valor + Naipe pequeno)
             canvas.DrawText(displayValue, x + 8, y + 24, paintText);
             canvas.DrawText(suitSymbol, x + 8, y + 42, paintSmallSuit);
-            
+
             // Centro (Naipe gigante)
             canvas.DrawText(suitSymbol, x + 50, y + 90, paintBigSuit);
-            
+
             // Canto Inferior Direito (Valor + Naipe pequeno invertido)
             var paintTextRight = new SKPaint { Color = suitColor, TextSize = 20, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
             var paintSmallSuitRight = new SKPaint { Color = suitColor, TextSize = 16, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
-            
+
             canvas.DrawText(displayValue, x + 92, y + 130, paintTextRight);
             canvas.DrawText(suitSymbol, x + 92, y + 112, paintSmallSuitRight);
         }
@@ -509,7 +509,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<:acerto:1493079138783727756> **VITÓRIA!**
-• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
                     else if (pS == dS)
@@ -519,7 +519,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE");
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"⚖️ **EMPATE!**
-• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
                     else
@@ -528,7 +528,8 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA");
                         bgCol = new SKColor(180, 40, 40); ebCol = Color.Red;
                         statusDesc = $@"<:erro:1493078898462949526> **DERROTA!**
-• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+
+• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
 
