@@ -1,10 +1,70 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using Discord;
+using Discord.WebSocket;
+using Botzinho.Economy;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Botzinho
+namespace Botzinho.Core
 {
-    internal class AutoRankService
+    public static class AutoRankService
     {
+        // ⚠️ COLOQUE O ID DO CANAL AQUI
+        private const ulong ID_CANAL_RANK = 1492995092166869002;
+
+        public static void Iniciar(DiscordSocketClient client)
+        {
+            // Inicia o loop em uma thread separada para não travar o bot
+            _ = Task.Run(() => LoopRank(client));
+        }
+
+        private static async Task LoopRank(DiscordSocketClient client)
+        {
+            // Aguarda o bot estar totalmente pronto antes de começar
+            while (client.ConnectionState != ConnectionState.Connected)
+                await Task.Delay(5000);
+
+            while (true)
+            {
+                try
+                {
+                    // 1. Procura o canal pelo ID (AQUI MUDAMOS PARA SocketTextChannel)
+                    var channel = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
+
+                    if (channel != null)
+                    {
+                        var guild = channel.Guild; // Agora ele sabe que é um SocketGuild!
+                        var top10 = EconomyHelper.GetTop10(guild.Id);
+
+                        // 2. Gera a imagem do rank
+                        string path = await EconomyImageHelper.GerarImagemRank(guild, top10);
+
+                        // 3. Envia a mensagem
+                        var msg = await channel.SendFileAsync(path,
+                            "<a:trofeu:1493063952060387479> **RANKING AUTOMÁTICO - TOP RICOS**\n" +
+                            "💡 *Esta mensagem será apagada em 5 minutos para manter o chat limpo.*");
+
+                        // Deleta o arquivo temporário do PC/Railway
+                        if (File.Exists(path)) File.Delete(path);
+
+                        // 4. Agenda a exclusão para daqui a 5 minutos
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(TimeSpan.FromMinutes(5));
+                            try { await msg.DeleteAsync(); } catch { }
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Erro AutoRank]: {ex.Message}");
+                }
+
+                // 5. Espera 30 minutos para a próxima execução
+                await Task.Delay(TimeSpan.FromMinutes(30));
+            }
+        }
     }
 }
