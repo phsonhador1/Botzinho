@@ -114,7 +114,7 @@ namespace Botzinho.Core
                             try { await msgStatus.DeleteAsync(); } catch { }
 
                             // Manda a mensagem nova que ficará fixa até o próximo loop
-                            await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
+                            await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
                         }
                         else
                         {
