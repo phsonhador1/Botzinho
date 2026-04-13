@@ -317,13 +317,12 @@ namespace Botzinho.Economy
                     string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
-                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
+                    if (_cooldowns.TryGetValue(user.Id, out var lastZpayUsage) && (DateTime.UtcNow - lastZpayUsage).TotalSeconds < 2)
                     {
-                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro **comando**.");
+                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
                         _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                         return;
                     }
-                    _cooldowns[user.Id] = DateTime.UtcNow;
 
                     if (content == "zdaily")
                     {
@@ -401,6 +400,15 @@ namespace Botzinho.Economy
                     }
                     if (content.StartsWith("zpay"))
                     {
+                        // Cooldown de 2 segundos (Padrão para comandos de economia)
+                        if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
+                        {
+                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
+                            _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
+                            return;
+                        }
+                        _cooldowns[user.Id] = DateTime.UtcNow;
+
                         string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
                         // 1. Validação de Uso: zpay @user 5000
@@ -410,43 +418,43 @@ namespace Botzinho.Economy
                             return;
                         }
 
-                        // 2. Identificar o destinatário (Menção ou ID)
+                        // 2. Identificar o destinatário (Por menção)
                         var mencionado = msg.MentionedUsers.FirstOrDefault();
                         if (mencionado == null || mencionado.IsBot)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você precisa mencionar um usuário real para enviar coins.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você precisa mencionar um usuário real para enviar cpoints.");
                             return;
                         }
 
                         if (mencionado.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode enviar coins para você mesmo.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode transferir para você mesmo.");
                             return;
                         }
 
-                        // 3. Processar o Valor (Suporta 'all', 'k' e 'm')
+                        // 3. Processar o Valor (all, k, m, número)
                         long saldoDoador = EconomyHelper.GetBanco(guildId, user.Id);
-                        long valorEnvio = 0;
+                        long valorTransferencia = 0;
                         string vTxt = partes[2].ToLower();
 
-                        if (vTxt == "all") { valorEnvio = saldoDoador; }
+                        if (vTxt == "all") { valorTransferencia = saldoDoador; }
                         else
                         {
-                            valorEnvio = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k", "")) * 1000) :
-                                         vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m", "")) * 1000000) :
-                                         long.TryParse(vTxt, out var v) ? v : 0;
+                            valorTransferencia = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k", "")) * 1000) :
+                                                  vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m", "")) * 1000000) :
+                                                  long.TryParse(vTxt, out var v) ? v : 0;
                         }
 
                         // 4. Validações de Saldo
-                        if (valorEnvio <= 0)
+                        if (valorTransferencia <= 0)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Valor inválido para transferência.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> O valor da transferência deve ser maior que 0.");
                             return;
                         }
 
-                        if (saldoDoador < valorEnvio)
+                        if (saldoDoador < valorTransferencia)
                         {
-                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Você não tem `{EconomyHelper.FormatarSaldo(valorEnvio)}` no banco para enviar.");
+                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Você não tem `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints no banco para transferir.");
                             return;
                         }
 
@@ -454,26 +462,16 @@ namespace Botzinho.Economy
                         try
                         {
                             // Remove de quem envia
-                            EconomyHelper.RemoverBanco(guildId, user.Id, valorEnvio);
+                            EconomyHelper.RemoverBanco(guildId, user.Id, valorTransferencia);
                             // Adiciona para quem recebe
-                            EconomyHelper.AdicionarBanco(guildId, mencionado.Id, valorEnvio);
+                            EconomyHelper.AdicionarBanco(guildId, mencionado.Id, valorTransferencia);
 
-                            // Registrar no Log de Transações (Importante para segurança)
-                            EconomyHelper.RegistrarTransacao(guildId, user.Id, mencionado.Id, valorEnvio, "TRANSFERENCIA_DIRETA");
+                            // Registrar no Log de Transações (Importante!)
+                            EconomyHelper.RegistrarTransacao(guildId, user.Id, mencionado.Id, valorTransferencia, "TRANSFERENCIA_DIRETA");
 
-                            // 6. Mensagem de Sucesso (Bonita e direta)
-                            var eb = new EmbedBuilder()
-                                .WithTitle("<:acerto:1493079138783727756> Transferência Concluída")
-                                .WithDescription($@"**Enviado por:** {user.Mention}
-**Recebido por:** {mencionado.Mention}
-
-💰 **Valor:** `{EconomyHelper.FormatarSaldo(valorEnvio)}` coins
-✅ O valor já foi creditado no banco do destinatário.")
-                                .WithColor(Color.Green)
-                                .WithFooter($"ID da Transação: {Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}")
-                                .Build();
-
-                            await msg.Channel.SendMessageAsync(embed: eb);
+                            // --- MENSAGEM DE SUCESSO (SEM EMBED, IGUAL À IMAGEM) ---
+                            // Aqui está a adaptação fiel ao exemplo
+                            await msg.Channel.SendMessageAsync($"🤝 **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para 👤 {mencionado.Mention}.");
                         }
                         catch (Exception ex)
                         {
