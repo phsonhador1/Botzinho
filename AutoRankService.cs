@@ -127,7 +127,7 @@ namespace Botzinho.Core
                 }
 
                 // 8. Espera 25 minutos para fazer o próximo sorteio
-                await Task.Delay(TimeSpan.FromMinutes(25));
+                await Task.Delay(TimeSpan.FromSeconds(10));
             }
         }
     }
