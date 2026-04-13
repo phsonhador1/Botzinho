@@ -36,7 +36,27 @@ namespace Botzinho.Economy
                     receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
             cmd.ExecuteNonQuery();
         }
-
+        // BUSCA AS 10 TRANSACOES MAIS RECENTES ONDE O USUÁRIO É REMETENTE OU DESTINATÁRIO
+        public static List<(string SenderId, string ReceiverId, long Amount, string Type, DateTime Date)> GetTransacoes(ulong guildId, ulong userId)
+        {
+            var list = new List<(string, string, long, string, DateTime)>();
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            // Puxa transações onde o cara é o remetente OU o recebedor
+            cmd.CommandText = @"SELECT sender_id, receiver_id, amount, type, data 
+                        FROM economy_transactions 
+                        WHERE guild_id = @gid AND (sender_id = @uid OR receiver_id = @uid) 
+                        ORDER BY data DESC LIMIT 10";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add((reader.GetString(0), reader.GetString(1), reader.GetInt64(2), reader.GetString(3), reader.GetDateTime(4)));
+            }
+            return list;
+        }
         public static long GetSaldo(ulong guildId, ulong userId)
         {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
@@ -329,7 +349,45 @@ namespace Botzinho.Economy
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, alvo.Id, v, "TRANSFERENCIA");
                                 await msg.Channel.SendMessageAsync($"✅ {user.Mention} enviou `{EconomyHelper.FormatarSaldo(v)}` para {alvo.Mention}.");
                             }
+                        } 
+                    }
+                    else if (content.StartsWith("ztransacoes") || content.StartsWith("ztranscoes"))
+                    {
+                        // Mudamos de "alvo" para "usuarioAlvo" para evitar conflito de escopo
+                        var usuarioAlvo = msg.MentionedUsers.FirstOrDefault() ?? user;
+                        var transacoes = EconomyHelper.GetTransacoes(guildId, usuarioAlvo.Id);
+
+                        var eb = new EmbedBuilder()
+                            .WithAuthor($"Extrato Bancário | {usuarioAlvo.Username}", usuarioAlvo.GetAvatarUrl() ?? usuarioAlvo.GetDefaultAvatarUrl())
+                            .WithColor(new Color(160, 80, 220))
+                            .WithFooter("Mostrando as últimas 10 transações");
+
+                        if (transacoes.Count == 0)
+                        {
+                            eb.WithDescription("<:negativo:1492950137587241114> Nenhuma transação encontrada para este usuário.");
                         }
+                        else
+                        {
+                            string listaTexto = "";
+                            foreach (var t in transacoes)
+                            {
+                                string dataFormatada = t.Date.AddHours(-3).ToString("dd/MM HH:mm"); // Ajuste de fuso horário (Brasília)
+                                string valor = EconomyHelper.FormatarSaldo(t.Amount);
+
+                                // Lógica para saber se ele enviou ou recebeu
+                                if (t.SenderId == usuarioAlvo.Id.ToString())
+                                {
+                                    listaTexto += $"`[{dataFormatada}]` 🔴 **Envio de** `{valor}` para <@{t.ReceiverId}>\n";
+                                }
+                                else
+                                {
+                                    listaTexto += $"`[{dataFormatada}]` 🟢 **Recebeu** `{valor}` de <@{t.SenderId}>\n";
+                                }
+                            }
+                            eb.WithDescription(listaTexto);
+                        }
+
+                        await msg.Channel.SendMessageAsync(embed: eb.Build());
                     }
                 }
                 catch { }
