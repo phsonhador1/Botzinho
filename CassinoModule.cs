@@ -67,7 +67,7 @@ namespace Botzinho.Cassino
 ⚫ **Preto:** 1.5x
 🔴 **Vermelho:** 1.5x
 
-🧧 | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
+<:erro:1493078898462949526> | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49)).Build();
 
