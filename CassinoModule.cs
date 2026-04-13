@@ -509,7 +509,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<a:ganhador:1493088070923452599> **BlackJack!** **VITÓRIA!**
-• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
                     else if (pS == dS)
@@ -519,7 +519,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE");
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"⚖️ **EMPATE!**
-• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
                     else
@@ -529,7 +529,7 @@ namespace Botzinho.Cassino
                         bgCol = new SKColor(180, 40, 40); ebCol = Color.Red;
                         statusDesc = $@"<:erro:1493078898462949526> **DERROTA!**
 
-• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
 
@@ -539,7 +539,7 @@ namespace Botzinho.Cassino
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(statusDesc)
                         .WithImageUrl($"attachment://bj.png")
-                        .WithFooter($"<:pessoa:1493010183352483840> Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
+                        .WithFooter($" Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                         .WithColor(ebCol);
 
                     using (var stream = File.OpenRead(imgEnd))
