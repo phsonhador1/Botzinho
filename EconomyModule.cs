@@ -490,7 +490,7 @@ namespace Botzinho.Economy
                         if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 30)
                         {
                             var tempoRestante = 30 - (DateTime.UtcNow - lastSteal).TotalMinutes;
-                            var aviso = await msg.Channel.SendMessageAsync($"<:atencao:1493350891749642240> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                            var aviso = await msg.Channel.SendMessageAsync($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
                         }
