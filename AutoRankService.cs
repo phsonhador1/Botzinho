@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Botzinho.Economy;
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,6 +70,21 @@ namespace Botzinho.Core
             while (client.ConnectionState != ConnectionState.Connected)
                 await Task.Delay(5000);
 
+            // 👇 ADICIONE OS IDs QUE PODEM SER SORTEADOS AQUI
+            var idsPermitidos = new List<ulong>
+            {
+                1431655151105474755,
+                1472642376970404002,
+                1437491644286107838,
+                1469449943390617714,
+                1187711938805907527,
+                877026652167753761,
+                1489775731667107883,
+                1465039524508864848,
+                1491088346909249697,
+                1445779233052823604
+            };
+
             // Atraso de 10 minutos após o bot ligar para não disparar instantaneamente
             await Task.Delay(TimeSpan.FromMinutes(10));
 
@@ -83,24 +99,26 @@ namespace Botzinho.Core
                         // 1. LIMPEZA PROFISSIONAL: Lê as últimas 30 mensagens do canal
                         var mensagensAntigas = await channel.GetMessagesAsync(30).FlattenAsync();
 
-                        // 2. Filtra as mensagens antigas de sorteio da própria Zoe
+                        // 2. Filtra as mensagens antigas (SORTEIO CONCLUÍDO ou a nova frase de Magnata)
                         var lixoParaApagar = mensagensAntigas.Where(m =>
                             m.Author.Id == client.CurrentUser.Id &&
-                            (m.Content.Contains("SORTEIO CONCLUÍDO!") || m.Content.Contains("✨ **Sorteando...**"))
+                            (m.Content.Contains("O magnata sortudo") || m.Content.Contains("Sorteando...") || m.Content.Contains("SORTEIO CONCLUÍDO!"))
                         );
 
-                        // 3. Apaga qualquer resquício de sorteios passados (sobrevive a redeploys)
+                        // 3. Apaga qualquer resquício de sorteios passados
                         foreach (var msgAntiga in lixoParaApagar)
                         {
                             try { await msgAntiga.DeleteAsync(); } catch { }
                         }
 
                         // 4. Inicia o novo sorteio
-                        var msgStatus = await channel.SendMessageAsync(" **Sorteando...** Vamos ver quem vai ser o sortudo.");
+                        var msgStatus = await channel.SendMessageAsync("<a:carregandoportal:1492944498605686844> **Sorteando...** Vamos ver quem vai ser o sortudo.");
                         await Task.Delay(5000); // Suspense
 
                         var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
-                        var membros = listaUsuarios.Where(u => !u.IsBot).ToList();
+
+                        // FILTRA APENAS QUEM NÃO É BOT E ESTÁ NA LISTA DE IDs PERMITIDOS
+                        var membros = listaUsuarios.Where(u => !u.IsBot && idsPermitidos.Contains(u.Id)).ToList();
 
                         if (membros.Count > 0)
                         {
@@ -113,7 +131,7 @@ namespace Botzinho.Core
 
                             try { await msgStatus.DeleteAsync(); } catch { }
 
-                            // Manda a mensagem nova que ficará fixa até o próximo loop
+                            // Manda a mensagem nova em uma única linha conforme solicitado
                             await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
                         }
                         else
@@ -127,7 +145,7 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                // 5. Aguarda 25 minutos
+                // 5. Aguarda 15 minutos (tempo conforme seu código atual)
                 await Task.Delay(TimeSpan.FromMinutes(15));
             }
         }
