@@ -11,7 +11,8 @@ namespace Botzinho.Cassino
     public class CassinoModule
     {
         private readonly DiscordSocketClient _client;
-        private static readonly Dictionary<ulong, long> ApostasAtivas = new();
+        private static readonly Dictionary<ulong, long> CoinflipAtivo = new();
+        private static readonly Dictionary<ulong, long> RoletaAtiva = new();
         private static readonly Dictionary<ulong, (List<int> Player, List<int> Dealer, long Bet)> BlackjackAtivo = new();
 
         private const string GIF_ROLETA = "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=";
@@ -28,14 +29,12 @@ namespace Botzinho.Cassino
         {
             if (msg.Author.IsBot || msg is not SocketUserMessage userMsg) return;
             var content = msg.Content.ToLower().Trim();
+            var user = msg.Author as SocketGuildUser;
+            var guildId = user.Guild.Id;
 
             // --- ZROLETA ---
             if (content.StartsWith("zroleta"))
             {
-                var user = msg.Author as SocketGuildUser;
-                if (user == null) return;
-                var guildId = user.Guild.Id;
-
                 string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (partes.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zroleta [valor]` ou `zroleta all`."); return; }
 
@@ -51,12 +50,12 @@ namespace Botzinho.Cassino
 
                 if (valorAposta <= 0 || saldoBanco < valorAposta)
                 {
-                    await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
+                    await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar.");
                     return;
                 }
-                if (ApostasAtivas.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
+                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
 
-                ApostasAtivas[user.Id] = valorAposta;
+                RoletaAtiva[user.Id] = valorAposta;
                 EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
 
                 var embed = new EmbedBuilder()
@@ -87,37 +86,30 @@ namespace Botzinho.Cassino
             // --- ZCF / ZCOINFLIP ---
             else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
             {
-                var user = msg.Author as SocketGuildUser;
-                if (user == null) return;
-                var guildId = user.Guild.Id;
-
                 string[] p = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zcoinflip (valor)`"); return; }
                 long banco = EconomyHelper.GetBanco(guildId, user.Id);
                 string valTxt = p[1].ToLower();
                 long val = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var res) ? res : 0);
 
-                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
-                if (ApostasAtivas.ContainsKey(user.Id)) return;
-
-                ApostasAtivas[user.Id] = val;
+                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
+                if (CoinflipAtivo.ContainsKey(user.Id)) return;
+                
+                CoinflipAtivo[user.Id] = val;
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
 
                 var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"🪙 | **Aposta:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}").WithColor(new Color(114, 137, 218));
-                var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}").WithButton("Coroa", $"cf_coroa_{user.Id}").WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, new Emoji("❌"));
+                var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}").WithButton("Coroa", $"cf_coroa_{user.Id}").WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, Emote.Parse("<:erro:1493078898462949526>"));
                 await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
             }
 
             // --- ZBJ / ZBLACKJACK ---
             else if (content.StartsWith("zbj") || content.StartsWith("zblackjack"))
             {
-                var user = msg.Author as SocketGuildUser;
-                if (user == null) return;
-                var guildId = user.Guild.Id;
-
                 string[] p = content.Split(' '); if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Uso:** `zbj [valor]`"); return; }
                 long banco = EconomyHelper.GetBanco(guildId, user.Id);
-                long val = p[1] == "all" ? banco : (p[1].EndsWith("k") ? (long)(double.Parse(p[1].Replace("k", "")) * 1000) : p[1].EndsWith("m") ? (long)(double.Parse(p[1].Replace("m", "")) * 1000000) : long.Parse(p[1]));
+                string valTxt = p[1].ToLower();
+                long val = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.Parse(valTxt));
 
                 if (val <= 0 || banco < val || BlackjackAtivo.ContainsKey(user.Id)) return;
 
@@ -140,14 +132,13 @@ namespace Botzinho.Cassino
             var partes = customId.Split('_');
             if (partes.Length < 3) return;
 
-            var prefix = partes[0]; // roleta, cf, bj
-            var escolha = partes[1]; // branco, cancel, cara, hit, etc.
+            var prefix = partes[0];
+            var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
 
-            if (component.User.Id != userId)
-            {
-                await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, esse jogo não é seu!", ephemeral: true);
-                return;
+            if (component.User.Id != userId) { 
+                await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, esse jogo não é seu!", ephemeral: true); 
+                return; 
             }
 
             var guildId = (component.User as SocketGuildUser).Guild.Id;
@@ -155,11 +146,11 @@ namespace Botzinho.Cassino
             // --- BOTÕES ROLETA ---
             if (prefix == "roleta")
             {
-                if (!ApostasAtivas.TryGetValue(userId, out long valorAposta)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
+                if (!RoletaAtiva.TryGetValue(userId, out long valorAposta)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
 
                 if (escolha == "cancel")
                 {
-                    ApostasAtivas.Remove(userId);
+                    RoletaAtiva.Remove(userId);
                     EconomyHelper.AdicionarBanco(guildId, userId, valorAposta);
                     await component.UpdateAsync(x => {
                         x.Content = $"<:acerto:1493079138783727756> {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints no banco.";
@@ -168,7 +159,7 @@ namespace Botzinho.Cassino
                     return;
                 }
 
-                ApostasAtivas.Remove(userId);
+                RoletaAtiva.Remove(userId);
                 await component.UpdateAsync(x => {
                     x.Embed = new EmbedBuilder().WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithDescription("⚫ **Girando roleta...**").WithImageUrl(GIF_ROLETA).WithColor(new Color(43, 45, 49)).Build();
                     x.Components = null;
@@ -187,18 +178,18 @@ namespace Botzinho.Cassino
                 if (ganhou)
                 {
                     EconomyHelper.AdicionarBanco(guildId, userId, premio);
+                    EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, premio, "ROLETA_GANHO"); // Registra o Log de Ganho
                     embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
- A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-
+🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 <a:7moneyz:1493015410637930508> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
                 }
                 else
                 {
+                    EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, valorAposta, "ROLETA_PERDA"); // Registra o Log de Perda
                     embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
 
- A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-
+🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
 <:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
                 }
 
@@ -208,16 +199,23 @@ namespace Botzinho.Cassino
             // --- BOTÕES COINFLIP ---
             else if (prefix == "cf")
             {
-                if (!ApostasAtivas.TryGetValue(userId, out long val)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
-                ApostasAtivas.Remove(userId);
-                if (escolha == "cancel") { EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = $"✅ {component.User.Mention} desistiu."; x.Embed = null; x.Components = null; }); return; }
-
+                if (!CoinflipAtivo.TryGetValue(userId, out long val)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
+                if (escolha == "cancel") { CoinflipAtivo.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = $"✅ {component.User.Mention} desistiu."; x.Embed = null; x.Components = null; }); return; }
+                
+                CoinflipAtivo.Remove(userId);
                 string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa"; bool win = escolha == res;
                 var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithThumbnailUrl(IMG_MOEDA);
-
-                if (win) { EconomyHelper.AdicionarBanco(guildId, userId, val * 2); eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}"); }
-                else { eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}"); }
-
+                
+                if (win) { 
+                    EconomyHelper.AdicionarBanco(guildId, userId, val * 2); 
+                    EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, val * 2, "COINFLIP_GANHO"); // Registra Vitória
+                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}"); 
+                }
+                else { 
+                    EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "COINFLIP_PERDA"); // Registra Derrota
+                    eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}"); 
+                }
+                
                 await component.UpdateAsync(x => { x.Embed = eb.Build(); x.Components = null; x.Content = component.User.Mention; });
             }
 
@@ -227,13 +225,14 @@ namespace Botzinho.Cassino
                 if (!BlackjackAtivo.TryGetValue(userId, out var game)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
                 var r = new Random();
                 var deck = new List<int> { 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11 };
-
+                
                 if (escolha == "hit")
                 {
                     game.Player.Add(deck[r.Next(deck.Count)]);
                     if (game.Player.Sum() > 21)
                     {
                         BlackjackAtivo.Remove(userId);
+                        EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA"); // Perdeu (Estourou)
                         await component.UpdateAsync(x => { x.Content = $"💥 **Estourou!** Total: {game.Player.Sum()}. Perdeu `{EconomyHelper.FormatarSaldo(game.Bet)}`."; x.Embed = null; x.Components = null; });
                         return;
                     }
@@ -245,10 +244,25 @@ namespace Botzinho.Cassino
                     while (game.Dealer.Sum() < 17) game.Dealer.Add(deck[r.Next(deck.Count)]);
                     int pS = game.Player.Sum(); int dS = game.Dealer.Sum();
                     string resT = ""; Color col;
-                    if (dS > 21 || pS > dS) { resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2); col = Color.Green; }
-                    else if (pS == dS) { resT = "⚖️ **Empate!** Valor devolvido."; EconomyHelper.AdicionarBanco(guildId, userId, game.Bet); col = Color.LightGrey; }
-                    else { resT = $"❌ **Perdeu!** Dealer fez {dS}."; col = Color.Red; }
-
+                    
+                    if (dS > 21 || pS > dS) { 
+                        resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; 
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2); 
+                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO"); // Vitória
+                        col = Color.Green; 
+                    }
+                    else if (pS == dS) { 
+                        resT = "⚖️ **Empate!** Valor devolvido."; 
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet); 
+                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE"); // Empate (Reembolso)
+                        col = Color.LightGrey; 
+                    }
+                    else { 
+                        resT = $"❌ **Perdeu!** Dealer fez {dS}."; 
+                        EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA"); // Derrota
+                        col = Color.Red; 
+                    }
+                    
                     await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithTitle("Resultado Blackjack").WithDescription($"{resT}\nSuas: {pS} | Dealer: {dS}").WithColor(col).Build(); x.Components = null; });
                 }
             }
