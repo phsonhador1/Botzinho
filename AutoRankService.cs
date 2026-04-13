@@ -12,12 +12,18 @@ namespace Botzinho.Core
     public static class AutoRankService
     {
         // ⚠️ COLOQUE O ID DO CANAL AQUI
-        private const ulong ID_CANAL_RANK = 11111111111111111;
+        private const ulong ID_CANAL_RANK = 1492995092166869002;
+
+        // Guarda a mensagem do último sorteio para apagar quando começar um novo
+        private static IUserMessage _ultimaMsgSorteio = null;
 
         public static void Iniciar(DiscordSocketClient client)
         {
-            // Inicia o loop em uma thread separada para não travar o bot
+            // Inicia o loop do rank em uma thread separada
             _ = Task.Run(() => LoopRank(client));
+
+            // Inicia o loop do sorteio automático em outra thread separada
+            _ = Task.Run(() => LoopSorteio(client));
         }
 
         private static async Task LoopRank(DiscordSocketClient client)
@@ -65,6 +71,73 @@ namespace Botzinho.Core
 
                 // 5. Espera 30 minutos para a próxima execução
                 await Task.Delay(TimeSpan.FromMinutes(30));
+            }
+        }
+
+        // --- SISTEMA DE SORTEIO AUTOMÁTICO ---
+        private static async Task LoopSorteio(DiscordSocketClient client)
+        {
+            // Aguarda o bot conectar
+            while (client.ConnectionState != ConnectionState.Connected)
+                await Task.Delay(5000);
+
+            while (true)
+            {
+                try
+                {
+                    var channel = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
+
+                    if (channel != null)
+                    {
+                        // 1. Apaga o ganhador do sorteio passado (se existir)
+                        if (_ultimaMsgSorteio != null)
+                        {
+                            try { await _ultimaMsgSorteio.DeleteAsync(); } catch { }
+                        }
+
+                        // 2. Manda a mensagem de suspense
+                        var msgStatus = await channel.SendMessageAsync("✨ **Sorteando...** Vamos ver quem vai ser o sortudo.");
+
+                        // 3. Aguarda 5 segundos para gerar expectativa
+                        await Task.Delay(5000);
+
+                        // 4. Pega todos os membros do servidor ignorando os bots
+                        var membros = channel.Guild.Users.Where(u => !u.IsBot).ToList();
+
+                        if (membros.Count > 0)
+                        {
+                            var random = new Random();
+                            var ganhador = membros[random.Next(membros.Count)];
+                            long valorSorteado = random.Next(50000, 100001); // Entre 50k e 100k
+
+                            // 5. Deposita o prêmio no banco do ganhador
+                            EconomyHelper.AdicionarBanco(channel.Guild.Id, ganhador.Id, valorSorteado);
+
+                            // 6. Registra no extrato (ztransacoes)
+                            EconomyHelper.RegistrarTransacao(channel.Guild.Id, client.CurrentUser.Id, ganhador.Id, valorSorteado, "DAILY");
+
+                            // 7. Apaga a mensagem de "Sorteando..."
+                            try { await msgStatus.DeleteAsync(); } catch { }
+
+                            // 8. Anuncia o ganhador e guarda a mensagem para ser apagada no próximo loop
+                            _ultimaMsgSorteio = await channel.SendMessageAsync(
+                                $"🎉 **SORTEIO CONCLUÍDO!**\n" +
+                                $"• O sortudo da vez foi {ganhador.Mention}!\n" +
+                                $"• Acabou de ganhar `{EconomyHelper.FormatarSaldo(valorSorteado)}` coins direto no banco.");
+                        }
+                        else
+                        {
+                            try { await msgStatus.DeleteAsync(); } catch { }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
+                }
+
+                // 9. Espera 25 minutos para fazer o próximo sorteio
+                await Task.Delay(TimeSpan.FromMinutes(25));
             }
         }
     }
