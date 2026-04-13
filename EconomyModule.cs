@@ -103,22 +103,19 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS (DESIGN CLEAN & SLIM) ---
+    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO) ---
     public static class EconomyImageHelper {
+        private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220);
+
         public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank) {
             int width = 450; int height = 550;
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
-
-            // Fundo Sólido Dark (Mais Profissional)
             canvas.Clear(new SKColor(12, 10, 20));
 
             var cardRect = new SKRect(20, 20, width - 20, height - 20);
-            
-            // Desenho do card com borda fina roxa
-            var borderPaint = new SKPaint { Color = new SKColor(100, 50, 200), Style = SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true };
             canvas.DrawRoundRect(cardRect, 30, 30, new SKPaint { Color = new SKColor(20, 18, 35), IsAntialias = true });
-            canvas.DrawRoundRect(cardRect, 30, 30, borderPaint);
+            canvas.DrawRoundRect(cardRect, 30, 30, new SKPaint { Color = PurpleTheme, Style = SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true });
 
             using var http = new HttpClient();
             try {
@@ -126,25 +123,17 @@ namespace Botzinho.Economy
                 using var bmp = SKBitmap.Decode(bytes);
                 var avRect = new SKRect(width/2-70, 50, width/2+70, 190);
                 var path = new SKPath(); path.AddOval(avRect);
-                canvas.Save(); 
-                canvas.ClipPath(path, SKClipOperation.Intersect, true);
-                canvas.DrawBitmap(bmp, avRect); 
-                canvas.Restore();
-                canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = new SKColor(140, 90, 255), IsAntialias = true });
+                canvas.Save(); canvas.ClipPath(path, SKClipOperation.Intersect, true);
+                canvas.DrawBitmap(bmp, avRect); canvas.Restore();
+                canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = PurpleTheme, IsAntialias = true });
             } catch { }
 
-            var font = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
             var boldFont = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+            canvas.DrawText(user.Username, width/2, 235, new SKPaint { Color = SKColors.White, TextSize = 24, Typeface = boldFont, TextAlign = SKTextAlign.Center, IsAntialias = true });
 
-            // Nome do usuário (Menor e centralizado)
-            var namePaint = new SKPaint { Color = SKColors.White, TextSize = 24, Typeface = boldFont, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            string name = user.Username.Length > 15 ? user.Username.Substring(0, 13) + ".." : user.Username;
-            canvas.DrawText(name, width/2, 235, namePaint);
-
-            // Desenhar as linhas de saldo de forma slim
             float startY = 280;
-            DrawSlimPill(canvas, "Carteira", wallet, width, startY, new SKColor(140, 90, 255));
-            DrawSlimPill(canvas, "Banco", bank, width, startY + 80, new SKColor(140, 90, 255));
+            DrawSlimPill(canvas, "Carteira", wallet, width, startY, PurpleTheme);
+            DrawSlimPill(canvas, "Banco", bank, width, startY + 80, PurpleTheme);
             DrawSlimPill(canvas, "Total", wallet + bank, width, startY + 160, new SKColor(255, 180, 0));
 
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -155,49 +144,71 @@ namespace Botzinho.Economy
 
         private static void DrawSlimPill(SKCanvas canvas, string label, long valor, int width, float y, SKColor accent) {
             var rect = new SKRect(50, y, width - 50, y + 60);
-            var bgPaint = new SKPaint { Color = new SKColor(35, 32, 55), IsAntialias = true };
-            canvas.DrawRoundRect(rect, 15, 15, bgPaint);
-
-            // Indicador lateral fino
+            canvas.DrawRoundRect(rect, 15, 15, new SKPaint { Color = new SKColor(35, 32, 55), IsAntialias = true });
             canvas.DrawRoundRect(new SKRect(50, y + 10, 54, y + 50), 2, 2, new SKPaint { Color = accent, IsAntialias = true });
-
-            var font = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
-            var boldFont = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
-
-            // Texto Label
-            canvas.DrawText(label.ToUpper(), 70, y + 22, new SKPaint { Color = new SKColor(180, 180, 200), TextSize = 12, Typeface = font, IsAntialias = true });
-            // Valor
-            canvas.DrawText(EconomyHelper.FormatarSaldo(valor) + " cpoints", 70, y + 48, new SKPaint { Color = SKColors.White, TextSize = 18, Typeface = boldFont, IsAntialias = true });
+            canvas.DrawText(label.ToUpper(), 70, y + 22, new SKPaint { Color = new SKColor(180, 180, 200), TextSize = 12, IsAntialias = true });
+            canvas.DrawText(EconomyHelper.FormatarSaldo(valor) + " cpoints", 70, y + 48, new SKPaint { Color = SKColors.White, TextSize = 18, Typeface = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold), IsAntialias = true });
         }
 
+        // --- RANKING REFORMULADO PROFISSIONAL ---
         public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top) {
-            int w = 850; int h = 680;
+            int w = 850; int h = 750;
             using var surface = SKSurface.Create(new SKImageInfo(w, h));
-            var canvas = surface.Canvas; canvas.Clear(new SKColor(20, 10, 30));
-            var bold = SKTypeface.FromFamilyName("DejaVu Sans", SKFontStyle.Bold);
-            canvas.DrawText("Top Coins do Servidor", 40, 80, new SKPaint { Color = SKColors.White, TextSize = 45, Typeface = bold, IsAntialias = true });
+            var canvas = surface.Canvas;
+            canvas.Clear(new SKColor(12, 10, 20));
+
+            var boldFont = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+            
+            // Título: Top (Branco) Coins (Roxo)
+            var paintWhite = new SKPaint { Color = SKColors.White, TextSize = 48, Typeface = boldFont, IsAntialias = true };
+            var paintPurple = new SKPaint { Color = PurpleTheme, TextSize = 48, Typeface = boldFont, IsAntialias = true };
+            canvas.DrawText("Top", 40, 80, paintWhite);
+            canvas.DrawText("Coins", 140, 80, paintPurple);
+
             using var http = new HttpClient();
             for (int i = 0; i < top.Count; i++) {
                 IUser m = guild.GetUser(top[i].UserId) ?? await ((IGuild)guild).GetUserAsync(top[i].UserId);
-                int x = 40 + (i % 2 * 405); int y = 120 + (i / 2 * 105);
-                canvas.DrawRoundRect(new SKRect(x, y, x + 380, y + 90), 45, 45, new SKPaint { Color = (i == 0) ? new SKColor(255, 215, 0) : new SKColor(80, 0, 80), IsAntialias = true });
+                int col = i % 2; int row = i / 2;
+                float x = 40 + (col * 405); float y = 120 + (row * 115);
+                int pos = i + 1;
+
+                // Definir cores dos 3 primeiros (Cores sólidas e legíveis)
+                SKColor pillColor = pos switch {
+                    1 => new SKColor(255, 215, 0), // Dourado real
+                    2 => new SKColor(192, 192, 192), // Prata
+                    3 => new SKColor(205, 127, 50), // Bronze
+                    _ => new SKColor(35, 32, 55)    // Dark Purple para o resto
+                };
+
+                // Texto preto para os 3 primeiros para leitura perfeita
+                SKColor textColor = (pos <= 3) ? SKColors.Black : SKColors.White;
+
+                var rect = new SKRect(x, y, x + 385, y + 100);
+                canvas.DrawRoundRect(rect, 20, 20, new SKPaint { Color = pillColor, IsAntialias = true });
+
                 try {
-                    var b = await http.GetByteArrayAsync(m?.GetAvatarUrl() ?? m?.GetDefaultAvatarUrl());
-                    using var bmp = SKBitmap.Decode(b);
-                    var r = new SKRect(x+15, y+15, x+75, y+75); var p = new SKPath(); p.AddOval(r);
-                    canvas.Save(); canvas.ClipPath(p, SKClipOperation.Intersect, true); canvas.DrawBitmap(bmp, r); canvas.Restore();
+                    var bytes = await http.GetByteArrayAsync(m?.GetAvatarUrl() ?? m?.GetDefaultAvatarUrl());
+                    using var bmp = SKBitmap.Decode(bytes);
+                    var avRect = new SKRect(x + 15, y + 15, x + 85, y + 85);
+                    var path = new SKPath(); path.AddOval(avRect);
+                    canvas.Save(); canvas.ClipPath(path, SKClipOperation.Intersect, true);
+                    canvas.DrawBitmap(bmp, avRect); canvas.Restore();
+                    canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 2, Color = textColor, IsAntialias = true });
                 } catch { }
-                canvas.DrawText(m?.Username ?? "User", x + 90, y + 55, new SKPaint { Color = SKColors.White, TextSize = 22, IsAntialias = true });
-                canvas.DrawText(EconomyHelper.FormatarSaldo(top[i].Total), x + 360, y + 55, new SKPaint { Color = SKColors.White, TextSize = 20, TextAlign = SKTextAlign.Right, IsAntialias = true });
+
+                string name = (m?.Username ?? "Usuário").Length > 12 ? (m?.Username ?? "Usuário").Substring(0, 10) + ".." : (m?.Username ?? "Usuário");
+                canvas.DrawText($"{pos}. {name}", x + 100, y + 50, new SKPaint { Color = textColor, TextSize = 22, Typeface = boldFont, IsAntialias = true });
+                canvas.DrawText(EconomyHelper.FormatarSaldo(top[i].Total), x + 100, y + 80, new SKPaint { Color = (pos <= 3) ? new SKColor(40,40,40) : new SKColor(180, 180, 200), TextSize = 18, IsAntialias = true });
             }
-            var path = Path.Combine(Path.GetTempPath(), $"rank_{guild.Id}_{DateTime.Now.Ticks}.png");
+
+            var pathImg = Path.Combine(Path.GetTempPath(), $"rank_{guild.Id}_{DateTime.Now.Ticks}.png");
             using (var img = surface.Snapshot()) using (var d = img.Encode(SKEncodedImageFormat.Png, 100))
-            using (var s = File.OpenWrite(path)) d.SaveTo(s);
-            return path;
+            using (var s = File.OpenWrite(pathImg)) d.SaveTo(s);
+            return pathImg;
         }
     }
 
-    // --- 3. ECONOMY HANDLER (SEM ALTERAÇÃO NA LÓGICA) ---
+    // --- 3. ECONOMY HANDLER ---
     public class EconomyHandler {
         private readonly DiscordSocketClient _client;
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
@@ -232,7 +243,7 @@ namespace Botzinho.Economy
                     }
                     else if (content == "zrank") {
                         var p = await EconomyImageHelper.GerarImagemRank(user.Guild, EconomyHelper.GetTop10(guildId));
-                        await msg.Channel.SendFileAsync(p, "🏆 **Top Ricos**"); File.Delete(p);
+                        await msg.Channel.SendFileAsync(p, "🏆 **Ranking de Ricos**"); File.Delete(p);
                     }
                     else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id)) {
                         var alvo = msg.MentionedUsers.FirstOrDefault();
@@ -264,8 +275,8 @@ namespace Botzinho.Economy
                         if (val <= 0 || s < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
                         if (ApostasAtivas.ContainsKey(user.Id)) return;
                         ApostasAtivas[user.Id] = val; EconomyHelper.RemoverSaldo(guildId, user.Id, val);
-                        var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"🪙 | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}").WithColor(new Color(114, 137, 218));
-                        var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂")).WithButton("Coroa", $"cf_coroa_{user.Id}", ButtonStyle.Secondary, new Emoji("👑")).WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, new Emoji("❌"));
+                        var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"🪙 | **Aposta:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}").WithColor(new Color(114, 137, 218));
+                        var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}").WithButton("Coroa", $"cf_coroa_{user.Id}").WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, new Emoji("❌"));
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
                     else if (content.StartsWith("zbj") || content.StartsWith("zblackjack")) {
@@ -302,8 +313,8 @@ namespace Botzinho.Economy
             else if (parts[0] == "bj") {
                 var action = parts[1]; var uid = ulong.Parse(parts[2]);
                 if (comp.User.Id != uid || !BlackjackAtivo.TryGetValue(uid, out var game)) return;
-                var user = (SocketGuildUser)comp.User; var deck = new List<int> { 2,3,4,5,6,7,8,9,10,10,10,10,11 };
-                var r = new Random();
+                var user = (SocketGuildUser)comp.User; var r = new Random();
+                var deck = new List<int> { 2,3,4,5,6,7,8,9,10,10,10,10,11 };
                 if (action == "hit") {
                     game.Player.Add(deck[r.Next(deck.Count)]);
                     if (game.Player.Sum() > 21) {
@@ -315,11 +326,11 @@ namespace Botzinho.Economy
                     BlackjackAtivo.Remove(uid);
                     while (game.Dealer.Sum() < 17) game.Dealer.Add(deck[r.Next(deck.Count)]);
                     int pS = game.Player.Sum(); int dS = game.Dealer.Sum();
-                    string resText = ""; Color col;
-                    if (dS > 21 || pS > dS) { resText = $"🏆 **Ganhou!** Dealer: {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, game.Bet * 2); col = Color.Green; }
-                    else if (pS == dS) { resText = "⚖️ **Empate!** Valor devolvido."; EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, game.Bet); col = Color.LightGrey; }
-                    else { resText = $"❌ **Perdeu!** Dealer: {dS}."; col = Color.Red; }
-                    await comp.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithTitle("Resultado Blackjack").WithDescription($"{resText}\nSuas: {pS} | Dealer: {dS}").WithColor(col).Build(); x.Components = null; });
+                    string resT = ""; Color col;
+                    if (dS > 21 || pS > dS) { resT = $"🏆 **Ganhou!** Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, game.Bet * 2); col = Color.Green; }
+                    else if (pS == dS) { resT = "⚖️ **Empate!** Valor devolvido."; EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, game.Bet); col = Color.LightGrey; }
+                    else { resT = $"❌ **Perdeu!** Dealer fez {dS}."; col = Color.Red; }
+                    await comp.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithTitle("Resultado Blackjack").WithDescription($"{resT}\nSuas: {pS} | Dealer: {dS}").WithColor(col).Build(); x.Components = null; });
                     return;
                 }
                 await comp.UpdateAsync(x => x.Embed = new EmbedBuilder().WithAuthor("Blackjack 🃏").WithDescription($"**Suas:** {string.Join(", ", game.Player)} (Total: {game.Player.Sum()})\n**Dealer:** {game.Dealer[0]} e [?]").WithColor(Color.Blue).Build());
