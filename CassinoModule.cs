@@ -509,7 +509,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<a:ganhador:1493088070923452599> **BlackJack!** **VITÓRIA!**
-• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
                     else if (pS == dS)
@@ -519,7 +519,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE");
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"⚖️ **EMPATE!**
-• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
                     else
@@ -529,7 +529,7 @@ namespace Botzinho.Cassino
                         bgCol = new SKColor(180, 40, 40); ebCol = Color.Red;
                         statusDesc = $@"<:erro:1493078898462949526> **DERROTA!**
 
-• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <:moeda:1493262426571800696> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
 
