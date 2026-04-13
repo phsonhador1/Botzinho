@@ -48,7 +48,6 @@ namespace Botzinho.Core
                         string path = await EconomyImageHelper.GerarImagemRank(guild, top10);
 
                         // 3. Envia a mensagem com a formatação idêntica à foto
-                        // Usei o emoji de troféu padrão, mas se você tiver um customizado, pode trocar o ID
                         var msg = await channel.SendFileAsync(path,
                             "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**\n" +
                             "<:whitemoney:1493119805534900346> Confira quem são os membros mais <:coroa:1493119946547396689> **Magnatas** do momento!");
@@ -56,7 +55,7 @@ namespace Botzinho.Core
                         // Deleta o arquivo temporário
                         if (File.Exists(path)) File.Delete(path);
 
-                        // 4. Agenda a exclusão para daqui a 5 minutos
+                        // 4. Agenda a exclusão para daqui a 5 minutos (ou ajuste para menos no teste se quiser)
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(TimeSpan.FromMinutes(5));
@@ -69,8 +68,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro AutoRank]: {ex.Message}");
                 }
 
-                // 5. Espera 30 minutos para a próxima execução
-                await Task.Delay(TimeSpan.FromMinutes(30));
+                // 5. ESPERA 1 MINUTO PARA TESTE
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
         }
 
@@ -136,8 +135,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                // 9. Espera 25 minutos para fazer o próximo sorteio
-                await Task.Delay(TimeSpan.FromMinutes(25));
+                // 9. ESPERA 1 MINUTO PARA TESTE
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
         }
     }
