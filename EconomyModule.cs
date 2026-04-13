@@ -316,7 +316,13 @@ namespace Botzinho.Economy
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
                     string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
-                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2) return;
+
+                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5)
+                    {
+                        var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para usar outro comando.");
+                        _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync());
+                        return;
+                    }
                     _cooldowns[user.Id] = DateTime.UtcNow;
 
                     if (content == "zdaily")
