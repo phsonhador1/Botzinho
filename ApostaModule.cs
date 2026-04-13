@@ -92,7 +92,8 @@ namespace Botzinho.Cassino
                     .WithDescription($@"<a:teste:1490570407307378712> O jogador {user.Mention} desafiou você para um X1!
 
 <a:7moneyz:1493015410637930508> | **Valor cobrado de cada:** `{EconomyHelper.FormatarSaldo(val)}`
-🏆 | **Prêmio ao Vencedor:** `{EconomyHelper.FormatarSaldo(val * 2)}`
+
+<a:trofeu:1493063952060387479> | **Prêmio ao Vencedor:** `{EconomyHelper.FormatarSaldo(val * 2)}`
 
 {alvo.Mention}, você tem coragem de aceitar?")
                     .WithColor(new Color(160, 80, 220))
@@ -191,12 +192,12 @@ namespace Botzinho.Cassino
 
                 var eb = new EmbedBuilder()
                     .WithAuthor("⚔️ Duelo Finalizado!")
-                    .WithDescription($@"<a:teste:1490570407307378712> O sangue foi derramado e temos um campeão!
+                    .WithDescription($@"<a:ganhador:1493088070923452599> O sangue foi derramado e temos um campeão!
 
-🏆 **Vencedor:** <@{vencedorId}>
+<a:trofeu:1493063952060387479> **Vencedor:** <@{vencedorId}>
 💰 **Levou pra casa:** `{EconomyHelper.FormatarSaldo(premioTotal)}` coins
 
-💀 **Perdedor:** <@{perdedorId}> (Perdeu `{EconomyHelper.FormatarSaldo(aposta.Valor)}`)")
+<:erro:1493078898462949526> **Perdedor:** <@{perdedorId}> (Perdeu `{EconomyHelper.FormatarSaldo(aposta.Valor)}`)")
                     .WithColor(Color.Gold);
 
                 await component.UpdateAsync(x => {
