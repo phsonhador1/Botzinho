@@ -1,5 +1,7 @@
 using Discord;
 using Discord.WebSocket;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,6 +10,9 @@ namespace Botzinho.Core
     public class HelpModule
     {
         private readonly DiscordSocketClient _client;
+        
+        // Cooldown exclusivo para o painel de ajuda (5 segundos)
+        private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
 
         public HelpModule(DiscordSocketClient client)
         {
@@ -29,9 +34,20 @@ namespace Botzinho.Core
                     if (content == "zhelp" || content == "zajuda")
                     {
                         var user = msg.Author;
-                        var botUser = _client.CurrentUser;
 
-                        // Embed principal (igual ao do seu print)
+                        // --- TRAVA DE 5 SEGUNDOS ---
+                        if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5) 
+                        {
+                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para abrir o painel novamente.");
+                            _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync()); // Apaga a mensagem depois de 3 segundos
+                            return;
+                        }
+                        _cooldowns[user.Id] = DateTime.UtcNow;
+                        // ---------------------------
+
+                        var botUser = _client.CurrentUser;
+                        
+                        // Embed principal
                         var eb = new EmbedBuilder()
                             .WithAuthor($"Ajuda | Zoe", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                             .WithColor(new Color(160, 80, 220)) // Cor roxa da borda
@@ -53,7 +69,7 @@ namespace Botzinho.Core
                     }
                 }
                 catch { }
-            });
+            }); 
             return Task.CompletedTask;
         }
 
@@ -61,7 +77,7 @@ namespace Botzinho.Core
         private async Task HandleSelectMenu(SocketMessageComponent component)
         {
             var customId = component.Data.CustomId;
-
+            
             // Verifica se o ID do botão pertence ao sistema de ajuda
             if (!customId.StartsWith("help_menu_")) return;
 
