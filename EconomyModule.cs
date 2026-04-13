@@ -283,8 +283,8 @@ namespace Botzinho.Economy
                         long minhaPos = EconomyHelper.GetPosicaoRank(guildId, user.Id);
                         long meuTotal = EconomyHelper.GetSaldo(guildId, user.Id) + EconomyHelper.GetBanco(guildId, user.Id);
                         var p = await EconomyImageHelper.GerarImagemRank(user.Guild, EconomyHelper.GetTop10(guildId));
-                        await msg.Channel.SendFileAsync(p, "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**"); File.Delete(p);
-                        await msg.Channel.SendMessageAsync($" <:emoji_8:1491910148476899529> Você tem **{EconomyHelper.FormatarSaldo(meuTotal)}** coins e está na posição **#{minhaPos}**");
+                        await msg.Channel.SendFileAsync(p, $"<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**\n<:emoji_8:1491910148476899529> Você tem **{EconomyHelper.FormatarSaldo(meuTotal)}** coins e está na posição **#{minhaPos}**"); File.Delete(p);
+                     
     // ----------------------------------)
                     }
                     else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id))
