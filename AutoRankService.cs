@@ -14,9 +14,6 @@ namespace Botzinho.Core
         // ⚠️ COLOQUE O ID DO CANAL AQUI
         private const ulong ID_CANAL_RANK = 1492995092166869002;
 
-        // Guarda a mensagem do último sorteio para apagar quando começar um novo
-        private static IUserMessage _ultimaMsgSorteio = null;
-
         public static void Iniciar(DiscordSocketClient client)
         {
             // Inicia o loop do rank em uma thread separada
@@ -36,7 +33,7 @@ namespace Botzinho.Core
             {
                 try
                 {
-                    // 1. Procura o canal pelo ID (AQUI MUDAMOS PARA SocketTextChannel)
+                    // 1. Procura o canal pelo ID
                     var channel = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
 
                     if (channel != null)
@@ -47,7 +44,7 @@ namespace Botzinho.Core
                         // Gera a imagem do rank
                         string path = await EconomyImageHelper.GerarImagemRank(guild, top10);
 
-                        // 3. Envia a mensagem com a formatação idêntica à foto
+                        // 3. Envia a mensagem
                         var msg = await channel.SendFileAsync(path,
                             "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**\n" +
                             "<:whitemoney:1493119805534900346> Confira quem são os membros mais <:coroa:1493119946547396689> **Magnatas** do momento!");
@@ -55,7 +52,7 @@ namespace Botzinho.Core
                         // Deleta o arquivo temporário
                         if (File.Exists(path)) File.Delete(path);
 
-                        // 4. Agenda a exclusão para daqui a 5 minutos (ou ajuste para menos no teste se quiser)
+                        // 4. Agenda a exclusão para daqui a 5 minutos
                         _ = Task.Run(async () =>
                         {
                             await Task.Delay(TimeSpan.FromMinutes(5));
@@ -68,8 +65,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro AutoRank]: {ex.Message}");
                 }
 
-                // 5. ESPERA 1 MINUTO PARA TESTE
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                // 5. Espera 30 minutos para a próxima execução do Rank
+                await Task.Delay(TimeSpan.FromMinutes(30));
             }
         }
 
@@ -88,19 +85,13 @@ namespace Botzinho.Core
 
                     if (channel != null)
                     {
-                        // 1. Apaga o ganhador do sorteio passado (se existir)
-                        if (_ultimaMsgSorteio != null)
-                        {
-                            try { await _ultimaMsgSorteio.DeleteAsync(); } catch { }
-                        }
-
-                        // 2. Manda a mensagem de suspense
+                        // 1. Manda a mensagem de suspense
                         var msgStatus = await channel.SendMessageAsync("✨ **Sorteando...** Vamos ver quem vai ser o sortudo.");
 
-                        // 3. Aguarda 5 segundos para gerar expectativa
+                        // 2. Aguarda 5 segundos para gerar expectativa
                         await Task.Delay(5000);
 
-                        // 4. Pega todos os membros do servidor ignorando os bots
+                        // 3. Pega todos os membros do servidor ignorando os bots
                         var membros = channel.Guild.Users.Where(u => !u.IsBot).ToList();
 
                         if (membros.Count > 0)
@@ -109,17 +100,17 @@ namespace Botzinho.Core
                             var ganhador = membros[random.Next(membros.Count)];
                             long valorSorteado = random.Next(50000, 100001); // Entre 50k e 100k
 
-                            // 5. Deposita o prêmio no banco do ganhador
+                            // 4. Deposita o prêmio no banco do ganhador
                             EconomyHelper.AdicionarBanco(channel.Guild.Id, ganhador.Id, valorSorteado);
 
-                            // 6. Registra no extrato (ztransacoes)
+                            // 5. Registra no extrato (ztransacoes)
                             EconomyHelper.RegistrarTransacao(channel.Guild.Id, client.CurrentUser.Id, ganhador.Id, valorSorteado, "DAILY");
 
-                            // 7. Apaga a mensagem de "Sorteando..."
+                            // 6. Apaga apenas a mensagem de "Sorteando..."
                             try { await msgStatus.DeleteAsync(); } catch { }
 
-                            // 8. Anuncia o ganhador e guarda a mensagem para ser apagada no próximo loop
-                            _ultimaMsgSorteio = await channel.SendMessageAsync(
+                            // 7. Anuncia o ganhador (Esta mensagem agora fica FIXA no chat)
+                            await channel.SendMessageAsync(
                                 $"🎉 **SORTEIO CONCLUÍDO!**\n" +
                                 $"• O sortudo da vez foi {ganhador.Mention}!\n" +
                                 $"• Acabou de ganhar `{EconomyHelper.FormatarSaldo(valorSorteado)}` coins direto no banco.");
@@ -135,8 +126,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                // 9. ESPERA 1 MINUTO PARA TESTE
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                // 8. Espera 25 minutos para fazer o próximo sorteio
+                await Task.Delay(TimeSpan.FromMinutes(25));
             }
         }
     }
