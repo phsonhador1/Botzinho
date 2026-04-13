@@ -12,7 +12,7 @@ namespace Botzinho.Core
     public static class AutoRankService
     {
         // ⚠️ COLOQUE O ID DO CANAL AQUI
-        private const ulong ID_CANAL_RANK = 1492995092166869002;
+        private const ulong ID_CANAL_RANK = 1487905632261505024;
 
         public static void Iniciar(DiscordSocketClient client)
         {
@@ -96,7 +96,7 @@ namespace Botzinho.Core
                         }
 
                         // 4. Inicia o novo sorteio
-                        var msgStatus = await channel.SendMessageAsync("✨ **Sorteando...** Vamos ver quem vai ser o sortudo.");
+                        var msgStatus = await channel.SendMessageAsync(" **Sorteando...** Vamos ver quem vai ser o sortudo.");
                         await Task.Delay(5000); // Suspense
 
                         var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
@@ -114,10 +114,7 @@ namespace Botzinho.Core
                             try { await msgStatus.DeleteAsync(); } catch { }
 
                             // Manda a mensagem nova que ficará fixa até o próximo loop
-                            await channel.SendMessageAsync(
-                                $"🎉 **SORTEIO CONCLUÍDO!**\n" +
-                                $"• O sortudo da vez foi <@{ganhador.Id}>!\n" +
-                                $"• Acabou de ganhar `{EconomyHelper.FormatarSaldo(valorSorteado)}` coins direto no banco.");
+                            await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
                         }
                         else
                         {
@@ -131,7 +128,7 @@ namespace Botzinho.Core
                 }
 
                 // 5. Aguarda 25 minutos
-                await Task.Delay(TimeSpan.FromMinutes(2));
+                await Task.Delay(TimeSpan.FromMinutes(15));
             }
         }
     }
