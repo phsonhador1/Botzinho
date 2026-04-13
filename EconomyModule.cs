@@ -36,14 +36,13 @@ namespace Botzinho.Economy
                     receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
             cmd.ExecuteNonQuery();
         }
-        // BUSCA AS 10 TRANSACOES MAIS RECENTES ONDE O USUÁRIO É REMETENTE OU DESTINATÁRIO
+        
         public static List<(string SenderId, string ReceiverId, long Amount, string Type, DateTime Date)> GetTransacoes(ulong guildId, ulong userId)
         {
             var list = new List<(string, string, long, string, DateTime)>();
             using var conn = new NpgsqlConnection(GetConnectionString());
             conn.Open();
             using var cmd = conn.CreateCommand();
-            // Puxa transações onde o cara é o remetente OU o recebedor
             cmd.CommandText = @"SELECT sender_id, receiver_id, amount, type, data 
                         FROM economy_transactions 
                         WHERE guild_id = @gid AND (sender_id = @uid OR receiver_id = @uid) 
@@ -57,6 +56,7 @@ namespace Botzinho.Economy
             }
             return list;
         }
+        
         public static long GetSaldo(ulong guildId, ulong userId)
         {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
@@ -211,7 +211,6 @@ namespace Botzinho.Economy
             canvas.DrawText(EconomyHelper.FormatarSaldo(valor) + " cpoints", 70, y + 48, new SKPaint { Color = SKColors.White, TextSize = 18, Typeface = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold), IsAntialias = true });
         }
 
-        // --- RANKING REFORMULADO PROFISSIONAL ---
         public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top)
         {
             int w = 850; int h = 750;
@@ -236,10 +235,10 @@ namespace Botzinho.Economy
 
                 SKColor pillColor = pos switch
                 {
-                    1 => new SKColor(255, 215, 0), // Dourado real
-                    2 => new SKColor(192, 192, 192), // Prata
-                    3 => new SKColor(205, 127, 50), // Bronze
-                    _ => new SKColor(35, 32, 55)    // Dark Purple para o resto
+                    1 => new SKColor(255, 215, 0),
+                    2 => new SKColor(192, 192, 192),
+                    3 => new SKColor(205, 127, 50),
+                    _ => new SKColor(35, 32, 55)
                 };
 
                 SKColor textColor = (pos <= 3) ? SKColors.Black : SKColors.White;
@@ -289,7 +288,7 @@ namespace Botzinho.Economy
                 {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
-                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo" };
+                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
                     if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2) return;
                     _cooldowns[user.Id] = DateTime.UtcNow;
@@ -353,41 +352,46 @@ namespace Botzinho.Economy
                     }
                     else if (content.StartsWith("ztransacoes") || content.StartsWith("ztranscoes"))
                     {
-                        // Mudamos de "alvo" para "usuarioAlvo" para evitar conflito de escopo
                         var usuarioAlvo = msg.MentionedUsers.FirstOrDefault() ?? user;
                         var transacoes = EconomyHelper.GetTransacoes(guildId, usuarioAlvo.Id);
 
                         var eb = new EmbedBuilder()
-                            .WithAuthor($"Extrato Bancário | {usuarioAlvo.Username}", usuarioAlvo.GetAvatarUrl() ?? usuarioAlvo.GetDefaultAvatarUrl())
-                            .WithColor(new Color(160, 80, 220))
-                            .WithFooter("Mostrando as últimas 10 transações");
+                            .WithAuthor($"Transações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                            .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/2830/2830284.png")
+                            .WithColor(new Color(43, 45, 49));
 
                         if (transacoes.Count == 0)
                         {
-                            eb.WithDescription("<:negativo:1492950137587241114> Nenhuma transação encontrada para este usuário.");
+                            eb.WithDescription($"• Aqui estão as ultimas **0 transações** de `{usuarioAlvo.Username}`:\n\nNenhuma transação encontrada no momento.");
                         }
                         else
                         {
-                            string listaTexto = "";
+                            string listaTexto = $"• Aqui estão as ultimas **{transacoes.Count} transações** de `{usuarioAlvo.Username}`:\n\n";
+                            
                             foreach (var t in transacoes)
                             {
-                                string dataFormatada = t.Date.AddHours(-3).ToString("dd/MM HH:mm"); // Ajuste de fuso horário (Brasília)
-                                string valor = EconomyHelper.FormatarSaldo(t.Amount);
-
-                                // Lógica para saber se ele enviou ou recebeu
+                                string dataFormatada = t.Date.AddHours(-3).ToString("dd/MM/yyyy, HH:mm:ss"); 
+                                
                                 if (t.SenderId == usuarioAlvo.Id.ToString())
                                 {
-                                    listaTexto += $"`[{dataFormatada}]` 🔴 **Envio de** `{valor}` para <@{t.ReceiverId}>\n";
+                                    listaTexto += $"• `[{dataFormatada}]` 💸 ➖ Enviou **{t.Amount} coin(s)** para <@{t.ReceiverId}>.\n";
                                 }
                                 else
                                 {
-                                    listaTexto += $"`[{dataFormatada}]` 🟢 **Recebeu** `{valor}` de <@{t.SenderId}>\n";
+                                    listaTexto += $"• `[{dataFormatada}]` 💸 ➕ Recebeu **{t.Amount} coin(s)** de <@{t.SenderId}>.\n";
                                 }
                             }
                             eb.WithDescription(listaTexto);
                         }
 
-                        await msg.Channel.SendMessageAsync(embed: eb.Build());
+                        eb.WithFooter($"Página: 1/1 • Hoje às {DateTime.Now.AddHours(-3):HH:mm}");
+
+                        var cb = new ComponentBuilder()
+                            .WithButton(null, "extrato_back", ButtonStyle.Secondary, new Emoji("⬅️"), disabled: true)
+                            .WithButton(null, "extrato_search", ButtonStyle.Secondary, new Emoji("🔍"), disabled: true)
+                            .WithButton(null, "extrato_next", ButtonStyle.Secondary, new Emoji("➡️"), disabled: true);
+
+                        await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
                 }
                 catch { }
