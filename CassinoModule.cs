@@ -372,6 +372,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
             if (partes.Length < 3) return;
 
             var prefix = partes[0];
+
+            // 👇 ADICIONE ESTA LINHA AQUI! Ela faz o Cassino ignorar os botões da Aposta
+            if (prefix != "roleta" && prefix != "cf" && prefix != "bj") return;
+
             var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
 
