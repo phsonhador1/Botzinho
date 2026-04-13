@@ -58,11 +58,11 @@ namespace Botzinho.Cassino
                 var embed = new EmbedBuilder()
                     .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
-                    .WithDescription($@"• **Olá, {user.Mention}! Bem-vindo(a) à Roleta da {_client.CurrentUser.Username}.**
+                    .WithDescription($@"<a:teste:1490570407307378712> **Olá, {user.Mention}! Bem-vindo(a) à Roleta da {_client.CurrentUser.Username}.**
 
-💰 | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
+<a:7moneyz:1493015410637930508> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
 
-💡 | **Como funciona:** Escolha uma cor. Se o sorteio parar nela, você ganha o prêmio!
+<:seta:1493089125979656385> | **Como funciona:** Escolha uma cor. Se o sorteio parar nela, você ganha o prêmio!
 ⚪ **Branco:** 6.0x (Difícil)
 ⚫ **Preto:** 1.5x
 🔴 **Vermelho:** 1.5x
@@ -90,7 +90,7 @@ namespace Botzinho.Cassino
             var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
 
-            if (component.User.Id != userId) { await component.RespondAsync("❌ Saia daqui, essa roleta não é sua!", ephemeral: true); return; }
+            if (component.User.Id != userId) { await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, essa roleta não é sua!", ephemeral: true); return; }
             if (!ApostasAtivas.TryGetValue(userId, out long valorAposta)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
             var guildId = (component.User as SocketGuildUser).Guild.Id;
 
@@ -99,7 +99,7 @@ namespace Botzinho.Cassino
                 ApostasAtivas.Remove(userId);
                 EconomyHelper.AdicionarBanco(guildId, userId, valorAposta);
                 await component.UpdateAsync(x => {
-                    x.Content = $"✅ {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints no banco.";
+                    x.Content = $"<:acerto:1493079138783727756> {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints no banco.";
                     x.Embed = null; x.Components = null;
                 });
                 return;
@@ -124,17 +124,17 @@ namespace Botzinho.Cassino
             if (ganhou)
             {
                 EconomyHelper.AdicionarBanco(guildId, userId, premio);
-                embedFim.WithColor(Color.Green).WithDescription($@"<a:7moneyz:1493015410637930508> **Parabéns! A sorte passou por aqui!**
+                embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-💰 Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
+<a:7moneyz:1493015410637930508> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
             }
             else
             {
-                embedFim.WithColor(Color.Red).WithDescription($@"<a:negativo:1492950137587241114> **Não foi dessa vez...**
+                embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-❌ Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
+<:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
             }
 
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embedFim.Build(); x.Content = component.User.Mention; });
