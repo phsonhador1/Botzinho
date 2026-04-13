@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using Botzinho.Economy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -111,7 +112,9 @@ namespace Botzinho.Core
                           "`zdep [valor/all]` - Guarde moedas no banco\n" +
                           "`zpay [@user] [valor]` - Transfira dinheiro para alguém\n" +
                           "`ztransacoes` - Veja seu extrato bancário detalhado\n" +
-                          "`zrank` - Veja os membros mais ricos do servidor");
+                          "`zrank` - Veja os membros mais ricos do servidor\n" +
+                          "`zrifa` - Mostra o prêmio acumulado e suas chances\n" +
+                          "`zrifa comprar [valor]` - Compre participações na Rifa Semanal");
                 }
                 else if (selected == "help_cassino")
                 {
@@ -119,7 +122,9 @@ namespace Botzinho.Core
                       .WithDescription(
                           "`zroleta [valor/all]` - Aposte na roleta (Branco, Preto ou Vermelho)\n" +
                           "`zcf [valor/all]` - Aposte no cara ou coroa (Coinflip)\n" +
-                          "`zbj [valor/all]` - Jogue Blackjack contra o Dealer (21)");
+                          "`zbj [valor/all]` - Jogue Blackjack contra o Dealer (21)\n" +
+                          "`zapostar [@user] [valor]` - Desafie alguém para um Duelo (X1)");
+
                 }
                 else if (selected == "help_moderacao")
                 {
@@ -136,17 +141,17 @@ namespace Botzinho.Core
                           "`/unmute [@user]` - Remove o silenciamento");
                 }
 
-                // Reconstrói o menu para ele continuar funcionando (caso a pessoa queira ver outra página)
+                // Reconstrói o menu para ele continuar funcionando
                 var menuBuilder = new SelectMenuBuilder()
                     .WithCustomId($"help_menu_{user.Id}")
                     .WithPlaceholder("Selecione uma categoria")
-                    .AddOption("Economia", "help_economia", "Comandos de economia", new Emoji("🐷"))
-                    .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", new Emoji("🎰"))
-                    .AddOption("Moderação", "help_moderacao", "Comandos de moderação", new Emoji("📋"));
+                    .AddOption("Economia", "help_economia", "Comandos de economia", Emote.Parse("<:botportal:1492661012682248212>"))
+                    .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", Emote.Parse("<:botportal:1492661012682248212>"))
+                    .AddOption("Moderação", "help_moderacao", "Comandos de moderação", Emote.Parse("<:botportal:1492661012682248212>"));
 
                 var cb = new ComponentBuilder().WithSelectMenu(menuBuilder);
 
-                // Atualiza a mensagem original no chat (para não enviar uma mensagem nova)
+                // Atualiza a mensagem original no chat
                 await component.UpdateAsync(x => { x.Embed = eb.Build(); x.Components = cb.Build(); });
             }
         }
