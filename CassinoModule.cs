@@ -51,7 +51,7 @@ namespace Botzinho.Cassino
 
                 if (valorAposta <= 0 || saldoBanco < valorAposta)
                 {
-                    await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar.");
+                    await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
                     return;
                 }
                 if (ApostasAtivas.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
@@ -97,7 +97,7 @@ namespace Botzinho.Cassino
                 string valTxt = p[1].ToLower();
                 long val = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var res) ? res : 0);
 
-                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
+                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
                 if (ApostasAtivas.ContainsKey(user.Id)) return;
 
                 ApostasAtivas[user.Id] = val;
