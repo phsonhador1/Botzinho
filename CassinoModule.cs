@@ -119,7 +119,6 @@ namespace Botzinho.Cassino
             canvas.DrawText(suitSymbol, x + 50, y + 90, new SKPaint { Color = suitColor, TextSize = 50, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true });
         }
 
-        // --- NOVA FUNÇÃO PARA O COINFLIP ATRAENTE ---
         public static async Task<string> GerarImagemCoinflip(bool deuCara, bool ganhou, long valor)
         {
             int width = 550; int height = 220;
@@ -127,21 +126,20 @@ namespace Botzinho.Cassino
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
-            // Fundo Gradiente Cassino
             var bgPaint = new SKPaint
             {
                 Shader = SKShader.CreateLinearGradient(
-        new SKPoint(0, 0),
-        new SKPoint(0, height),
-        new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) },
-        null,
-        (SkiaSharp.SKShaderTileMode)0) // Usando o valor numérico para evitar erro de referência
+                    new SKPoint(0, 0),
+                    new SKPoint(0, height),
+                    new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) },
+                    null,
+                    (SkiaSharp.SKShaderTileMode)0)
             };
-            // Moldura Neon
+            canvas.DrawRect(new SKRect(0, 0, width, height), bgPaint);
+
             var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = ganhou ? SKColors.LimeGreen.WithAlpha(120) : SKColors.Red.WithAlpha(120), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 3) };
             canvas.DrawRoundRect(new SKRect(10, 10, width - 10, height - 10), 15, 15, borderPaint);
 
-            // Desenhar Moeda (Assets)
             string coinAsset = deuCara ? "coin_cara.png" : "coin_coroa.png";
             string coinPath = Path.Combine(AppContext.BaseDirectory, "Assets", coinAsset);
             if (File.Exists(coinPath))
@@ -250,79 +248,87 @@ namespace Botzinho.Cassino
 
         private async Task HandleButtons(SocketMessageComponent component)
         {
-            var customId = component.Data.CustomId;
-            var partes = customId.Split('_');
-            if (partes.Length < 3) return;
-            var prefix = partes[0];
-            if (prefix != "roleta" && prefix != "cf" && prefix != "bj") return;
-            var escolha = partes[1];
-            var userId = ulong.Parse(partes[2]);
-            if (component.User.Id != userId) { await component.RespondAsync("<:erro:1493078898462949526> Não é seu jogo!", ephemeral: true); return; }
-            var guildId = (component.User as SocketGuildUser).Guild.Id;
-
-            if (prefix == "roleta")
+            _ = Task.Run(async () =>
             {
-                if (!RoletaAtiva.TryGetValue(userId, out long val)) return;
-                if (escolha == "cancel") { RoletaAtiva.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = $"✅ Recuou {EconomyHelper.FormatarSaldo(val)}"; x.Embed = null; x.Components = null; }); return; }
-                RoletaAtiva.Remove(userId);
-                await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithDescription("⚫ **Girando...**").WithImageUrl(GIF_ROLETA).Build(); x.Components = null; });
-                await Task.Delay(4000);
-                var rnd = new Random().Next(1, 101);
-                string cor = rnd <= 10 ? "branco" : (rnd <= 55 ? "preto" : "vermelho");
-                bool win = escolha == cor;
-                long pr = (long)(val * (cor == "branco" ? 6.0 : 1.5));
-                if (win) { EconomyHelper.AdicionarBanco(guildId, userId, pr); EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, pr, "ROLETA_GANHO"); }
-                else EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "ROLETA_PERDA");
-                var eb = new EmbedBuilder().WithDescription(win ? $"🎉 Ganhou! Cor: {cor}. Prêmio: {EconomyHelper.FormatarSaldo(pr)}" : $"❌ Perdeu! Cor: {cor}.").WithColor(win ? Color.Green : Color.Red);
-                await component.ModifyOriginalResponseAsync(x => { x.Embed = eb.Build(); x.Content = component.User.Mention; });
-            }
-            else if (prefix == "cf")
-            {
-                if (!CoinflipAtivo.TryGetValue(userId, out long val)) return;
-                if (escolha == "cancel") { CoinflipAtivo.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = "✅ Cancelado."; x.Embed = null; x.Components = null; }); return; }
-                CoinflipAtivo.Remove(userId);
-                string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa";
-                bool win = escolha == res;
-                if (win) { EconomyHelper.AdicionarBanco(guildId, userId, val * 2); EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, val * 2, "COINFLIP_GANHO"); }
-                else EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "COINFLIP_PERDA");
-
-                string path = await CasinoImageHelper.GerarImagemCoinflip(res == "cara", win, val);
-                var eb = new EmbedBuilder().WithImageUrl($"attachment://cf.png").WithColor(win ? Color.Green : Color.Red);
-                using (var s = File.OpenRead(path)) { var att = new FileAttachment(s, "cf.png"); await component.UpdateAsync(x => { x.Embed = eb.Build(); x.Attachments = new[] { att }; x.Components = null; x.Content = component.User.Mention; }); }
-                if (File.Exists(path)) File.Delete(path);
-            }
-            else if (prefix == "bj")
-            {
-                if (!BlackjackAtivo.TryGetValue(userId, out var g)) return;
-                if (escolha == "hit")
+                try
                 {
-                    g.Player.Add(g.Deck[0]); g.Deck.RemoveAt(0);
-                    if (BlackjackLogic.CalculateScore(g.Player) > 21)
+                    var customId = component.Data.CustomId;
+                    var partes = customId.Split('_');
+                    if (partes.Length < 3) return;
+                    var prefix = partes[0];
+                    if (prefix != "roleta" && prefix != "cf" && prefix != "bj") return;
+                    var escolha = partes[1];
+                    var userId = ulong.Parse(partes[2]);
+                    if (component.User.Id != userId) { await component.RespondAsync("<:erro:1493078898462949526> Não é seu jogo!", ephemeral: true); return; }
+                    var guildId = (component.User as SocketGuildUser).Guild.Id;
+
+                    if (prefix == "roleta")
                     {
-                        BlackjackAtivo.Remove(userId); EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, g.Bet, "BLACKJACK_PERDA");
-                        string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, true, "ESTOUROU!", SKColors.Red);
-                        using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithImageUrl("attachment://bj.png").WithColor(Color.Red).Build(); x.Attachments = new[] { a }; x.Components = null; }); }
-                        if (File.Exists(p)) File.Delete(p);
+                        if (!RoletaAtiva.TryGetValue(userId, out long val)) return;
+                        if (escolha == "cancel") { RoletaAtiva.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = $"✅ Recuou {EconomyHelper.FormatarSaldo(val)}"; x.Embed = null; x.Components = null; }); return; }
+                        RoletaAtiva.Remove(userId);
+                        await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithDescription("⚫ **Girando...**").WithImageUrl(GIF_ROLETA).Build(); x.Components = null; });
+                        await Task.Delay(4000);
+                        var rnd = new Random().Next(1, 101);
+                        string cor = rnd <= 10 ? "branco" : (rnd <= 55 ? "preto" : "vermelho");
+                        bool win = escolha == cor;
+                        long pr = (long)(val * (cor == "branco" ? 6.0 : 1.5));
+                        if (win) { EconomyHelper.AdicionarBanco(guildId, userId, pr); EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, pr, "ROLETA_GANHO"); }
+                        else EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "ROLETA_PERDA");
+                        var eb = new EmbedBuilder().WithDescription(win ? $"🎉 Ganhou! Cor: {cor}. Prêmio: {EconomyHelper.FormatarSaldo(pr)}" : $"❌ Perdeu! Cor: {cor}.").WithColor(win ? Color.Green : Color.Red);
+                        await component.ModifyOriginalResponseAsync(x => { x.Embed = eb.Build(); x.Content = component.User.Mention; });
                     }
-                    else
+                    else if (prefix == "cf")
                     {
-                        string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, false, "BLACKJACK", new SKColor(140, 82, 198));
-                        using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Attachments = new[] { a }; }); }
-                        if (File.Exists(p)) File.Delete(p);
+                        if (!CoinflipAtivo.TryGetValue(userId, out long val)) return;
+                        if (escolha == "cancel") { CoinflipAtivo.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = "✅ Cancelado."; x.Embed = null; x.Components = null; }); return; }
+                        CoinflipAtivo.Remove(userId);
+                        string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa";
+                        bool win = escolha == res;
+                        if (win) { EconomyHelper.AdicionarBanco(guildId, userId, val * 2); EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, val * 2, "COINFLIP_GANHO"); }
+                        else EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "COINFLIP_PERDA");
+
+                        string path = await CasinoImageHelper.GerarImagemCoinflip(res == "cara", win, val);
+                        var eb = new EmbedBuilder().WithImageUrl($"attachment://cf.png").WithColor(win ? Color.Green : Color.Red);
+                        using (var s = File.OpenRead(path)) { var att = new FileAttachment(s, "cf.png"); await component.UpdateAsync(x => { x.Embed = eb.Build(); x.Attachments = new[] { att }; x.Components = null; x.Content = component.User.Mention; }); }
+                        if (File.Exists(path)) File.Delete(path);
+                    }
+                    else if (prefix == "bj")
+                    {
+                        if (!BlackjackAtivo.TryGetValue(userId, out var g)) return;
+                        if (escolha == "hit")
+                        {
+                            g.Player.Add(g.Deck[0]); g.Deck.RemoveAt(0);
+                            if (BlackjackLogic.CalculateScore(g.Player) > 21)
+                            {
+                                BlackjackAtivo.Remove(userId); EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, g.Bet, "BLACKJACK_PERDA");
+                                string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, true, "ESTOUROU!", SKColors.Red);
+                                using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithImageUrl("attachment://bj.png").WithColor(Color.Red).Build(); x.Attachments = new[] { a }; x.Components = null; }); }
+                                if (File.Exists(p)) File.Delete(p);
+                            }
+                            else
+                            {
+                                string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, false, "BLACKJACK", new SKColor(140, 82, 198));
+                                using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Attachments = new[] { a }; }); }
+                                if (File.Exists(p)) File.Delete(p);
+                            }
+                        }
+                        else if (escolha == "stand")
+                        {
+                            BlackjackAtivo.Remove(userId);
+                            while (BlackjackLogic.CalculateScore(g.Dealer) < 17) { g.Dealer.Add(g.Deck[0]); g.Deck.RemoveAt(0); }
+                            int pS = BlackjackLogic.CalculateScore(g.Player); int dS = BlackjackLogic.CalculateScore(g.Dealer);
+                            bool win = dS > 21 || pS > dS; bool draw = pS == dS;
+                            if (win) EconomyHelper.AdicionarBanco(guildId, userId, g.Bet * 2); else if (draw) EconomyHelper.AdicionarBanco(guildId, userId, g.Bet);
+                            string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, true, win ? "VITÓRIA!" : (draw ? "EMPATE!" : "DERROTA!"), win ? SKColors.Green : (draw ? SKColors.Gray : SKColors.Red));
+                            using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithImageUrl("attachment://bj.png").WithColor(win ? Color.Green : Color.Red).Build(); x.Attachments = new[] { a }; x.Components = null; }); }
+                            if (File.Exists(p)) File.Delete(p);
+                        }
                     }
                 }
-                else if (escolha == "stand")
-                {
-                    BlackjackAtivo.Remove(userId);
-                    while (BlackjackLogic.CalculateScore(g.Dealer) < 17) { g.Dealer.Add(g.Deck[0]); g.Deck.RemoveAt(0); }
-                    int pS = BlackjackLogic.CalculateScore(g.Player); int dS = BlackjackLogic.CalculateScore(g.Dealer);
-                    bool win = dS > 21 || pS > dS; bool draw = pS == dS;
-                    if (win) EconomyHelper.AdicionarBanco(guildId, userId, g.Bet * 2); else if (draw) EconomyHelper.AdicionarBanco(guildId, userId, g.Bet);
-                    string p = await CasinoImageHelper.GerarImagemBlackjack(g.Player, g.Dealer, true, win ? "VITÓRIA!" : (draw ? "EMPATE!" : "DERROTA!"), win ? SKColors.Green : (draw ? SKColors.Gray : SKColors.Red));
-                    using (var s = File.OpenRead(p)) { var a = new FileAttachment(s, "bj.png"); await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithImageUrl("attachment://bj.png").WithColor(win ? Color.Green : Color.Red).Build(); x.Attachments = new[] { a }; x.Components = null; }); }
-                    if (File.Exists(p)) File.Delete(p);
-                }
-            }
+                catch (Exception ex) { Console.WriteLine($"[Botão Cassino Erro]: {ex.Message}"); }
+            });
+            await Task.CompletedTask;
         }
     }
 }
