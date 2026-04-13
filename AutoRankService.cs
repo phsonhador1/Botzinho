@@ -12,7 +12,7 @@ namespace Botzinho.Core
     public static class AutoRankService
     {
         // ⚠️ COLOQUE O ID DO CANAL AQUI
-        private const ulong ID_CANAL_RANK = 1492995092166869002;
+        private const ulong ID_CANAL_RANK = 1487905632261505024;
 
         public static void Iniciar(DiscordSocketClient client)
         {
