@@ -281,14 +281,41 @@ namespace Botzinho.Cassino
                 string valTxt = p[1].ToLower();
                 long val = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var res) ? res : 0);
 
-                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
-                if (CoinflipAtivo.ContainsKey(user.Id)) return;
+                if (val <= 0 || banco < val)
+                {
+                    await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar.");
+                    return;
+                }
+                if (CoinflipAtivo.ContainsKey(user.Id))
+                {
+                    await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento! Termine ele antes de começar outro.");
+                    return;
+                }
 
                 CoinflipAtivo[user.Id] = val;
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
 
-                var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"🪙 | **Aposta:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}").WithColor(new Color(114, 137, 218));
-                var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}").WithButton("Coroa", $"cf_coroa_{user.Id}").WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, Emote.Parse("<:erro:1493078898462949526>"));
+                // Embed com o design idêntico ao seu Print
+                var eb = new EmbedBuilder()
+                    .WithAuthor("Cara ou Coroa", IMG_MOEDA)
+                    .WithDescription($@"• **Olá,** {user.Mention}! Bem-vindo(a) ao jogo Cara ou Coroa.
+
+<a:7moneyz:1493015410637930508> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
+
+💡 | **Como funciona:**
+Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da aposta; se errar, você perde o valor apostado.
+
+🛑 | **Desistir da aposta:**
+Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
+                    .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithColor(new Color(160, 80, 220)); // Cor roxa da borda
+
+                // Botões cinzas com os emojis corretos
+                var cb = new ComponentBuilder()
+                    .WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂"))
+                    .WithButton("Coroa", $"cf_coroa_{user.Id}", ButtonStyle.Secondary, new Emoji("👑"))
+                    .WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:erro:1493078898462949526>"));
+
                 await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
             }
 
