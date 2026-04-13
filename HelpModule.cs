@@ -10,7 +10,7 @@ namespace Botzinho.Core
     public class HelpModule
     {
         private readonly DiscordSocketClient _client;
-        
+
         // Cooldown exclusivo para o painel de ajuda (5 segundos)
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
 
@@ -36,9 +36,9 @@ namespace Botzinho.Core
                         var user = msg.Author;
 
                         // --- TRAVA DE 5 SEGUNDOS ---
-                        if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5) 
+                        if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5)
                         {
-                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para abrir o painel novamente.");
+                            var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, Calma Ae! Aguarde **5 segundos** para abrir o **Painel** novamente.");
                             _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync()); // Apaga a mensagem depois de 3 segundos
                             return;
                         }
@@ -46,7 +46,7 @@ namespace Botzinho.Core
                         // ---------------------------
 
                         var botUser = _client.CurrentUser;
-                        
+
                         // Embed principal
                         var eb = new EmbedBuilder()
                             .WithAuthor($"Ajuda | Zoe", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
@@ -59,9 +59,9 @@ namespace Botzinho.Core
                         var menuBuilder = new SelectMenuBuilder()
                             .WithCustomId($"help_menu_{user.Id}")
                             .WithPlaceholder("Selecione uma categoria")
-                            .AddOption("Economia", "help_economia", "Comandos de economia", new Emoji("🐷"))
-                            .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", new Emoji("🎰"))
-                            .AddOption("Moderação", "help_moderacao", "Comandos de moderação", new Emoji("📋"));
+                            .AddOption("Economia", "help_economia", "Comandos de economia", Emote.Parse("<:botportal:1492661012682248212>"))
+                            .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", Emote.Parse("<:botportal:1492661012682248212>"))
+                            .AddOption("Moderação", "help_moderacao", "Comandos de moderação", Emote.Parse("<:botportal:1492661012682248212>"));
 
                         var cb = new ComponentBuilder().WithSelectMenu(menuBuilder);
 
@@ -69,7 +69,7 @@ namespace Botzinho.Core
                     }
                 }
                 catch { }
-            }); 
+            });
             return Task.CompletedTask;
         }
 
@@ -77,7 +77,7 @@ namespace Botzinho.Core
         private async Task HandleSelectMenu(SocketMessageComponent component)
         {
             var customId = component.Data.CustomId;
-            
+
             // Verifica se o ID do botão pertence ao sistema de ajuda
             if (!customId.StartsWith("help_menu_")) return;
 
