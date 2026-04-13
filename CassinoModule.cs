@@ -485,6 +485,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         var ebLose = new EmbedBuilder()
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                             .WithDescription($@"<:explosao:1493358933610332342> **ESTOUROU!**
+
 • <:moedazoe:1493359715420340364> **Aposta Perdida:** {EconomyHelper.FormatarSaldo(game.Bet)}")
                             .WithImageUrl($"attachment://bj.png")
                             .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
