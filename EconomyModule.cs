@@ -307,7 +307,7 @@ namespace Botzinho.Economy
         {
             _client = client; _client.MessageReceived += HandleMessage;
         }
-        
+
         private Task HandleMessage(SocketMessage msg)
         {
             _ = Task.Run(async () => {
@@ -474,12 +474,12 @@ namespace Botzinho.Economy
 
                             // --- MENSAGEM DE SUCESSO (SEM EMBED, IGUAL À IMAGEM) ---
                             // Aqui está a adaptação fiel ao exemplo
-                            await msg.Channel.SendMessageAsync($"🤝 **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para 👤 {mencionado.Mention}.");
+                            await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para 👤 {mencionado.Mention}.");
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"[Erro zpay]: {ex.Message}");
-                            await msg.Channel.SendMessageAsync("❌ Ocorreu um erro interno ao processar a transferência.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ocorreu um erro interno ao processar a transferência.");
                         }
                     }
 
@@ -490,7 +490,7 @@ namespace Botzinho.Economy
                         if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 30)
                         {
                             var tempoRestante = 30 - (DateTime.UtcNow - lastSteal).TotalMinutes;
-                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                            var aviso = await msg.Channel.SendMessageAsync($"<:atencao:1493350891749642240> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
                         }
@@ -523,7 +523,7 @@ namespace Botzinho.Economy
 
                         if (saldoCarteiraVitima <= 0)
                         {
-                            await msg.Channel.SendMessageAsync($"🕵️‍♂️ {user.Mention} tentou roubar {vitima.Mention}, mas a vítima está mais quebrada que xícara de bar... **Carteira vazia!**");
+                            await msg.Channel.SendMessageAsync($"<:atencao:1493350891749642240> {user.Mention} tentou roubar {vitima.Mention}, mas ele estava duro kkk **Carteira vazia!**");
 
                             // Aplica o timeout mesmo se falhar (para não ficarem spamando)
                             _stealCooldowns[user.Id] = DateTime.UtcNow;
@@ -549,17 +549,17 @@ namespace Botzinho.Economy
                                 _stealCooldowns[user.Id] = DateTime.UtcNow;
 
                                 // 6. Mensagem de Sucesso (Agressiva e sem Embed)
-                                await msg.Channel.SendMessageAsync($"🕵️‍♂️💨 **MÃOS AO AR!** {user.Mention} acaba de passar a mão em `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints direto da carteira de {vitima.Mention}! **A metade já era!**");
+                                await msg.Channel.SendMessageAsync($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!** <:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!");
                             }
                             else
                             {
-                                await msg.Channel.SendMessageAsync("❌ Falha na execução do roubo. Tente novamente.");
+                                await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Falha na execução do roubo. Tente novamente.");
                             }
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"[Erro zroubar]: {ex.Message}");
-                            await msg.Channel.SendMessageAsync("❌ Ocorreu um erro interno ao tentar processar o crime.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ocorreu um erro interno ao tentar processar o crime.");
                         }
                     }
 
@@ -601,7 +601,7 @@ namespace Botzinho.Economy
                                 }
                                 else if (t.Type == "ROLETA_PERDA")
                                 {
-                                    linha = $"🎡 ➖ Perdeu **{formatAmount} coin(s)** na roleta.";
+                                    linha = $"🎡 <:erro:1493078898462949526> Perdeu **{formatAmount} coin(s)** na roleta.";
                                 }
                                 else if (t.Type == "COINFLIP_GANHO")
                                 {
@@ -609,7 +609,7 @@ namespace Botzinho.Economy
                                 }
                                 else if (t.Type == "COINFLIP_PERDA")
                                 {
-                                    linha = $"🪙 ➖ Perdeu **{formatAmount} coin(s)** no coinflip.";
+                                    linha = $"🪙 <:erro:1493078898462949526> Perdeu **{formatAmount} coin(s)** no coinflip.";
                                 }
                                 else if (t.Type == "BLACKJACK_GANHO")
                                 {
@@ -617,7 +617,7 @@ namespace Botzinho.Economy
                                 }
                                 else if (t.Type == "BLACKJACK_PERDA")
                                 {
-                                    linha = $"🃏 ➖ Perdeu **{formatAmount} coin(s)** no blackjack.";
+                                    linha = $"🃏 <:erro:1493078898462949526> Perdeu **{formatAmount} coin(s)** no blackjack.";
                                 }
                                 else if (t.Type == "BLACKJACK_EMPATE")
                                 {
@@ -638,7 +638,7 @@ namespace Botzinho.Economy
                                 {
                                     if (t.SenderId == usuarioAlvo.Id.ToString())
                                     {
-                                        linha = $"🕵️‍♂️ ➖ Foi roubado em **{formatAmount} coin(s)** por <@{t.ReceiverId}>.";
+                                        linha = $"🕵️‍♂️ <:erro:1493078898462949526> Foi roubado em **{formatAmount} coin(s)** por <@{t.ReceiverId}>.";
                                     }
                                     else
                                     {
