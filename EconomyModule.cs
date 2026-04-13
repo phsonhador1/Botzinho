@@ -16,8 +16,7 @@ namespace Botzinho.Economy
     public static class EconomyHelper
     {
         public static string GetConnectionString() => Environment.GetEnvironmentVariable("DATABASE_URL") ?? throw new Exception("DATABASE_URL nao configurado!");
-        
-        // IDs que podem usar o zaddsaldo
+
         public static readonly HashSet<ulong> IDsAutorizados = new() { 1472642376970404002 };
 
         public static void InicializarTabelas()
@@ -39,7 +38,8 @@ namespace Botzinho.Economy
             cmd.ExecuteNonQuery();
         }
 
-        public static long GetSaldo(ulong guildId, ulong userId) {
+        public static long GetSaldo(ulong guildId, ulong userId)
+        {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT saldo FROM economy_users WHERE guild_id = @gid AND user_id = @uid";
@@ -47,7 +47,8 @@ namespace Botzinho.Economy
             var res = cmd.ExecuteScalar(); return res != null ? (long)res : 0;
         }
 
-        public static long GetBanco(ulong guildId, ulong userId) {
+        public static long GetBanco(ulong guildId, ulong userId)
+        {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT banco FROM economy_users WHERE guild_id = @gid AND user_id = @uid";
@@ -55,7 +56,8 @@ namespace Botzinho.Economy
             var res = cmd.ExecuteScalar(); return res != null ? (long)res : 0;
         }
 
-        public static void AdicionarSaldo(ulong guildId, ulong userId, long valor) {
+        public static void AdicionarSaldo(ulong guildId, ulong userId, long valor)
+        {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"INSERT INTO economy_users (guild_id, user_id, saldo) VALUES (@gid, @uid, @valor)
@@ -64,7 +66,8 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@valor", valor); cmd.ExecuteNonQuery();
         }
 
-        public static bool RemoverSaldo(ulong guildId, ulong userId, long valor) {
+        public static bool RemoverSaldo(ulong guildId, ulong userId, long valor)
+        {
             if (GetSaldo(guildId, userId) < valor) return false;
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
@@ -73,7 +76,8 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@valor", valor); return cmd.ExecuteNonQuery() > 0;
         }
 
-        public static bool DepositarTudo(ulong guildId, ulong userId) {
+        public static bool DepositarTudo(ulong guildId, ulong userId)
+        {
             long s = GetSaldo(guildId, userId); if (s <= 0) return false;
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
@@ -82,7 +86,8 @@ namespace Botzinho.Economy
             return cmd.ExecuteNonQuery() > 0;
         }
 
-        public static void RegistrarTransacao(ulong guildId, ulong sender, ulong receiver, long amount, string type) {
+        public static void RegistrarTransacao(ulong guildId, ulong sender, ulong receiver, long amount, string type)
+        {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "INSERT INTO economy_transactions (guild_id, sender_id, receiver_id, amount, type) VALUES (@gid, @sid, @rid, @amount, @type)";
@@ -93,7 +98,8 @@ namespace Botzinho.Economy
 
         public static string FormatarSaldo(long valor) => valor >= 1000000 ? $"{valor / 1000000.0:F2}M" : valor >= 1000 ? $"{valor / 1000.0:F2}K" : valor.ToString();
 
-        public static List<(ulong UserId, long Total)> GetTop10(ulong guildId) {
+        public static List<(ulong UserId, long Total)> GetTop10(ulong guildId)
+        {
             var list = new List<(ulong, long)>();
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
             using var cmd = conn.CreateCommand();
@@ -105,60 +111,124 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS (SKIA COM CLIP FIX) ---
-    public static class EconomyImageHelper {
-        public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank) {
-            int width = 500; int height = 600;
+    // --- 2. GERAÇÃO DE IMAGENS (VISUAL DARK PURPLE PREMIUM) ---
+    public static class EconomyImageHelper
+    {
+        public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank)
+        {
+            int width = 500; int height = 650;
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
-            var canvas = surface.Canvas; canvas.Clear(SKColors.Transparent);
-            canvas.DrawRoundRect(new SKRect(20, 20, width - 20, height - 20), 30, 30, new SKPaint { Color = SKColors.White, IsAntialias = true });
+            var canvas = surface.Canvas;
+
+            // --- 1. FUNDO COM GRADIENTE ROXO ESCURO ---
+            var backgroundPaint = new SKPaint {
+                Shader = SKShader.CreateLinearGradient(
+                    new SKPoint(0, 0), new SKPoint(0, height),
+                    new[] { new SKColor(15, 5, 25), new SKColor(40, 15, 75) }, 
+                    null, SKShaderTileMode.Clamp)
+            };
+            canvas.DrawRect(new SKRect(0, 0, width, height), backgroundPaint);
+
+            // --- 2. CARD PRINCIPAL (EFEITO GLASS) ---
+            var cardRect = new SKRect(25, 25, width - 25, height - 25);
+            using (var cardPaint = new SKPaint { Color = new SKColor(30, 10, 50, 180), IsAntialias = true }) {
+                canvas.DrawRoundRect(cardRect, 40, 40, cardPaint);
+            }
+
+            // Borda Neon Roxo
+            using (var borderPaint = new SKPaint { 
+                Color = new SKColor(160, 80, 220), Style = SKPaintStyle.Stroke, 
+                StrokeWidth = 3, IsAntialias = true, 
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2) 
+            }) {
+                canvas.DrawRoundRect(cardRect, 40, 40, borderPaint);
+            }
+
             using var http = new HttpClient();
-            try {
-                var bytes = await http.GetByteArrayAsync(user.GetAvatarUrl(ImageFormat.Png, 256) ?? user.GetDefaultAvatarUrl());
+            try
+            {
+                var avatarUrl = user.GetAvatarUrl(ImageFormat.Png, 256) ?? user.GetDefaultAvatarUrl();
+                var bytes = await http.GetByteArrayAsync(avatarUrl);
                 using var bmp = SKBitmap.Decode(bytes);
-                var avRect = new SKRect(width/2-100, 50, width/2+100, 250);
+                var avRect = new SKRect(width / 2 - 90, 60, width / 2 + 90, 240);
+                
                 var path = new SKPath(); path.AddOval(avRect);
-                canvas.Save(); 
-                canvas.ClipPath(path, SKClipOperation.Intersect, true); 
-                canvas.DrawBitmap(bmp, avRect); canvas.Restore();
-                canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 5, Color = new SKColor(230, 230, 230), IsAntialias = true });
-            } catch { }
+                canvas.Save();
+                canvas.ClipPath(path, SKClipOperation.Intersect, true);
+                canvas.DrawBitmap(bmp, avRect); 
+                canvas.Restore();
+
+                // Borda do avatar neon
+                canvas.DrawOval(avRect, new SKPaint { 
+                    Style = SKPaintStyle.Stroke, StrokeWidth = 5, 
+                    Color = new SKColor(160, 80, 220), IsAntialias = true 
+                });
+            }
+            catch { }
+
             var bold = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
-            canvas.DrawText(user.Username, width/2, 310, new SKPaint { Color = SKColors.Black, TextSize = 35, Typeface = bold, TextAlign = SKTextAlign.Center, IsAntialias = true });
-            DrawPill(canvas, wallet, 350, "Carteira", new SKColor(160, 80, 220));
-            DrawPill(canvas, bank, 430, "Banco", new SKColor(160, 80, 220));
-            DrawPill(canvas, wallet + bank, 510, "Total", new SKColor(230, 180, 60));
+            
+            // Nome do usuário em destaque
+            var namePaint = new SKPaint { 
+                Color = SKColors.White, TextSize = 35, Typeface = bold, 
+                TextAlign = SKTextAlign.Center, IsAntialias = true, FakeBoldText = true 
+            };
+            canvas.DrawText(user.Username.ToUpper(), width / 2, 290, namePaint);
+
+            // Desenhar as Pills Neon
+            DrawPillNeon(canvas, wallet, 340, "CARTEIRA", new SKColor(160, 80, 220));
+            DrawPillNeon(canvas, bank, 430, "BANCO", new SKColor(160, 80, 220));
+            DrawPillNeon(canvas, wallet + bank, 520, "SALDO TOTAL", new SKColor(230, 180, 60));
+
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
             using (var img = surface.Snapshot()) using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var str = File.OpenWrite(p)) data.SaveTo(str);
             return p;
         }
 
-        private static void DrawPill(SKCanvas canvas, long val, float y, string lbl, SKColor col) {
-            canvas.DrawRoundRect(new SKRect(60, y, 440, y + 65), 32, 32, new SKPaint { Color = new SKColor(245, 245, 245), IsAntialias = true });
-            canvas.DrawRoundRect(new SKRect(60, y, 130, y + 65), 32, 32, new SKPaint { Color = col, IsAntialias = true });
+        private static void DrawPillNeon(SKCanvas canvas, long val, float y, string lbl, SKColor themeColor)
+        {
+            float x = 60;
+            var rect = new SKRect(x, y, 440, y + 75);
+            
+            // Fundo da Pill Dark
+            canvas.DrawRoundRect(rect, 20, 20, new SKPaint { Color = new SKColor(10, 5, 20, 220), IsAntialias = true });
+            
+            // Indicador lateral vibrante
+            canvas.DrawRoundRect(new SKRect(x, y, x + 12, y + 75), 20, 20, new SKPaint { Color = themeColor, IsAntialias = true });
+
             var bold = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
-            canvas.DrawText(lbl, 145, y + 30, new SKPaint { Color = SKColors.Black, TextSize = 22, Typeface = bold, IsAntialias = true });
-            canvas.DrawText(EconomyHelper.FormatarSaldo(val), 145, y + 55, new SKPaint { Color = SKColors.Gray, TextSize = 20, IsAntialias = true });
+            
+            // Label secundária
+            canvas.DrawText(lbl, x + 30, y + 28, new SKPaint { Color = new SKColor(180, 180, 180), TextSize = 18, Typeface = bold, IsAntialias = true });
+            
+            // Valor principal
+            canvas.DrawText(EconomyHelper.FormatarSaldo(val) + " CPOINTS", x + 30, y + 60, new SKPaint { 
+                Color = SKColors.White, TextSize = 28, Typeface = bold, IsAntialias = true 
+            });
         }
 
-        public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top) {
+        public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top)
+        {
             int w = 850; int h = 680;
             using var surface = SKSurface.Create(new SKImageInfo(w, h));
             var canvas = surface.Canvas; canvas.Clear(new SKColor(20, 10, 30));
             var bold = SKTypeface.FromFamilyName("DejaVu Sans", SKFontStyle.Bold);
             canvas.DrawText("Top Coins do Servidor", 40, 80, new SKPaint { Color = SKColors.White, TextSize = 45, Typeface = bold, IsAntialias = true });
             using var http = new HttpClient();
-            for (int i = 0; i < top.Count; i++) {
+            for (int i = 0; i < top.Count; i++)
+            {
                 IUser m = guild.GetUser(top[i].UserId) ?? await ((IGuild)guild).GetUserAsync(top[i].UserId);
                 int x = 40 + (i % 2 * 405); int y = 120 + (i / 2 * 105);
                 canvas.DrawRoundRect(new SKRect(x, y, x + 380, y + 90), 45, 45, new SKPaint { Color = (i == 0) ? new SKColor(255, 215, 0) : new SKColor(80, 0, 80), IsAntialias = true });
-                try {
+                try
+                {
                     var b = await http.GetByteArrayAsync(m?.GetAvatarUrl() ?? m?.GetDefaultAvatarUrl());
                     using var bmp = SKBitmap.Decode(b);
-                    var r = new SKRect(x+15, y+15, x+75, y+75); var p = new SKPath(); p.AddOval(r);
+                    var r = new SKRect(x + 15, y + 15, x + 75, y + 75); var p = new SKPath(); p.AddOval(r);
                     canvas.Save(); canvas.ClipPath(p, SKClipOperation.Intersect, true); canvas.DrawBitmap(bmp, r); canvas.Restore();
-                } catch { }
+                }
+                catch { }
                 canvas.DrawText(m?.Username ?? "User", x + 90, y + 55, new SKPaint { Color = SKColors.White, TextSize = 22, IsAntialias = true });
                 canvas.DrawText(EconomyHelper.FormatarSaldo(top[i].Total), x + 360, y + 55, new SKPaint { Color = SKColors.White, TextSize = 20, TextAlign = SKTextAlign.Right, IsAntialias = true });
             }
@@ -170,22 +240,26 @@ namespace Botzinho.Economy
     }
 
     // --- 3. ECONOMY HANDLER (COMANDOS E BOTÕES) ---
-    public class EconomyHandler {
+    public class EconomyHandler
+    {
         private readonly DiscordSocketClient _client;
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
         private static readonly Dictionary<ulong, long> ApostasAtivas = new();
         private static readonly Dictionary<ulong, (List<int> Player, List<int> Dealer, long Bet)> BlackjackAtivo = new();
         private const string IMG_MOEDA = "https://cdn.discordapp.net/attachments/1110495236716773447/1163499638461042831/coin_1540515.png";
 
-        public EconomyHandler(DiscordSocketClient client) { 
-            _client = client; 
-            _client.MessageReceived += HandleMessage; 
-            _client.ButtonExecuted += HandleButtons; 
+        public EconomyHandler(DiscordSocketClient client)
+        {
+            _client = client;
+            _client.MessageReceived += HandleMessage;
+            _client.ButtonExecuted += HandleButtons;
         }
 
-        private Task HandleMessage(SocketMessage msg) {
+        private Task HandleMessage(SocketMessage msg)
+        {
             _ = Task.Run(async () => {
-                try {
+                try
+                {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
                     string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "zcf", "zcoinflip", "zbj", "zblackjack" };
@@ -193,48 +267,58 @@ namespace Botzinho.Economy
                     if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2) return;
                     _cooldowns[user.Id] = DateTime.UtcNow;
 
-                    if (content == "zdaily") {
+                    if (content == "zdaily")
+                    {
                         long g = new Random().Next(167000, 180001); EconomyHelper.AdicionarSaldo(guildId, user.Id, g);
                         await msg.Channel.SendMessageAsync($"✅ {user.Mention}, `{EconomyHelper.FormatarSaldo(g)}` cpoints no **Diário**!");
                     }
-                    else if (content == "zdep all") {
+                    else if (content == "zdep all")
+                    {
                         if (EconomyHelper.DepositarTudo(guildId, user.Id)) await msg.Channel.SendMessageAsync("🏦 Carteira guardada no banco!");
                     }
-                    else if (content == "zsaldo") {
+                    else if (content == "zsaldo")
+                    {
                         var p = await EconomyImageHelper.GerarImagemSaldo(user, EconomyHelper.GetSaldo(guildId, user.Id), EconomyHelper.GetBanco(guildId, user.Id));
                         await msg.Channel.SendFileAsync(p, ""); File.Delete(p);
                     }
-                    else if (content == "zrank") {
+                    else if (content == "zrank")
+                    {
                         var p = await EconomyImageHelper.GerarImagemRank(user.Guild, EconomyHelper.GetTop10(guildId));
                         await msg.Channel.SendFileAsync(p, "🏆 **Top Ricos**"); File.Delete(p);
                     }
-                    else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id)) {
+                    else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id))
+                    {
                         var alvo = msg.MentionedUsers.FirstOrDefault();
-                        if (alvo != null) {
+                        if (alvo != null)
+                        {
                             string vTxt = content.Split(' ').Last().ToLower();
-                            long v = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k",""))*1000) : vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m",""))*1000000) : long.Parse(vTxt);
+                            long v = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k", "")) * 1000) : vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m", "")) * 1000000) : long.Parse(vTxt);
                             EconomyHelper.AdicionarSaldo(guildId, alvo.Id, v);
                             await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(v)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                         }
                     }
-                    else if (content.StartsWith("zpay")) {
+                    else if (content.StartsWith("zpay"))
+                    {
                         var alvo = msg.MentionedUsers.FirstOrDefault();
-                        if (alvo != null && alvo.Id != user.Id && !alvo.IsBot) {
+                        if (alvo != null && alvo.Id != user.Id && !alvo.IsBot)
+                        {
                             string vTxt = content.Split(' ').Last().ToLower();
-                            long v = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k",""))*1000) : vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m",""))*1000000) : long.Parse(vTxt);
-                            if (EconomyHelper.RemoverSaldo(guildId, user.Id, v)) { 
-                                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, v); 
+                            long v = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k", "")) * 1000) : vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m", "")) * 1000000) : long.Parse(vTxt);
+                            if (EconomyHelper.RemoverSaldo(guildId, user.Id, v))
+                            {
+                                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, v);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, alvo.Id, v, "TRANSFERENCIA");
-                                await msg.Channel.SendMessageAsync($"✅ {user.Mention} enviou `{EconomyHelper.FormatarSaldo(v)}` para {alvo.Mention}."); 
+                                await msg.Channel.SendMessageAsync($"✅ {user.Mention} enviou `{EconomyHelper.FormatarSaldo(v)}` para {alvo.Mention}.");
                             }
                         }
                     }
-                    else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip")) {
-                        string[] p = content.Split(' ', StringSplitOptions.RemoveEmptyEntries); 
+                    else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
+                    {
+                        string[] p = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zcoinflip (valor)`"); return; }
                         long s = EconomyHelper.GetSaldo(guildId, user.Id);
                         string vT = p[1].ToLower();
-                        long val = vT == "all" ? s : (vT.EndsWith("k") ? (long)(double.Parse(vT.Replace("k",""))*1000) : vT.EndsWith("m") ? (long)(double.Parse(vT.Replace("m",""))*1000000) : long.TryParse(vT, out var res) ? res : 0);
+                        long val = vT == "all" ? s : (vT.EndsWith("k") ? (long)(double.Parse(vT.Replace("k", "")) * 1000) : vT.EndsWith("m") ? (long)(double.Parse(vT.Replace("m", "")) * 1000000) : long.TryParse(vT, out var res) ? res : 0);
                         if (val <= 0 || s < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
                         if (ApostasAtivas.ContainsKey(user.Id)) return;
                         ApostasAtivas[user.Id] = val; EconomyHelper.RemoverSaldo(guildId, user.Id, val);
@@ -242,13 +326,14 @@ namespace Botzinho.Economy
                         var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}").WithButton("Coroa", $"cf_coroa_{user.Id}").WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Danger, new Emoji("❌"));
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
-                    else if (content.StartsWith("zbj") || content.StartsWith("zblackjack")) {
+                    else if (content.StartsWith("zbj") || content.StartsWith("zblackjack"))
+                    {
                         string[] p = content.Split(' '); if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Uso:** `zbj [valor]`"); return; }
                         long s = EconomyHelper.GetSaldo(guildId, user.Id);
-                        long val = p[1] == "all" ? s : (p[1].EndsWith("k") ? (long)(double.Parse(p[1].Replace("k",""))*1000) : p[1].EndsWith("m") ? (long)(double.Parse(p[1].Replace("m",""))*1000000) : long.Parse(p[1]));
+                        long val = p[1] == "all" ? s : (p[1].EndsWith("k") ? (long)(double.Parse(p[1].Replace("k", "")) * 1000) : p[1].EndsWith("m") ? (long)(double.Parse(p[1].Replace("m", "")) * 1000000) : long.Parse(p[1]));
                         if (val <= 0 || s < val || BlackjackAtivo.ContainsKey(user.Id)) return;
                         EconomyHelper.RemoverSaldo(guildId, user.Id, val);
-                        var deck = new List<int> { 2,3,4,5,6,7,8,9,10,10,10,10,11 };
+                        var deck = new List<int> { 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11 };
                         var r = new Random();
                         var pHand = new List<int> { deck[r.Next(deck.Count)], deck[r.Next(deck.Count)] };
                         var dHand = new List<int> { deck[r.Next(deck.Count)] };
@@ -257,13 +342,16 @@ namespace Botzinho.Economy
                         var cb = new ComponentBuilder().WithButton("Comprar", $"bj_hit_{user.Id}").WithButton("Parar", $"bj_stand_{user.Id}", ButtonStyle.Secondary);
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
-                } catch { }
+                }
+                catch { }
             }); return Task.CompletedTask;
         }
 
-        private async Task HandleButtons(SocketMessageComponent comp) {
+        private async Task HandleButtons(SocketMessageComponent comp)
+        {
             var parts = comp.Data.CustomId.Split('_');
-            if (parts[0] == "cf") {
+            if (parts[0] == "cf")
+            {
                 var uid = ulong.Parse(parts[2]); if (comp.User.Id != uid || !ApostasAtivas.TryGetValue(uid, out long val)) return;
                 var user = (SocketGuildUser)comp.User; ApostasAtivas.Remove(uid);
                 if (parts[1] == "cancel") { EconomyHelper.AdicionarSaldo(user.Guild.Id, uid, val); await comp.UpdateAsync(x => { x.Content = $"✅ {user.Mention} desistiu."; x.Embed = null; x.Components = null; }); return; }
@@ -273,19 +361,24 @@ namespace Botzinho.Economy
                 else { eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}"); }
                 await comp.UpdateAsync(x => { x.Embed = eb.Build(); x.Components = null; x.Content = user.Mention; });
             }
-            else if (parts[0] == "bj") {
+            else if (parts[0] == "bj")
+            {
                 var action = parts[1]; var uid = ulong.Parse(parts[2]);
                 if (comp.User.Id != uid || !BlackjackAtivo.TryGetValue(uid, out var game)) return;
                 var user = (SocketGuildUser)comp.User; var r = new Random();
-                var deck = new List<int> { 2,3,4,5,6,7,8,9,10,10,10,10,11 };
-                if (action == "hit") {
+                var deck = new List<int> { 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11 };
+                if (action == "hit")
+                {
                     game.Player.Add(deck[r.Next(deck.Count)]);
-                    if (game.Player.Sum() > 21) {
+                    if (game.Player.Sum() > 21)
+                    {
                         BlackjackAtivo.Remove(uid);
                         await comp.UpdateAsync(x => { x.Content = $"💥 **Estourou!** Total: {game.Player.Sum()}. Perdeu `{EconomyHelper.FormatarSaldo(game.Bet)}`."; x.Embed = null; x.Components = null; });
                         return;
                     }
-                } else {
+                }
+                else
+                {
                     BlackjackAtivo.Remove(uid);
                     while (game.Dealer.Sum() < 17) game.Dealer.Add(deck[r.Next(deck.Count)]);
                     int pS = game.Player.Sum(); int dS = game.Dealer.Sum();
