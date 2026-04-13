@@ -12,7 +12,7 @@ using System.Net.Http;
 
 namespace Botzinho.Economy
 {
-    // --- 1. LÓGICA DE BANCO DE DADOS E AUXILIARES ---
+    // --- 1. LÓGICA DE BANCO DE DADOS ---
     public static class EconomyHelper
     {
         public static string GetConnectionString() => Environment.GetEnvironmentVariable("DATABASE_URL") ?? throw new Exception("DATABASE_URL nao configurado!");
@@ -29,11 +29,7 @@ namespace Botzinho.Economy
                     banco BIGINT DEFAULT 0, ultimo_daily TIMESTAMP DEFAULT '2000-01-01',
                     ultimo_semanal TIMESTAMP DEFAULT '2000-01-01',
                     ultimo_mensal TIMESTAMP DEFAULT '2000-01-01',
-                    PRIMARY KEY (guild_id, user_id));
-                
-                CREATE TABLE IF NOT EXISTS economy_transactions (
-                    id SERIAL PRIMARY KEY, guild_id TEXT, sender_id TEXT, 
-                    receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+                    PRIMARY KEY (guild_id, user_id));";
             cmd.ExecuteNonQuery();
         }
 
@@ -237,7 +233,6 @@ namespace Botzinho.Economy
                         var p = await EconomyImageHelper.GerarImagemRank(user.Guild, EconomyHelper.GetTop10(guildId));
                         await msg.Channel.SendFileAsync(p, ""); File.Delete(p);
                     }
-                    // --- ZADDSALDO RESTAURADO ---
                     else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id)) {
                         var alvo = msg.MentionedUsers.FirstOrDefault();
                         if (alvo != null) {
@@ -264,7 +259,11 @@ namespace Botzinho.Economy
                         long banco = EconomyHelper.GetBanco(guildId, user.Id);
                         string vT = p[1].ToLower();
                         long val = vT == "all" ? banco : (vT.EndsWith("k") ? (long)(double.Parse(vT.Replace("k",""))*1000) : vT.EndsWith("m") ? (long)(double.Parse(vT.Replace("m",""))*1000000) : long.TryParse(vT, out var res) ? res : 0);
-                        if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar."); return; }
+                        
+                        if (val <= 0 || banco < val) { 
+                            await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar."); 
+                            return; 
+                        }
                         if (ApostasAtivas.ContainsKey(user.Id)) return;
                         ApostasAtivas[user.Id] = val; EconomyHelper.RemoverBanco(guildId, user.Id, val);
                         var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"🪙 | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl()).WithColor(new Color(114, 137, 218));
@@ -298,8 +297,15 @@ namespace Botzinho.Economy
                 if (parts[1] == "cancel") { EconomyHelper.AdicionarBanco(user.Guild.Id, uid, val); await comp.UpdateAsync(x => { x.Content = $"✅ {user.Mention} desistiu e recuperou seu saldo."; x.Embed = null; x.Components = null; }); return; }
                 string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa"; bool win = parts[1] == res;
                 var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithThumbnailUrl(IMG_MOEDA).WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl());
-                if (win) { EconomyHelper.AdicionarBanco(user.Guild.Id, uid, val * 2); eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}"); }
-                else { eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}"); }
+                
+                // --- CORREÇÃO: GANHOS VÃO PARA O BANCO ---
+                if (win) { 
+                    EconomyHelper.AdicionarBanco(user.Guild.Id, uid, val * 2); 
+                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)} (Adicionado ao Banco)"); 
+                }
+                else { 
+                    eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)} (Removido do Banco)"); 
+                }
                 await comp.UpdateAsync(x => { x.Embed = eb.Build(); x.Components = null; x.Content = user.Mention; });
             }
             else if (parts[0] == "bj") {
@@ -319,9 +325,17 @@ namespace Botzinho.Economy
                     while (game.Dealer.Sum() < 17) game.Dealer.Add(deck[r.Next(deck.Count)]);
                     int pS = game.Player.Sum(); int dS = game.Dealer.Sum();
                     string resT = ""; Color col;
-                    if (dS > 21 || pS > dS) { resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; EconomyHelper.AdicionarBanco(user.Guild.Id, uid, game.Bet * 2); col = Color.Green; }
-                    else if (pS == dS) { resT = "⚖️ **Empate!** Valor devolvido."; EconomyHelper.AdicionarBanco(user.Guild.Id, uid, game.Bet); col = Color.LightGrey; }
-                    else { resT = $"❌ **Perdeu!** Dealer fez {dS}."; col = Color.Red; }
+                    
+                    // --- CORREÇÃO: GANHOS DO BJ VÃO PARA O BANCO ---
+                    if (dS > 21 || pS > dS) { 
+                        resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}` (Banco)"; 
+                        EconomyHelper.AdicionarBanco(user.Guild.Id, uid, game.Bet * 2); col = Color.Green; 
+                    } else if (pS == dS) { 
+                        resT = "⚖️ **Empate!** Valor devolvido ao Banco."; 
+                        EconomyHelper.AdicionarBanco(user.Guild.Id, uid, game.Bet); col = Color.LightGrey; 
+                    } else { 
+                        resT = $"❌ **Perdeu!** Dealer fez {dS}."; col = Color.Red; 
+                    }
                     await comp.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithTitle("Resultado Blackjack").WithDescription($"{resT}\nSuas: {pS} | Dealer: {dS}").WithColor(col).Build(); x.Components = null; });
                     return;
                 }
