@@ -130,12 +130,12 @@ namespace Botzinho.Cassino
                 if (component.User.Id == desafianteId)
                 {
                     ApostasAtivas.Remove(desafianteId);
-                    await component.UpdateAsync(x => { x.Content = $"🚫 O desafiante <@{desafianteId}> desistiu e cancelou a aposta."; x.Embed = null; x.Components = null; });
+                    await component.UpdateAsync(x => { x.Content = $"<:erro:1493078898462949526> O desafiante <@{desafianteId}> desistiu e cancelou a aposta."; x.Embed = null; x.Components = null; });
                 }
                 else if (component.User.Id == aposta.Alvo)
                 {
                     ApostasAtivas.Remove(desafianteId);
-                    await component.UpdateAsync(x => { x.Content = $"🚫 <@{aposta.Alvo}> correu do duelo de <@{desafianteId}> e recusou a aposta."; x.Embed = null; x.Components = null; });
+                    await component.UpdateAsync(x => { x.Content = $"<:erro:1493078898462949526> <@{aposta.Alvo}> correu do duelo de <@{desafianteId}> e recusou a aposta."; x.Embed = null; x.Components = null; });
                 }
                 else
                 {
