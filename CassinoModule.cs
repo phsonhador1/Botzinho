@@ -11,10 +11,10 @@ namespace Botzinho.Cassino
     public class CassinoModule
     {
         private readonly DiscordSocketClient _client;
-        
+
         // Cooldown exclusivo para os jogos (5 segundos)
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
-        
+
         private static readonly Dictionary<ulong, long> CoinflipAtivo = new();
         private static readonly Dictionary<ulong, long> RoletaAtiva = new();
         private static readonly Dictionary<ulong, (List<int> Player, List<int> Dealer, long Bet)> BlackjackAtivo = new();
@@ -40,7 +40,7 @@ namespace Botzinho.Cassino
             if (!cmds.Any(c => content.StartsWith(c))) return;
 
             // --- TRAVA DE 5 SEGUNDOS ---
-            if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5) 
+            if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5)
             {
                 var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para apostar novamente.");
                 _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync()); // Apaga a mensagem depois de 3 segundos
@@ -67,7 +67,7 @@ namespace Botzinho.Cassino
 
                 if (valorAposta <= 0 || saldoBanco < valorAposta)
                 {
-                    await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar.");
+                    await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
                     return;
                 }
                 if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
@@ -109,9 +109,9 @@ namespace Botzinho.Cassino
                 string valTxt = p[1].ToLower();
                 long val = valTxt == "all" ? banco : (valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var res) ? res : 0);
 
-                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
+                if (val <= 0 || banco < val) { await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não possui **{EconomyHelper.FormatarSaldo(val)} coins** no banco para apostar."); return; }
                 if (CoinflipAtivo.ContainsKey(user.Id)) return;
-                
+
                 CoinflipAtivo[user.Id] = val;
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
 
@@ -153,9 +153,10 @@ namespace Botzinho.Cassino
             var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
 
-            if (component.User.Id != userId) { 
-                await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, esse jogo não é seu!", ephemeral: true); 
-                return; 
+            if (component.User.Id != userId)
+            {
+                await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, esse jogo não é seu!", ephemeral: true);
+                return;
             }
 
             var guildId = (component.User as SocketGuildUser).Guild.Id;
@@ -218,21 +219,23 @@ namespace Botzinho.Cassino
             {
                 if (!CoinflipAtivo.TryGetValue(userId, out long val)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
                 if (escolha == "cancel") { CoinflipAtivo.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.UpdateAsync(x => { x.Content = $"✅ {component.User.Mention} desistiu."; x.Embed = null; x.Components = null; }); return; }
-                
+
                 CoinflipAtivo.Remove(userId);
                 string res = new Random().Next(0, 2) == 0 ? "cara" : "coroa"; bool win = escolha == res;
                 var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithThumbnailUrl(IMG_MOEDA);
-                
-                if (win) { 
-                    EconomyHelper.AdicionarBanco(guildId, userId, val * 2); 
+
+                if (win)
+                {
+                    EconomyHelper.AdicionarBanco(guildId, userId, val * 2);
                     EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, val * 2, "COINFLIP_GANHO"); // Registra Vitória
-                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}"); 
+                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}");
                 }
-                else { 
+                else
+                {
                     EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, val, "COINFLIP_PERDA"); // Registra Derrota
-                    eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}"); 
+                    eb.WithColor(Color.Red).WithDescription($"Perdeu! Deu **{res}**.\n❌ -{EconomyHelper.FormatarSaldo(val)}");
                 }
-                
+
                 await component.UpdateAsync(x => { x.Embed = eb.Build(); x.Components = null; x.Content = component.User.Mention; });
             }
 
@@ -242,7 +245,7 @@ namespace Botzinho.Cassino
                 if (!BlackjackAtivo.TryGetValue(userId, out var game)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
                 var r = new Random();
                 var deck = new List<int> { 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11 };
-                
+
                 if (escolha == "hit")
                 {
                     game.Player.Add(deck[r.Next(deck.Count)]);
@@ -261,25 +264,28 @@ namespace Botzinho.Cassino
                     while (game.Dealer.Sum() < 17) game.Dealer.Add(deck[r.Next(deck.Count)]);
                     int pS = game.Player.Sum(); int dS = game.Dealer.Sum();
                     string resT = ""; Color col;
-                    
-                    if (dS > 21 || pS > dS) { 
-                        resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`"; 
-                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2); 
+
+                    if (dS > 21 || pS > dS)
+                    {
+                        resT = $"🏆 **Ganhou!** Dealer fez {dS}. Prêmio: `{EconomyHelper.FormatarSaldo(game.Bet * 2)}`";
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO"); // Vitória
-                        col = Color.Green; 
+                        col = Color.Green;
                     }
-                    else if (pS == dS) { 
-                        resT = "⚖️ **Empate!** Valor devolvido."; 
-                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet); 
+                    else if (pS == dS)
+                    {
+                        resT = "⚖️ **Empate!** Valor devolvido.";
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE"); // Empate (Reembolso)
-                        col = Color.LightGrey; 
+                        col = Color.LightGrey;
                     }
-                    else { 
-                        resT = $"❌ **Perdeu!** Dealer fez {dS}."; 
+                    else
+                    {
+                        resT = $"❌ **Perdeu!** Dealer fez {dS}.";
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA"); // Derrota
-                        col = Color.Red; 
+                        col = Color.Red;
                     }
-                    
+
                     await component.UpdateAsync(x => { x.Embed = new EmbedBuilder().WithTitle("Resultado Blackjack").WithDescription($"{resT}\nSuas: {pS} | Dealer: {dS}").WithColor(col).Build(); x.Components = null; });
                 }
             }
