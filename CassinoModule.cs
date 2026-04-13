@@ -194,7 +194,7 @@ namespace Botzinho.Cassino
             if (!cmds.Any(c => content.StartsWith(c))) return;
             if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
             {
-                var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para apostar novamente.");
+                var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, vá com calma! Aguarde **2 segundos** para **apostar** novamente.");
                 _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                 return;
             }
