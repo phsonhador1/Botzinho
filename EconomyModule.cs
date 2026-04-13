@@ -301,12 +301,13 @@ namespace Botzinho.Economy
     {
         private readonly DiscordSocketClient _client;
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+        private static readonly Dictionary<ulong, DateTime> _stealCooldowns = new();
 
         public EconomyHandler(DiscordSocketClient client)
         {
             _client = client; _client.MessageReceived += HandleMessage;
         }
-
+        
         private Task HandleMessage(SocketMessage msg)
         {
             _ = Task.Run(async () => {
@@ -314,15 +315,17 @@ namespace Botzinho.Economy
                 {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
-                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes" };
+                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes", "zroubar" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
-                    if (_cooldowns.TryGetValue(user.Id, out var lastZpayUsage) && (DateTime.UtcNow - lastZpayUsage).TotalSeconds < 2)
+                    // Cooldown de 2 segundos (Padrão para comandos de economia)
+                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
                     {
-                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
+                        var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
                         _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                         return;
                     }
+                    _cooldowns[user.Id] = DateTime.UtcNow;
 
                     if (content == "zdaily")
                     {
@@ -401,7 +404,7 @@ namespace Botzinho.Economy
                     if (content.StartsWith("zpay"))
                     {
                         // Cooldown de 2 segundos (Padrão para comandos de economia)
-                        if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
+                        if (_cooldowns.TryGetValue(user.Id, out var lastZpay) && (DateTime.UtcNow - lastZpay).TotalSeconds < 2)
                         {
                             var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
                             _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
@@ -480,6 +483,85 @@ namespace Botzinho.Economy
                         }
                     }
 
+                    // --- COMANDO ZROUBAR (AGRESSIVO - FOCO NA CARTEIRA) ---
+                    else if (content.StartsWith("zroubar"))
+                    {
+                        // 1. TIMEOUT DE 30 MINUTOS (Específico para Roubo)
+                        if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 30)
+                        {
+                            var tempoRestante = 30 - (DateTime.UtcNow - lastSteal).TotalMinutes;
+                            var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                            _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
+                            return;
+                        }
+
+                        string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                        // 2. Validação de Uso: zroubar @user
+                        if (partes.Length < 2)
+                        {
+                            await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zroubar @usuario`\n*Exemplo: zroubar @Zoe*");
+                            return;
+                        }
+
+                        // 3. Identificar a vítima (Por menção)
+                        var vitima = msg.MentionedUsers.FirstOrDefault();
+                        if (vitima == null || vitima.IsBot)
+                        {
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você precisa mencionar um usuário real para tentar roubar.");
+                            return;
+                        }
+
+                        if (vitima.Id == user.Id)
+                        {
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode roubar de você mesmo... isso seria... estranho.");
+                            return;
+                        }
+
+                        // 4. VERIFICAÇÃO DE SALDO NA CARTEIRA DA VÍTIMA (Colona 'saldo')
+                        long saldoCarteiraVitima = EconomyHelper.GetSaldo(guildId, vitima.Id);
+
+                        if (saldoCarteiraVitima <= 0)
+                        {
+                            await msg.Channel.SendMessageAsync($"🕵️‍♂️ {user.Mention} tentou roubar {vitima.Mention}, mas a vítima está mais quebrada que xícara de bar... **Carteira vazia!**");
+
+                            // Aplica o timeout mesmo se falhar (para não ficarem spamando)
+                            _stealCooldowns[user.Id] = DateTime.UtcNow;
+                            return;
+                        }
+
+                        // 5. EXECUTAR O ROUBO (Transferir METADE)
+                        // Usamos integer division (long / 2) que arredonda para baixo automaticamente
+                        long valorRoubado = saldoCarteiraVitima / 2;
+
+                        try
+                        {
+                            // Remove da Carteira da Vítima (Coluna 'saldo')
+                            if (EconomyHelper.RemoverSaldo(guildId, vitima.Id, valorRoubado))
+                            {
+                                // Adiciona à Carteira do Ladrão (Coluna 'saldo')
+                                EconomyHelper.AdicionarSaldo(guildId, user.Id, valorRoubado);
+
+                                // Registrar no Log de Transações (Essencial para segurança)
+                                EconomyHelper.RegistrarTransacao(guildId, vitima.Id, user.Id, valorRoubado, "ROUBO_CARTEIRA_METADE");
+
+                                // Aplica o timeout de 30 minutos agora que teve sucesso
+                                _stealCooldowns[user.Id] = DateTime.UtcNow;
+
+                                // 6. Mensagem de Sucesso (Agressiva e sem Embed)
+                                await msg.Channel.SendMessageAsync($"🕵️‍♂️💨 **MÃOS AO AR!** {user.Mention} acaba de passar a mão em `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints direto da carteira de {vitima.Mention}! **A metade já era!**");
+                            }
+                            else
+                            {
+                                await msg.Channel.SendMessageAsync("❌ Falha na execução do roubo. Tente novamente.");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[Erro zroubar]: {ex.Message}");
+                            await msg.Channel.SendMessageAsync("❌ Ocorreu um erro interno ao tentar processar o crime.");
+                        }
+                    }
 
                     else if (content.StartsWith("ztransacoes") || content.StartsWith("ztranscoes"))
                     {
@@ -550,6 +632,17 @@ namespace Botzinho.Economy
                                     else
                                     {
                                         linha = $"💸 ➕ Recebeu **{formatAmount} coin(s)** de <@{t.SenderId}>.";
+                                    }
+                                }
+                                else if (t.Type == "ROUBO_CARTEIRA_METADE")
+                                {
+                                    if (t.SenderId == usuarioAlvo.Id.ToString())
+                                    {
+                                        linha = $"🕵️‍♂️ ➖ Foi roubado em **{formatAmount} coin(s)** por <@{t.ReceiverId}>.";
+                                    }
+                                    else
+                                    {
+                                        linha = $"🕵️‍♂️ ➕ Roubou **{formatAmount} coin(s)** de <@{t.SenderId}>.";
                                     }
                                 }
 
