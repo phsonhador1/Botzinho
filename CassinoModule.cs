@@ -121,50 +121,106 @@ namespace Botzinho.Cassino
 
         public static async Task<string> GerarImagemCoinflip(bool deuCara, bool ganhou, long valor)
         {
-            // Aumentamos um pouco o canvas para acomodar o texto centralizado
-            int width = 600; int height = 250;
-            string fileName = Path.Combine(Path.GetTempPath(), $"cf_{Guid.NewGuid()}.png");
+            // Aumentamos o canvas para dar "respiro" visual e centralizar melhor
+            int width = 600; int height = 280;
+            string fileName = Path.Combine(Path.GetTempPath(), $"cf_beauty_{Guid.NewGuid()}.png");
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
-            // Fundo Gradiente Cassino
-            var bgPaint = new SKPaint { Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(0, height), new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) }, null, (SkiaSharp.SKShaderTileMode)0) };
+            // 1. Fundo Gradiente Suave (Profissional)
+            var bgPaint = new SKPaint
+            {
+                Shader = SKShader.CreateLinearGradient(
+                    new SKPoint(0, 0),
+                    new SKPoint(0, height),
+                    new SKColor[] { new SKColor(25, 25, 35), new SKColor(10, 10, 15) }, // Roxo muito escuro para preto
+                    null,
+                    (SkiaSharp.SKShaderTileMode)0)
+            };
             canvas.DrawRect(new SKRect(0, 0, width, height), bgPaint);
 
-            // Moldura Neon
-            var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = ganhou ? SKColors.LimeGreen.WithAlpha(120) : SKColors.Red.WithAlpha(120), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 3) };
-            canvas.DrawRoundRect(new SKRect(10, 10, width - 10, height - 10), 15, 15, borderPaint);
+            // 2. Moldura Neon Sutil (Arredondada)
+            var borderPaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 3,
+                Color = ganhou ? SKColors.LimeGreen.WithAlpha(100) : SKColors.Red.WithAlpha(100),
+                IsAntialias = true,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 4) // Efeito Neon
+            };
+            canvas.DrawRoundRect(new SKRect(15, 15, width - 15, height - 15), 20, 20, borderPaint);
 
-            // --- CÁLCULO DE CENTRALIZAÇÃO HORIZONTAL ---
+            // 3. Centralização Horizontal
             float centroX = width / 2f;
 
-            // Desenhar Moeda (Centralizada)
+            // 4. Desenhar Moeda (Centralizada e com Sombra)
             string coinAsset = deuCara ? "coin_cara.png" : "coin_coroa.png";
             string coinPath = Path.Combine(AppContext.BaseDirectory, "Assets", coinAsset);
             if (File.Exists(coinPath))
             {
                 using var stream = new FileStream(coinPath, FileMode.Open, FileAccess.Read);
                 using var bitmap = SKBitmap.Decode(stream);
-                // Centraliza a moeda horizontalmente (X)
-                float moedaWidth = 130; float moedaHeight = 130;
-                float moedaX = centroX - (moedaWidth / 2f);
-                canvas.DrawBitmap(bitmap, new SKRect(moedaX, 25, moedaX + moedaWidth, 25 + moedaHeight), new SKPaint { IsAntialias = true });
+
+                // Sombra da moeda (Dá profundidade)
+                canvas.DrawCircle(centroX + 3, 83, 62, new SKPaint { Color = new SKColor(0, 0, 0, 100), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 5) });
+
+                // Moeda
+                float moedaSize = 120;
+                float moedaX = centroX - (moedaSize / 2f);
+                canvas.DrawBitmap(bitmap, new SKRect(moedaX, 25, moedaX + moedaSize, 25 + moedaSize), new SKPaint { IsAntialias = true });
             }
 
-            var bold = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
+            // 5. Hierarquia de Fontes (Arial Bold para tudo, variando tamanho)
+            var boldTypeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
 
-            // --- PINCÉIS COM ALINHAMENTO CENTRAL ---
-            var paintRes = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 45, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
-            var paintSub = new SKPaint { Color = SKColors.LightGray, TextSize = 22, IsAntialias = true, TextAlign = SKTextAlign.Center };
-            var paintVal = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 38, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
+            // Título Principal (O Maior)
+            var paintTitulo = new SKPaint
+            {
+                Color = ganhou ? SKColors.LimeGreen : SKColors.Red,
+                TextSize = 52,
+                Typeface = boldTypeface,
+                IsAntialias = true,
+                TextAlign = SKTextAlign.Center,
+                FakeBoldText = true // Destaca ainda mais
+            };
 
-            // --- DESENHAR TEXTOS USANDO O centroX ---
-            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", centroX, 185, paintRes);
-            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", centroX, 215, paintSub);
-            canvas.DrawText($"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}", centroX, 240, paintVal); // Ajustado para não cortar
+            // Subtexto (O Menor e mais suave)
+            var paintSubtexto = new SKPaint
+            {
+                Color = SKColors.LightGray,
+                TextSize = 24,
+                Typeface = boldTypeface,
+                IsAntialias = true,
+                TextAlign = SKTextAlign.Center
+            };
 
-            using (var img = surface.Snapshot()) using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
-            using (var str = File.OpenWrite(fileName)) data.SaveTo(str);
+            // Valor (Médio e em destaque)
+            var paintValor = new SKPaint
+            {
+                Color = ganhou ? SKColors.LimeGreen : SKColors.Red,
+                TextSize = 42,
+                Typeface = boldTypeface,
+                IsAntialias = true,
+                TextAlign = SKTextAlign.Center
+            };
+
+            // 6. Desenhar Textos (Perfeitamente Centralizados e Espaçados)
+            // Usamos o centroX e coordenadas Y fixas para um espaçamento harmônico
+            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", centroX, 185, paintTitulo);
+            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", centroX, 220, paintSubtexto);
+
+            // Formata o valor e desenha com espaçamento
+            string valorFormatado = $"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}";
+            canvas.DrawText(valorFormatado, centroX, 260, paintValor);
+
+            // 7. Salvar e Limpar
+            using (var img = surface.Snapshot())
+            using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
+            using (var str = File.OpenWrite(fileName))
+            {
+                data.SaveTo(str);
+            }
+
             return fileName;
         }
     }
