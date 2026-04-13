@@ -28,6 +28,7 @@ Botzinho.Economy.EconomyHelper.InicializarTabelas();
 var cassino = new Botzinho.Cassino.CassinoModule(client);
 var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
+var apostas = new Botzinho.Cassino.ApostaModule(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
