@@ -131,7 +131,7 @@ namespace Botzinho.Core
                 }
 
                 // 5. Aguarda 25 minutos
-                await Task.Delay(TimeSpan.FromMinutes(5));
+                await Task.Delay(TimeSpan.FromMinutes(2));
             }
         }
     }
