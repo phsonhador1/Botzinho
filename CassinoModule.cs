@@ -300,12 +300,12 @@ namespace Botzinho.Cassino
                     .WithAuthor("Cara ou Coroa", IMG_MOEDA)
                     .WithDescription($@"• **Olá,** {user.Mention}! Bem-vindo(a) ao jogo Cara ou Coroa.
 
-<a:7moneyz:1493015410637930508> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
+<:6821purplecash:1493263367488536606> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
 
 💡 | **Como funciona:**
 Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da aposta; se errar, você perde o valor apostado.
 
-🛑 | **Desistir da aposta:**
+<:erro:1493078898462949526> | **Desistir da aposta:**
 Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithColor(new Color(160, 80, 220)); // Cor roxa da borda
