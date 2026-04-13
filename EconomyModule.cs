@@ -15,6 +15,19 @@ namespace Botzinho.Economy
     // --- 1. LÓGICA DE BANCO DE DADOS E AUXILIARES ---
     public static class EconomyHelper
     {
+        public static long GetPosicaoRank(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            // Esta query conta quantos usuários possuem o total (saldo+banco) maior que o seu
+            cmd.CommandText = @"SELECT COUNT(*) + 1 FROM economy_users 
+                        WHERE guild_id = @gid AND (saldo + banco) > 
+                        (SELECT COALESCE(saldo + banco, 0) FROM economy_users WHERE guild_id = @gid AND user_id = @uid)";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            return (long)(cmd.ExecuteScalar() ?? 1L);
+        }
         public static string GetConnectionString() => Environment.GetEnvironmentVariable("DATABASE_URL") ?? throw new Exception("DATABASE_URL nao configurado!");
         public static readonly HashSet<ulong> IDsAutorizados = new() { 1472642376970404002 };
 
@@ -267,8 +280,12 @@ namespace Botzinho.Economy
                     }
                     else if (content == "zrank")
                     {
+                        long minhaPos = EconomyHelper.GetPosicaoRank(guildId, user.Id);
+                        long meuTotal = EconomyHelper.GetSaldo(guildId, user.Id) + EconomyHelper.GetBanco(guildId, user.Id);
                         var p = await EconomyImageHelper.GerarImagemRank(user.Guild, EconomyHelper.GetTop10(guildId));
                         await msg.Channel.SendFileAsync(p, "<a:trofeu:1493063952060387479> **Top Ricos Do Servidor**"); File.Delete(p);
+                        await msg.Channel.SendMessageAsync($" <:emoji_8:1491910148476899529> Você tem **{EconomyHelper.FormatarSaldo(meuTotal)}** coins e está na posição **#{minhaPos}**");
+    // ----------------------------------)
                     }
                     else if (content.StartsWith("zaddsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id))
                     {
