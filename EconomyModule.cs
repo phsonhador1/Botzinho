@@ -37,6 +37,32 @@ namespace Botzinho.Economy
             cmd.ExecuteNonQuery();
         }
 
+        // --- FUNÇÕES DO TEMPO DO DAILY ---
+        public static DateTime GetUltimoDaily(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT ultimo_daily FROM economy_users WHERE guild_id = @gid AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            var res = cmd.ExecuteScalar();
+            if (res != null && res != DBNull.Value) return Convert.ToDateTime(res);
+            return DateTime.MinValue; // Se não existir, libera na hora
+        }
+
+        public static void AtualizarDaily(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO economy_users (guild_id, user_id, ultimo_daily) VALUES (@gid, @uid, @dt)
+                                ON CONFLICT (guild_id, user_id) DO UPDATE SET ultimo_daily = @dt";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@dt", DateTime.Now); // Salva a hora exata de agora
+            cmd.ExecuteNonQuery();
+        }
+        // ---------------------------------
+
         public static List<(string SenderId, string ReceiverId, long Amount, string Type, DateTime Date)> GetTransacoes(ulong guildId, ulong userId)
         {
             var list = new List<(string, string, long, string, DateTime)>();
@@ -159,7 +185,7 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS ---
+    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO) ---
     public static class EconomyImageHelper
     {
         private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220);
@@ -295,18 +321,28 @@ namespace Botzinho.Economy
 
                     if (content == "zdaily")
                     {
+                        // Trava de 24 horas
+                        DateTime ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
+                        TimeSpan tempoPassado = DateTime.Now - ultimoDaily;
+
+                        if (tempoPassado.TotalHours < 24)
+                        {
+                            TimeSpan tempoFalta = TimeSpan.FromHours(24) - tempoPassado;
+                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você já coletou seu bônus diário! Volte em `{tempoFalta.Hours}h e {tempoFalta.Minutes}m`.");
+                            return;
+                        }
+
                         long g = new Random().Next(167000, 180001);
                         EconomyHelper.AdicionarSaldo(guildId, user.Id, g);
-                        // Logando o Daily
+                        EconomyHelper.AtualizarDaily(guildId, user.Id); // Salva que o usuário acabou de pegar
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, user.Id, g, "DAILY");
-                        await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention} Zdaily Coletado com Sucesso!, `+ {EconomyHelper.FormatarSaldo(g)}` **cpoints** no **Diário**!");
+                        await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention} Zdaily Coletado com Sucesso!, `+ {EconomyHelper.FormatarSaldo(g)}` cpoints no **Diário**!");
                     }
                     else if (content == "zdep all")
                     {
                         long carteira = EconomyHelper.GetSaldo(guildId, user.Id);
                         if (EconomyHelper.DepositarTudo(guildId, user.Id))
                         {
-                            // Logando o Depósito All
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
                             await msg.Channel.SendMessageAsync("🏦 Carteira guardada no banco!");
                         }
@@ -322,7 +358,6 @@ namespace Botzinho.Economy
                         if (EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
                         {
                             EconomyHelper.AdicionarBanco(guildId, user.Id, valor);
-                            // Logando o Depósito Parcial
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, valor, "DEPOSITO");
                             await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(valor)}` cpoints!");
                         }
@@ -389,7 +424,6 @@ namespace Botzinho.Economy
                                 string formatAmount = EconomyHelper.FormatarSaldo(t.Amount);
                                 string linha = "";
 
-                                // Traduzindo os Types do Banco para o Visual da Foto
                                 if (t.Type == "DEPOSITO")
                                 {
                                     linha = $"🏦 Depositou **{formatAmount} coin(s)** da carteira para o banco.";
