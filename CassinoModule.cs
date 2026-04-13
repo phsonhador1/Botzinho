@@ -41,65 +41,7 @@ namespace Botzinho.Cassino
             // --- COMANDO ZADDSALDO (APENAS ADMINISTRADORES AUTORIZADOS) ---
             // --- DENTRO DO HANDLECOMMAND ---
 
-            if (content.StartsWith("zaddsaldo"))
-            {
-                var user = msg.Author as SocketGuildUser;
-                if (user == null) return;
-                var guildId = user.Guild.Id;
-
-                // 1. Verificação de ID Autorizado
-                if (!IDsAutorizados.Contains(user.Id)) return;
-
-                // 2. Validação de argumentos
-                string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (partes.Length < 3)
-                {
-                    await msg.Channel.SendMessageAsync("❓ **Uso:** `zaddsaldo @usuario [valor]`");
-                    return;
-                }
-
-                // 3. Busca do usuário alvo
-                var mencionado = msg.MentionedUsers.FirstOrDefault();
-                if (mencionado == null) { await msg.Channel.SendMessageAsync("❌ Mencione um usuário."); return; }
-
-                IGuildUser alvo = user.Guild.GetUser(mencionado.Id);
-                if (alvo == null) { try { alvo = await ((IGuild)user.Guild).GetUserAsync(mencionado.Id); } catch { } }
-                if (alvo == null) { await msg.Channel.SendMessageAsync("❌ Usuário não encontrado."); return; }
-
-                // --- AQUI ESTÁ A CORREÇÃO ---
-                // Declaramos a variável aqui em cima para o código "conhecer" ela
-                long valorFinalParaAdicionar = 0;
-                string valorTexto = partes.Last().ToLower();
-
-                // 4. Lógica de conversão (k e m)
-                if (valorTexto.EndsWith("k"))
-                {
-                    if (double.TryParse(valorTexto.Replace("k", ""), out var vK))
-                        valorFinalParaAdicionar = (long)(vK * 1000);
-                }
-                else if (valorTexto.EndsWith("m"))
-                {
-                    if (double.TryParse(valorTexto.Replace("m", ""), out var vM))
-                        valorFinalParaAdicionar = (long)(vM * 1000000);
-                }
-                else
-                {
-                    long.TryParse(valorTexto, out valorFinalParaAdicionar);
-                }
-
-                // 5. Validação final e Banco de Dados
-                if (valorFinalParaAdicionar <= 0)
-                {
-                    await msg.Channel.SendMessageAsync("❌ Valor inválido para adicionar.");
-                    return;
-                }
-
-                // Adiciona no PostgreSQL
-                EconomyHelper.AdicionarSaldo(guildId, alvo.Id, valorFinalParaAdicionar);
-
-                await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(valorFinalParaAdicionar)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
-                return;
-            }
+           
 
             // --- OUTROS COMANDOS DO CASSINO (ZROLETA, etc.) ---
             if (content.StartsWith("zroleta"))
