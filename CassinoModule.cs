@@ -189,14 +189,16 @@ namespace Botzinho.Cassino
                     EconomyHelper.AdicionarBanco(guildId, userId, premio);
                     embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
-🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+ A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+
 <a:7moneyz:1493015410637930508> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
                 }
                 else
                 {
                     embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
 
-🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+ A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+
 <:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
                 }
 
