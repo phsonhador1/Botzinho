@@ -539,7 +539,7 @@ namespace Botzinho.Cassino
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(statusDesc)
                         .WithImageUrl($"attachment://bj.png")
-                        .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
+                        .WithFooter($"<:pessoa:1493010183352483840> Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                         .WithColor(ebCol);
 
                     using (var stream = File.OpenRead(imgEnd))
