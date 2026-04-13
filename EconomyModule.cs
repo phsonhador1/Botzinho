@@ -317,10 +317,10 @@ namespace Botzinho.Economy
                     string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
-                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5)
+                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
                     {
-                        var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **5 segundos** para usar outro comando.");
-                        _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync());
+                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro **comando**.");
+                        _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                         return;
                     }
                     _cooldowns[user.Id] = DateTime.UtcNow;
