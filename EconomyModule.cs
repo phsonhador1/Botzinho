@@ -451,13 +451,13 @@ namespace Botzinho.Economy
                         // 4. Validações de Saldo
                         if (valorTransferencia <= 0)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> O valor da transferência deve ser maior que 0.");
+                            await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> O valor da transferência deve ser maior que 0.");
                             return;
                         }
 
                         if (saldoDoador < valorTransferencia)
                         {
-                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Você não tem `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints no banco para transferir.");
+                            await msg.Channel.SendMessageAsync($"<:aviso:1493365148323152034> Você não tem `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints no banco para transferir.");
                             return;
                         }
 
@@ -479,7 +479,7 @@ namespace Botzinho.Economy
                         catch (Exception ex)
                         {
                             Console.WriteLine($"[Erro zpay]: {ex.Message}");
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ocorreu um erro interno ao processar a transferência.");
+                            await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> Ocorreu um erro interno ao processar a transferência.");
                         }
                     }
 
@@ -508,13 +508,13 @@ namespace Botzinho.Economy
                         var vitima = msg.MentionedUsers.FirstOrDefault();
                         if (vitima == null || vitima.IsBot)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você precisa mencionar um usuário real para tentar roubar.");
+                            await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> Você precisa mencionar um usuário real para tentar roubar.");
                             return;
                         }
 
                         if (vitima.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ae arrombado, ta querendo roubar de você mesmo? Para de graça e usa direito");
+                            await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> Ae arrombado, ta querendo roubar de você mesmo? Para de graça e usa direito");
                             return;
                         }
 
