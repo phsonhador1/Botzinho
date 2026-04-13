@@ -487,9 +487,9 @@ namespace Botzinho.Economy
                     else if (content.StartsWith("zroubar"))
                     {
                         // 1. TIMEOUT DE 30 MINUTOS (Específico para Roubo)
-                        if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 30)
+                        if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 25)
                         {
-                            var tempoRestante = 30 - (DateTime.UtcNow - lastSteal).TotalMinutes;
+                            var tempoRestante = 25 - (DateTime.UtcNow - lastSteal).TotalMinutes;
                             var aviso = await msg.Channel.SendMessageAsync($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
@@ -514,7 +514,7 @@ namespace Botzinho.Economy
 
                         if (vitima.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ae arrombado, ta roubar de você mesmo ? Para de graça e usa direito");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ae arrombado, ta querendo roubar de você mesmo? Para de graça e usa direito");
                             return;
                         }
 
@@ -549,7 +549,7 @@ namespace Botzinho.Economy
                                 _stealCooldowns[user.Id] = DateTime.UtcNow;
 
                                 // 6. Mensagem de Sucesso (Agressiva e sem Embed)
-                                await msg.Channel.SendMessageAsync($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!** <:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!");
+                                await msg.Channel.SendMessageAsync($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!** <:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em <:dinheiro:1493360319928733838> `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!");
                             }
                             else
                             {
