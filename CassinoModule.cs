@@ -18,11 +18,9 @@ namespace Botzinho.Cassino
         // LINK DO SEU GIF (O link que você mandou)
         private const string GIF_ROLETA = "https://media.discordapp.net/attachments/1161794729462214779/1168565874748309564/roletazany.gif?ex=69dd05c7&is=69dbb447&hm=5cc06ebd5f399270a152db1fbb2c1e15272adb0d3ac37dc5d6106967c5d80bad&=";
 
-
         public static readonly HashSet<ulong> IDsAutorizados = new HashSet<ulong>
         {
             1472642376970404002,
-
         };
 
         public CassinoHandler(DiscordSocketClient client)
@@ -38,11 +36,6 @@ namespace Botzinho.Cassino
 
             var content = msg.Content.ToLower().Trim();
 
-            // --- COMANDO ZADDSALDO (APENAS ADMINISTRADORES AUTORIZADOS) ---
-            // --- DENTRO DO HANDLECOMMAND ---
-
-
-
             // --- OUTROS COMANDOS DO CASSINO (ZROLETA, etc.) ---
             if (content.StartsWith("zroleta"))
             {
@@ -57,7 +50,8 @@ namespace Botzinho.Cassino
                     return;
                 }
 
-                long saldoAtual = EconomyHelper.GetSaldo(guildId, user.Id);
+                // CORREÇÃO: Busca do BANCO em vez do SALDO (carteira)
+                long saldoAtual = EconomyHelper.GetBanco(guildId, user.Id);
                 long valorAposta = 0;
 
                 if (partes[1] == "all") { valorAposta = saldoAtual; }
@@ -67,12 +61,13 @@ namespace Botzinho.Cassino
                     if (!long.TryParse(input, out valorAposta)) { await msg.Channel.SendMessageAsync("❌ Valor de aposta inválido."); return; }
                 }
 
-                if (valorAposta <= 0) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você precisa apostar um valor maior que zero!"); return; }
-                if (saldoAtual < valorAposta) { await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Saldo insuficiente. Você tem `{EconomyHelper.FormatarSaldo(saldoAtual)}`."); return; }
+                if (valorAposta <= 0) { await msg.Channel.SendMessageAsync("❌ Você precisa apostar um valor maior que zero!"); return; }
+                if (saldoAtual < valorAposta) { await msg.Channel.SendMessageAsync($@"<:negativo:1492950137587241114> Você não tem **coins** em banco para apostar."); return; }
                 if (ApostasAtivas.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
 
                 ApostasAtivas[user.Id] = valorAposta;
-                EconomyHelper.RemoverSaldo(guildId, user.Id, valorAposta);
+                // CORREÇÃO: Remove do BANCO em vez da CARTEIRA
+                EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
 
                 var embed = new EmbedBuilder()
                     .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
@@ -86,7 +81,7 @@ namespace Botzinho.Cassino
 ⚫ **Preto:** 1.5x
 🔴 **Vermelho:** 1.5x
 
-🧧 | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
+🧧 | **Desistir da aposta:** Clique no ❌ para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49))
                     .Build();
@@ -95,7 +90,7 @@ namespace Botzinho.Cassino
                     .WithButton("Branco (6.0x)", $"roleta_branco_{user.Id}", ButtonStyle.Secondary, new Emoji("⚪"))
                     .WithButton("Preto (1.5x)", $"roleta_preto_{user.Id}", ButtonStyle.Secondary, new Emoji("⚫"))
                     .WithButton("Vermelho (1.5x)", $"roleta_vermelho_{user.Id}", ButtonStyle.Danger, new Emoji("🔴"))
-                    .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, new Emoji("<:erro:1493078898462949526>"));
+                    .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, new Emoji("❌"));
 
                 await msg.Channel.SendMessageAsync(embed: embed, components: components.Build());
             }
@@ -110,8 +105,8 @@ namespace Botzinho.Cassino
             var escolha = partes[1];
             var userId = ulong.Parse(partes[2]);
 
-            if (component.User.Id != userId) { await component.RespondAsync("<:erro:1493078898462949526> Saia daqui, essa roleta não é sua!", ephemeral: true); return; }
-            if (!ApostasAtivas.TryGetValue(userId, out long valorAposta)) { await component.RespondAsync("<:erro:1493078898462949526> Jogo finalizado ou erro.", ephemeral: true); return; }
+            if (component.User.Id != userId) { await component.RespondAsync("❌ Saia daqui, essa roleta não é sua!", ephemeral: true); return; }
+            if (!ApostasAtivas.TryGetValue(userId, out long valorAposta)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
 
             var guildId = (component.User as SocketGuildUser).Guild.Id;
 
@@ -119,9 +114,10 @@ namespace Botzinho.Cassino
             if (escolha == "cancel")
             {
                 ApostasAtivas.Remove(userId);
-                EconomyHelper.AdicionarSaldo(guildId, userId, valorAposta);
+                // CORREÇÃO: Devolve para o BANCO
+                EconomyHelper.AdicionarBanco(guildId, userId, valorAposta);
                 await component.UpdateAsync(x => {
-                    x.Content = $"<:acerto:1493079138783727756> {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints.";
+                    x.Content = $"✅ {component.User.Mention} desistiu e recuperou seus `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints no banco.";
                     x.Embed = null; x.Components = null;
                 });
                 return;
@@ -165,20 +161,21 @@ namespace Botzinho.Cassino
 
             if (ganhou)
             {
-                EconomyHelper.AdicionarSaldo(guildId, userId, premio);
+                // CORREÇÃO: Adiciona a vitória ao BANCO
+                EconomyHelper.AdicionarBanco(guildId, userId, premio);
                 embedFim.WithColor(Color.Green)
                     .WithDescription($@"<a:7moneyz:1493015410637930508> **Parabéns! A sorte passou por aqui!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-💰 Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints");
+💰 Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
             }
             else
             {
                 embedFim.WithColor(Color.Red)
-                    .WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
+                    .WithDescription($@"<a:negativo:1492950137587241114> **Não foi dessa vez...**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-<:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints");
+❌ Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
             }
 
             await component.ModifyOriginalResponseAsync(x => {
