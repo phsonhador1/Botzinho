@@ -217,14 +217,35 @@ namespace Botzinho.Cassino
             else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
             {
                 string[] p = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (p.Length < 2) return;
+                if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zcoinflip (valor)`"); return; }
                 long banco = EconomyHelper.GetBanco(guildId, user.Id);
                 long val = p[1] == "all" ? banco : (p[1].EndsWith("k") ? (long)(double.Parse(p[1].Replace("k", "")) * 1000) : p[1].EndsWith("m") ? (long)(double.Parse(p[1].Replace("m", "")) * 1000000) : long.TryParse(p[1], out var r) ? r : 0);
+
                 if (val <= 0 || banco < val || CoinflipAtivo.ContainsKey(user.Id)) return;
+
                 CoinflipAtivo[user.Id] = val;
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
-                var eb = new EmbedBuilder().WithAuthor("Cara ou Coroa", IMG_MOEDA).WithDescription($"• **Olá,** {user.Mention}**!**\n\n<:6821purplecash:1493263367488536606> **Valor:** `{EconomyHelper.FormatarSaldo(val)}`").WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl()).WithColor(new Color(160, 80, 220));
-                var cb = new ComponentBuilder().WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂")).WithButton("Coroa", $"cf_coroa_{user.Id}", ButtonStyle.Secondary, new Emoji("👑")).WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:erro:1493078898462949526>"));
+
+                // --- MENSAGEM RESTAURADA IGUAL AO SEU PRINT ---
+                var eb = new EmbedBuilder()
+                    .WithAuthor("Cara ou Coroa", IMG_MOEDA)
+                    .WithDescription($@"• **Olá,** {user.Mention}**!** Bem-vindo(a) ao jogo **Cara** ou **Coroa**.
+
+<:6821purplecash:1493263367488536606> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
+
+<:seta:1493089125979656385> | **Como funciona:**
+Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da aposta; se errar, você perde o valor apostado.
+
+<:erro:1493078898462949526> | **Desistir da aposta:**
+Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
+                    .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithColor(new Color(160, 80, 220));
+
+                var cb = new ComponentBuilder()
+                    .WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂"))
+                    .WithButton("Coroa", $"cf_coroa_{user.Id}", ButtonStyle.Secondary, new Emoji("👑"))
+                    .WithButton(null, $"cf_cancel_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:erro:1493078898462949526>"));
+
                 await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
             }
             else if (content.StartsWith("zbj") || content.StartsWith("zblackjack"))
