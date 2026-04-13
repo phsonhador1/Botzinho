@@ -484,8 +484,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                         var ebLose = new EmbedBuilder()
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                            .WithDescription($@"❌ **ESTOUROU!**
-• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+                            .WithDescription($@"<:explosao:1493358933610332342> **ESTOUROU!**
+• <:moedazoe:1493359715420340364> **Aposta Perdida:** {EconomyHelper.FormatarSaldo(game.Bet)}
 
   ◦ <:erro:1493078898462949526> **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}")
                             .WithImageUrl($"attachment://bj.png")
@@ -505,8 +505,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     string imgPlay = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, false, "BLACKJACK", new SKColor(140, 82, 198));
                     var ebPlay = new EmbedBuilder()
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                        .WithDescription($@"• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
-  ◦ 💵 **Possível ganho:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}")
+                        .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+  ◦ <:dinheiro:1493360319928733838> **Possível ganho:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}")
                         .WithImageUrl($"attachment://bj.png")
                         .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                         .WithColor(new Color(160, 80, 220));
@@ -539,8 +539,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<a:ganhador:1493088070923452599> **BlackJack!** **VITÓRIA CONFIRMADA!**
+
 • <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
-  ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
+
+  ◦ <a:7moneyz:1493015410637930508> **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
                     else if (pS == dS)
                     {
@@ -549,7 +551,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE");
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"⚖️ **EMPATE!**
+
 • <:6821purplecash:1493263367488536606> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+
   ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
                     else
