@@ -298,7 +298,7 @@ namespace Botzinho.Cassino
                 // Embed com o design idêntico ao seu Print
                 var eb = new EmbedBuilder()
                     .WithAuthor("Cara ou Coroa", IMG_MOEDA)
-                    .WithDescription($@"• **Olá,** {user.Mention}! Bem-vindo(a) ao jogo Cara ou Coroa.
+                    .WithDescription($@"• **Olá,** {user.Mention}**!** Bem-vindo(a) ao jogo **Cara** ou **Coroa**.
 
 <:6821purplecash:1493263367488536606> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
 
