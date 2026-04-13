@@ -515,12 +515,12 @@ namespace Botzinho.Admins
         public static Embed CriarEmbedPrincipal(SocketGuild guild)
         {
             var botUser = guild.CurrentUser;
-            var roxo = "<:emoji_8:1491910148476899529>";
+            var configuracao = "<a:configuracao:1493291066902843412>";
             return new EmbedBuilder()
                 .WithAuthor($"Config Server | {botUser.DisplayName}", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
                 .WithDescription(
-                    $"{roxo}**Painel de Configuracao do Servidor**\n\n" +
+                    $"{configuracao}**Painel de Configuracao do Servidor**\n\n" +
                     "Selecione abaixo qual sistema voce deseja configurar.\n" +
                     "Cada sistema permite definir cargos e membros que podem usar os comandos.\n" +
                     "Quando **desativado**, ninguem pode usar o comando.\n" +
