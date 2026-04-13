@@ -10,8 +10,8 @@ using SkiaSharp;
 
 namespace Botzinho.Cassino
 {
-    // --- CLASSES DO BLACKJACK VISUAL MANTIDAS ---
-    public class Card
+    // --- CLASSES DO BLACKJACK VISUAL MANTIDAS ---
+    public class Card
     {
         public string Suit { get; set; }
         public string Value { get; set; }
@@ -119,41 +119,47 @@ namespace Botzinho.Cassino
             canvas.DrawText(suitSymbol, x + 50, y + 90, new SKPaint { Color = suitColor, TextSize = 50, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true });
         }
 
-        // --- ADAPTAÇÃO: COINFLIP CENTRALIZADO E BONITO ---
-        public static async Task<string> GerarImagemCoinflip(bool deuCara, bool ganhou, long valor)
+        // --- NOVA FUNÇÃO PARA O COINFLIP ATRAENTE ---
+        public static async Task<string> GerarImagemCoinflip(bool deuCara, bool ganhou, long valor)
         {
-            int width = 600; int height = 280;
+            int width = 550; int height = 220;
             string fileName = Path.Combine(Path.GetTempPath(), $"cf_{Guid.NewGuid()}.png");
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
-            var bgPaint = new SKPaint { Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(0, height), new SKColor[] { new SKColor(25, 25, 35), new SKColor(10, 10, 15) }, null, (SkiaSharp.SKShaderTileMode)0) };
-            canvas.DrawRect(new SKRect(0, 0, width, height), bgPaint);
+            // Fundo Gradiente Cassino
+            var bgPaint = new SKPaint
+            {
+                Shader = SKShader.CreateLinearGradient(
+    new SKPoint(0, 0),
+    new SKPoint(0, height),
+    new SKColor[] { new SKColor(20, 20, 30), new SKColor(10, 10, 15) },
+    null,
+    (SkiaSharp.SKShaderTileMode)0) // Usando o valor numérico para evitar erro de referência
+            };
+            // Moldura Neon
+            var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = ganhou ? SKColors.LimeGreen.WithAlpha(120) : SKColors.Red.WithAlpha(120), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 3) };
+            canvas.DrawRoundRect(new SKRect(10, 10, width - 10, height - 10), 15, 15, borderPaint);
 
-            var borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = ganhou ? SKColors.LimeGreen.WithAlpha(100) : SKColors.Red.WithAlpha(100), IsAntialias = true, MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 4) };
-            canvas.DrawRoundRect(new SKRect(15, 15, width - 15, height - 15), 20, 20, borderPaint);
-
-            float centroX = width / 2f;
-
-            string coinAsset = deuCara ? "coin_cara.png" : "coin_coroa.png";
+            // Desenhar Moeda (Assets)
+            string coinAsset = deuCara ? "coin_cara.png" : "coin_coroa.png";
             string coinPath = Path.Combine(AppContext.BaseDirectory, "Assets", coinAsset);
             if (File.Exists(coinPath))
             {
                 using var stream = new FileStream(coinPath, FileMode.Open, FileAccess.Read);
                 using var bitmap = SKBitmap.Decode(stream);
-                float moedaSize = 120;
-                float moedaX = centroX - (moedaSize / 2f);
-                canvas.DrawBitmap(bitmap, new SKRect(moedaX, 25, moedaX + moedaSize, 25 + moedaSize), new SKPaint { IsAntialias = true });
+                canvas.DrawBitmap(bitmap, new SKRect(40, 35, 190, 185), new SKPaint { IsAntialias = true });
             }
 
             var bold = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
-            var paintTitulo = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 52, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center, FakeBoldText = true };
-            var paintSubtexto = new SKPaint { Color = SKColors.LightGray, TextSize = 24, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
-            var paintValor = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 42, Typeface = bold, IsAntialias = true, TextAlign = SKTextAlign.Center };
+            var paintRes = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 50, Typeface = bold, IsAntialias = true };
+            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", 220, 80, paintRes);
 
-            canvas.DrawText(ganhou ? "🎉 VITÓRIA!" : "💀 DERROTA!", centroX, 185, paintTitulo);
-            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", centroX, 220, paintSubtexto);
-            canvas.DrawText($"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}", centroX, 260, paintValor);
+            var paintSub = new SKPaint { Color = SKColors.LightGray, TextSize = 25, IsAntialias = true };
+            canvas.DrawText(ganhou ? "O destino sorriu para você." : "A sorte não estava ao seu lado.", 220, 115, paintSub);
+
+            var paintVal = new SKPaint { Color = ganhou ? SKColors.LimeGreen : SKColors.Red, TextSize = 40, Typeface = bold, IsAntialias = true };
+            canvas.DrawText($"{(ganhou ? "+" : "-")} {EconomyHelper.FormatarSaldo(valor)}", 220, 170, paintVal);
 
             using (var img = surface.Snapshot()) using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var str = File.OpenWrite(fileName)) data.SaveTo(str);
