@@ -341,10 +341,18 @@ namespace Botzinho.Economy
                     else if (content == "zdep all")
                     {
                         long carteira = EconomyHelper.GetSaldo(guildId, user.Id);
+
+                        if (carteira <= 0)
+                        {
+                            await msg.Channel.SendMessageAsync("<:negativo:1492950137587241114> Você não tem saldo na carteira para depositar.");
+                            return;
+                        }
+
                         if (EconomyHelper.DepositarTudo(guildId, user.Id))
                         {
+                            // Logando o Depósito All
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
-                            await msg.Channel.SendMessageAsync("🏦 Carteira guardada no banco!");
+                            await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(carteira)}` cpoints no banco!");
                         }
                     }
                     else if (content.StartsWith("zdep"))
@@ -434,7 +442,7 @@ namespace Botzinho.Economy
                                 }
                                 else if (t.Type == "ROLETA_GANHO")
                                 {
-                                    linha = $"🎡 ➕ Ganhou **{formatAmount} coin(s)** na roleta.";
+                                    linha = $"<a:ganhador:1493088070923452599> Ganhou **{formatAmount} coin(s)** na roleta.";
                                 }
                                 else if (t.Type == "ROLETA_PERDA")
                                 {
