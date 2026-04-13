@@ -71,6 +71,7 @@ namespace Botzinho.Core
         }
 
         // --- SISTEMA DE SORTEIO AUTOMÁTICO ---
+        // --- SISTEMA DE SORTEIO AUTOMÁTICO ---
         private static async Task LoopSorteio(DiscordSocketClient client)
         {
             // Aguarda o bot conectar
@@ -91,8 +92,9 @@ namespace Botzinho.Core
                         // 2. Aguarda 5 segundos para gerar expectativa
                         await Task.Delay(5000);
 
-                        // 3. Pega todos os membros do servidor ignorando os bots
-                        var membros = channel.Guild.Users.Where(u => !u.IsBot).ToList();
+                        // 3. BAIXA A LISTA DE USUÁRIOS E JUNTA TUDO (CORREÇÃO AQUI 👇)
+                        var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
+                        var membros = listaUsuarios.Where(u => !u.IsBot).ToList();
 
                         if (membros.Count > 0)
                         {
@@ -112,7 +114,7 @@ namespace Botzinho.Core
                             // 7. Anuncia o ganhador (Esta mensagem agora fica FIXA no chat)
                             await channel.SendMessageAsync(
                                 $"🎉 **SORTEIO CONCLUÍDO!**\n" +
-                                $"• O sortudo da vez foi {ganhador.Mention}!\n" +
+                                $"• O sortudo da vez foi <@{ganhador.Id}>!\n" +
                                 $"• Acabou de ganhar `{EconomyHelper.FormatarSaldo(valorSorteado)}` coins direto no banco.");
                         }
                         else
@@ -126,8 +128,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                // 8. Espera 25 minutos para fazer o próximo sorteio
-                await Task.Delay(TimeSpan.FromSeconds(10));
+                // 8. Espera para fazer o próximo sorteio (Ajuste para o seu tempo de teste)
+                await Task.Delay(TimeSpan.FromSeconds(20));
             }
         }
     }
