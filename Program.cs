@@ -25,7 +25,7 @@ var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
-var cassino = new Botzinho.Cassino.CassinoHandler(client);
+var cassino = new Botzinho.Cassino.CassinoModule(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 client.Ready += async () =>
@@ -80,7 +80,7 @@ public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext
 
         if (!AdminModule.PodeUsarEconfigStatic(user))
         {
-            await RespondAsync("❌ Sem permissão.", ephemeral: true);
+            await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true);
             return;
         }
 
