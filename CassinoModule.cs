@@ -325,4 +325,6 @@ namespace Botzinho.Cassino
             }
         }
     }
-} 
+}
+
+ta certo?
