@@ -450,7 +450,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                 {
                     EconomyHelper.AdicionarBanco(guildId, userId, val * 2);
                     EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, val * 2, "COINFLIP_GANHO"); // Registra Vitória
-                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n💰 +{EconomyHelper.FormatarSaldo(val * 2)}");
+                    eb.WithColor(Color.Green).WithDescription($"Ganhou! Deu **{res}**.\n<a:ganhador:1493088070923452599> <:mais:1493267829611303023> {EconomyHelper.FormatarSaldo(val * 2)}");
                 }
                 else
                 {
