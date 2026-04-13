@@ -36,7 +36,7 @@ namespace Botzinho.Economy
                     receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
             cmd.ExecuteNonQuery();
         }
-        
+
         public static List<(string SenderId, string ReceiverId, long Amount, string Type, DateTime Date)> GetTransacoes(ulong guildId, ulong userId)
         {
             var list = new List<(string, string, long, string, DateTime)>();
@@ -56,7 +56,7 @@ namespace Botzinho.Economy
             }
             return list;
         }
-        
+
         public static long GetSaldo(ulong guildId, ulong userId)
         {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
@@ -159,7 +159,7 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO) ---
+    // --- 2. GERAÇÃO DE IMAGENS ---
     public static class EconomyImageHelper
     {
         private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220);
@@ -295,12 +295,21 @@ namespace Botzinho.Economy
 
                     if (content == "zdaily")
                     {
-                        long g = new Random().Next(167000, 180001); EconomyHelper.AdicionarSaldo(guildId, user.Id, g);
-                        await msg.Channel.SendMessageAsync($"✅ {user.Mention}, `{EconomyHelper.FormatarSaldo(g)}` cpoints no **Diário**!");
+                        long g = new Random().Next(167000, 180001);
+                        EconomyHelper.AdicionarSaldo(guildId, user.Id, g);
+                        // Logando o Daily
+                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, user.Id, g, "DAILY");
+                        await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention} Zdaily Coletado com Sucesso!, `+ {EconomyHelper.FormatarSaldo(g)}` **cpoints** no **Diário**!");
                     }
                     else if (content == "zdep all")
                     {
-                        if (EconomyHelper.DepositarTudo(guildId, user.Id)) await msg.Channel.SendMessageAsync("🏦 Carteira guardada no banco!");
+                        long carteira = EconomyHelper.GetSaldo(guildId, user.Id);
+                        if (EconomyHelper.DepositarTudo(guildId, user.Id))
+                        {
+                            // Logando o Depósito All
+                            EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
+                            await msg.Channel.SendMessageAsync("🏦 Carteira guardada no banco!");
+                        }
                     }
                     else if (content.StartsWith("zdep"))
                     {
@@ -309,8 +318,14 @@ namespace Botzinho.Economy
                         long carteira = EconomyHelper.GetSaldo(guildId, user.Id);
                         string valTxt = p[1].ToLower();
                         long valor = valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var v) ? v : 0;
-                        if (valor <= 0 || carteira < valor) { await msg.Channel.SendMessageAsync("<:negativo:1492950137587241114> Saldo insuficiente na carteira."); return; }
-                        if (EconomyHelper.RemoverSaldo(guildId, user.Id, valor)) { EconomyHelper.AdicionarBanco(guildId, user.Id, valor); await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(valor)}` cpoints!"); }
+                        if (valor <= 0 || carteira < valor) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Saldo insuficiente na carteira."); return; }
+                        if (EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
+                        {
+                            EconomyHelper.AdicionarBanco(guildId, user.Id, valor);
+                            // Logando o Depósito Parcial
+                            EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, valor, "DEPOSITO");
+                            await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(valor)}` cpoints!");
+                        }
                     }
                     else if (content == "zsaldo")
                     {
@@ -348,7 +363,7 @@ namespace Botzinho.Economy
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, alvo.Id, v, "TRANSFERENCIA");
                                 await msg.Channel.SendMessageAsync($"✅ {user.Mention} enviou `{EconomyHelper.FormatarSaldo(v)}` para {alvo.Mention}.");
                             }
-                        } 
+                        }
                     }
                     else if (content.StartsWith("ztransacoes") || content.StartsWith("ztranscoes"))
                     {
@@ -367,19 +382,63 @@ namespace Botzinho.Economy
                         else
                         {
                             string listaTexto = $"• Aqui estão as ultimas **{transacoes.Count} transações** de `{usuarioAlvo.Username}`:\n\n";
-                            
+
                             foreach (var t in transacoes)
                             {
-                                string dataFormatada = t.Date.AddHours(-3).ToString("dd/MM/yyyy, HH:mm:ss"); 
-                                
-                                if (t.SenderId == usuarioAlvo.Id.ToString())
+                                string dataFormatada = t.Date.AddHours(-3).ToString("dd/MM/yyyy, HH:mm:ss");
+                                string formatAmount = EconomyHelper.FormatarSaldo(t.Amount);
+                                string linha = "";
+
+                                // Traduzindo os Types do Banco para o Visual da Foto
+                                if (t.Type == "DEPOSITO")
                                 {
-                                    listaTexto += $"• `[{dataFormatada}]` 💸 ➖ Enviou **{t.Amount} coin(s)** para <@{t.ReceiverId}>.\n";
+                                    linha = $"🏦 Depositou **{formatAmount} coin(s)** da carteira para o banco.";
                                 }
-                                else
+                                else if (t.Type == "DAILY")
                                 {
-                                    listaTexto += $"• `[{dataFormatada}]` 💸 ➕ Recebeu **{t.Amount} coin(s)** de <@{t.SenderId}>.\n";
+                                    linha = $"🎁 ➕ Recebeu **{formatAmount} coin(s)** do bônus diário.";
                                 }
+                                else if (t.Type == "ROLETA_GANHO")
+                                {
+                                    linha = $"🎡 ➕ Ganhou **{formatAmount} coin(s)** na roleta.";
+                                }
+                                else if (t.Type == "ROLETA_PERDA")
+                                {
+                                    linha = $"🎡 ➖ Perdeu **{formatAmount} coin(s)** na roleta.";
+                                }
+                                else if (t.Type == "COINFLIP_GANHO")
+                                {
+                                    linha = $"🪙 ➕ Ganhou **{formatAmount} coin(s)** no coinflip.";
+                                }
+                                else if (t.Type == "COINFLIP_PERDA")
+                                {
+                                    linha = $"🪙 ➖ Perdeu **{formatAmount} coin(s)** no coinflip.";
+                                }
+                                else if (t.Type == "BLACKJACK_GANHO")
+                                {
+                                    linha = $"🃏 ➕ Ganhou **{formatAmount} coin(s)** no blackjack.";
+                                }
+                                else if (t.Type == "BLACKJACK_PERDA")
+                                {
+                                    linha = $"🃏 ➖ Perdeu **{formatAmount} coin(s)** no blackjack.";
+                                }
+                                else if (t.Type == "BLACKJACK_EMPATE")
+                                {
+                                    linha = $"🃏 ⚖️ Recuperou **{formatAmount} coin(s)** (Empate no blackjack).";
+                                }
+                                else if (t.Type == "TRANSFERENCIA")
+                                {
+                                    if (t.SenderId == usuarioAlvo.Id.ToString())
+                                    {
+                                        linha = $"💸 ➖ Enviou **{formatAmount} coin(s)** para <@{t.ReceiverId}>.";
+                                    }
+                                    else
+                                    {
+                                        linha = $"💸 ➕ Recebeu **{formatAmount} coin(s)** de <@{t.SenderId}>.";
+                                    }
+                                }
+
+                                listaTexto += $"• `[{dataFormatada}]` {linha}\n";
                             }
                             eb.WithDescription(listaTexto);
                         }
