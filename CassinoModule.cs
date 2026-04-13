@@ -302,7 +302,7 @@ namespace Botzinho.Cassino
 
 <:6821purplecash:1493263367488536606> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
 
-💡 | **Como funciona:**
+<:seta:1493089125979656385> | **Como funciona:**
 Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da aposta; se errar, você perde o valor apostado.
 
 <:erro:1493078898462949526> | **Desistir da aposta:**
@@ -484,7 +484,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                             .WithDescription($@"❌ **ESTOUROU!**
 • <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
-  ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}")
+
+  ◦ <:erro:1493078898462949526> **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}")
                             .WithImageUrl($"attachment://bj.png")
                             .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                             .WithColor(Color.Red);
