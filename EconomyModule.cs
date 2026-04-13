@@ -352,7 +352,7 @@ namespace Botzinho.Economy
                         {
                             // Logando o Depósito All
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
-                            await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(carteira)}` cpoints no banco!");
+                            await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention}, Sucesso! você depositou `{EconomyHelper.FormatarSaldo(carteira)}` cpoints no banco!");
                         }
                     }
                     else if (content.StartsWith("zdep"))
@@ -367,7 +367,7 @@ namespace Botzinho.Economy
                         {
                             EconomyHelper.AdicionarBanco(guildId, user.Id, valor);
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, valor, "DEPOSITO");
-                            await msg.Channel.SendMessageAsync($"🏦 {user.Mention}, você depositou `{EconomyHelper.FormatarSaldo(valor)}` cpoints!");
+                            await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention}, Sucesso! você depositou `+ {EconomyHelper.FormatarSaldo(valor)}` cpoints!");
                         }
                     }
                     else if (content == "zsaldo")
