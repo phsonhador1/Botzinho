@@ -106,7 +106,7 @@ namespace Botzinho.Cassino
 
             int score = revealed ? BlackjackLogic.CalculateScore(hand) : hand.Skip(1).Sum(c => c.Score);
             string scoreText = revealed ? $"Valor: {score}" : $"Valor: ? + {score}";
-            
+
             // Fundo do score
             var scorePaint = new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = boldFont, IsAntialias = true };
             float scoreWidth = scorePaint.MeasureText(scoreText);
@@ -122,34 +122,57 @@ namespace Botzinho.Cassino
             for (int i = 0; i < hand.Count; i++)
             {
                 bool isFaceDown = !revealed && i == 0;
-                string cardAsset = isFaceDown ? "verso.png" : hand[i].ImagePath;
-                DesenharCarta(canvas, cardAsset, startX, y + 50);
+                DesenharCartaCriadaNoCodigo(canvas, hand[i], isFaceDown, startX, y + 50, boldFont);
                 startX += cardWidth + 15;
             }
         }
 
-        private static void DesenharCarta(SKCanvas canvas, string cardAsset, float x, float y)
+        private static void DesenharCartaCriadaNoCodigo(SKCanvas canvas, Card card, bool isFaceDown, float x, float y, SKTypeface font)
         {
-            string assetsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Cards");
-            string fullPath = Path.Combine(assetsFolder, cardAsset);
+            var rect = new SKRect(x, y, x + 100, y + 140);
 
-            try
+            // Sombreado da carta para dar efeito 3D
+            var shadowRect = new SKRect(x + 2, y + 2, x + 102, y + 142);
+            canvas.DrawRoundRect(shadowRect, 8, 8, new SKPaint { Color = new SKColor(0, 0, 0, 80), IsAntialias = true });
+
+            // Fundo da carta (Branco)
+            canvas.DrawRoundRect(rect, 8, 8, new SKPaint { Color = SKColors.White, IsAntialias = true });
+
+            if (isFaceDown)
             {
-                if (File.Exists(fullPath))
-                {
-                    using var stream = File.OpenRead(fullPath);
-                    using var bmp = SKBitmap.Decode(stream);
-                    var rect = new SKRect(x, y, x + 100, y + 140);
-                    canvas.DrawBitmap(bmp, rect);
-                }
-                else
-                {
-                    var rect = new SKRect(x, y, x + 100, y + 140);
-                    canvas.DrawRoundRect(rect, 10, 10, new SKPaint { Color = SKColors.White, IsAntialias = true });
-                    canvas.DrawText("X", x + 50, y + 70, new SKPaint { Color = SKColors.Black, TextSize = 20, TextAlign = SKTextAlign.Center });
-                }
+                // Desenha o verso da carta (um quadrado roxo com borda branca)
+                var innerRect = new SKRect(x + 6, y + 6, x + 94, y + 134);
+                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true }); // Cor roxa
+                
+                // Letra "Z" no meio para simbolizar a Zoe/Zany
+                var paintLogo = new SKPaint { Color = SKColors.White, TextSize = 40, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
+                canvas.DrawText("Z", x + 50, y + 85, paintLogo);
+                return;
             }
-            catch { }
+
+            // Descobre o símbolo e a cor do naipe baseado na letra (P, O, C, E)
+            string suitSymbol = card.Suit switch { "P" => "♣", "O" => "♦", "C" => "♥", "E" => "♠", _ => "?" };
+            SKColor suitColor = (card.Suit == "O" || card.Suit == "C") ? SKColors.Red : SKColors.Black;
+            string displayValue = card.Value.ToUpper();
+
+            // Pincéis para os textos
+            var paintText = new SKPaint { Color = suitColor, TextSize = 20, Typeface = font, TextAlign = SKTextAlign.Left, IsAntialias = true };
+            var paintSmallSuit = new SKPaint { Color = suitColor, TextSize = 16, Typeface = font, TextAlign = SKTextAlign.Left, IsAntialias = true };
+            var paintBigSuit = new SKPaint { Color = suitColor, TextSize = 50, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
+
+            // Canto Superior Esquerdo (Valor + Naipe pequeno)
+            canvas.DrawText(displayValue, x + 8, y + 24, paintText);
+            canvas.DrawText(suitSymbol, x + 8, y + 42, paintSmallSuit);
+            
+            // Centro (Naipe gigante)
+            canvas.DrawText(suitSymbol, x + 50, y + 90, paintBigSuit);
+            
+            // Canto Inferior Direito (Valor + Naipe pequeno invertido)
+            var paintTextRight = new SKPaint { Color = suitColor, TextSize = 20, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
+            var paintSmallSuitRight = new SKPaint { Color = suitColor, TextSize = 16, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
+            
+            canvas.DrawText(displayValue, x + 92, y + 130, paintTextRight);
+            canvas.DrawText(suitSymbol, x + 92, y + 112, paintSmallSuitRight);
         }
     }
 
@@ -164,7 +187,7 @@ namespace Botzinho.Cassino
 
         private static readonly Dictionary<ulong, long> CoinflipAtivo = new();
         private static readonly Dictionary<ulong, long> RoletaAtiva = new();
-        
+
         // Alterado para suportar o baralho de objetos da nova versão do BJ
         private static readonly Dictionary<ulong, (List<Card> Player, List<Card> Dealer, List<Card> Deck, long Bet)> BlackjackAtivo = new();
 
@@ -280,13 +303,13 @@ namespace Botzinho.Cassino
                 if (val <= 0 || banco < val || BlackjackAtivo.ContainsKey(user.Id)) return;
 
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
-                
+
                 var deck = BlackjackLogic.CreateDeck();
                 deck.Shuffle();
-                
+
                 var playerHand = new List<Card> { deck[0], deck[1] };
                 deck.RemoveRange(0, 2);
-                
+
                 var dealerHand = new List<Card> { deck[0], deck[1] };
                 deck.RemoveRange(0, 2);
 
@@ -310,7 +333,7 @@ namespace Botzinho.Cassino
                 {
                     await msg.Channel.SendFileAsync(stream, "bj.png", embed: eb.Build(), components: cb.Build());
                 }
-                
+
                 if (File.Exists(imgPath)) File.Delete(imgPath);
             }
         }
@@ -415,21 +438,21 @@ namespace Botzinho.Cassino
             else if (prefix == "bj")
             {
                 if (!BlackjackAtivo.TryGetValue(userId, out var game)) { await component.RespondAsync("❌ Jogo finalizado ou erro.", ephemeral: true); return; }
-                
+
                 if (escolha == "hit")
                 {
                     game.Player.Add(game.Deck[0]);
                     game.Deck.RemoveAt(0);
-                    
+
                     int pS = BlackjackLogic.CalculateScore(game.Player);
-                    
+
                     if (pS > 21) // Estourou - Perdeu
                     {
                         BlackjackAtivo.Remove(userId);
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA");
-                        
+
                         string imgLose = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, true, "ESTOUROU!", new SKColor(180, 20, 20));
-                        
+
                         var ebLose = new EmbedBuilder()
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                             .WithDescription($@"❌ **ESTOUROU!**
@@ -447,7 +470,7 @@ namespace Botzinho.Cassino
                         if (File.Exists(imgLose)) File.Delete(imgLose);
                         return;
                     }
-                    
+
                     // Continua jogando
                     string imgPlay = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, false, "BLACKJACK", new SKColor(140, 82, 198));
                     var ebPlay = new EmbedBuilder()
@@ -469,48 +492,48 @@ namespace Botzinho.Cassino
                 {
                     BlackjackAtivo.Remove(userId);
                     int pS = BlackjackLogic.CalculateScore(game.Player);
-                    
-                    while (BlackjackLogic.CalculateScore(game.Dealer) < 17) 
+
+                    while (BlackjackLogic.CalculateScore(game.Dealer) < 17)
                     {
                         game.Dealer.Add(game.Deck[0]);
                         game.Deck.RemoveAt(0);
                     }
-                    
+
                     int dS = BlackjackLogic.CalculateScore(game.Dealer);
                     string resT = ""; SKColor bgCol; Color ebCol; string statusDesc = "";
-                    
-                    if (dS > 21 || pS > dS) 
-                    { 
-                        resT = "VITÓRIA!"; 
-                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2); 
+
+                    if (dS > 21 || pS > dS)
+                    {
+                        resT = "VITÓRIA!";
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
                         statusDesc = $@"<:acerto:1493079138783727756> **VITÓRIA!**
 • 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
-                    else if (pS == dS) 
-                    { 
-                        resT = "EMPATE!"; 
-                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet); 
+                    else if (pS == dS)
+                    {
+                        resT = "EMPATE!";
+                        EconomyHelper.AdicionarBanco(guildId, userId, game.Bet);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet, "BLACKJACK_EMPATE");
                         bgCol = new SKColor(120, 120, 120); ebCol = Color.LightGrey;
                         statusDesc = $@"⚖️ **EMPATE!**
 • 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🔄 **Devolvido:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
-                    else 
-                    { 
-                        resT = "DERROTA!"; 
+                    else
+                    {
+                        resT = "DERROTA!";
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, game.Bet, "BLACKJACK_PERDA");
                         bgCol = new SKColor(180, 40, 40); ebCol = Color.Red;
                         statusDesc = $@"<:erro:1493078898462949526> **DERROTA!**
 • 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}";
                     }
-                    
+
                     string imgEnd = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, true, resT, bgCol);
-                    
+
                     var ebEnd = new EmbedBuilder()
                         .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                         .WithDescription(statusDesc)
