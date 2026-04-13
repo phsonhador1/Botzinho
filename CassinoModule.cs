@@ -70,7 +70,7 @@ namespace Botzinho.Cassino
                     await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
                     return;
                 }
-                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("⚠️ Termine o jogo anterior antes de começar outro!"); return; }
+                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento! Termine ele antes de começar outro.!"); return; }
 
                 RoletaAtiva[user.Id] = valorAposta;
                 EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
