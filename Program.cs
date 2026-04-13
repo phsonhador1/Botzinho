@@ -19,7 +19,7 @@ var client = new DiscordSocketClient(new DiscordSocketConfig
 var services = new ServiceCollection()
     .AddSingleton(client)
     .BuildServiceProvider();
-
+new Botzinho.Admin.AdminControleModule(client);
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
