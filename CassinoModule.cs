@@ -456,7 +456,7 @@ namespace Botzinho.Cassino
                         var ebLose = new EmbedBuilder()
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                             .WithDescription($@"❌ **ESTOUROU!**
-• 💸 **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
+• <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 🛑 **Perdeu:** {EconomyHelper.FormatarSaldo(game.Bet)}")
                             .WithImageUrl($"attachment://bj.png")
                             .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
@@ -508,7 +508,7 @@ namespace Botzinho.Cassino
                         EconomyHelper.AdicionarBanco(guildId, userId, game.Bet * 2);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, game.Bet * 2, "BLACKJACK_GANHO");
                         bgCol = new SKColor(40, 180, 80); ebCol = Color.Green;
-                        statusDesc = $@"<:acerto:1493079138783727756> **VITÓRIA!**
+                        statusDesc = $@"<a:ganhador:1493088070923452599> **BlackJack!** **VITÓRIA!**
 • <a:7moneyz:1493015410637930508> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ 💵 **Ganhos:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}";
                     }
