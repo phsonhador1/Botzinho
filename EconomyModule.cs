@@ -514,7 +514,7 @@ namespace Botzinho.Economy
 
                         if (vitima.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode roubar de você mesmo... isso seria... estranho.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ae arrombado, ta roubar de você mesmo ? Para de graça e usa direito");
                             return;
                         }
 
