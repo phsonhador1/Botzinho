@@ -88,14 +88,6 @@ namespace Botzinho.Core
             // Log de inicialização privado
             await EnviarLogPrivado(client, "🟢 **Monitoramento Ativo:** Primeiro sorteio em 10 minutos.");
 
-            // --- ADIÇÃO: MENSAGEM DO PRIMEIRO SORTEIO COM CONTADOR ---
-            var channelInit = client.GetChannel(ID_CANAL_RANK) as SocketTextChannel;
-            if (channelInit != null)
-            {
-                long unixInit = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds();
-                await channelInit.SendMessageAsync($"⏳ **Monitoramento iniciado!** O primeiro sorteio acontecerá <t:{unixInit}:R>.");
-            }
-
             await Task.Delay(TimeSpan.FromMinutes(10));
 
             while (true)
@@ -108,14 +100,9 @@ namespace Botzinho.Core
                     {
                         var mensagensAntigas = await channel.GetMessagesAsync(30).FlattenAsync();
 
-                        // Atualizamos a lista de limpeza para apagar os contadores antigos também
                         var lixoParaApagar = mensagensAntigas.Where(m =>
                             m.Author.Id == client.CurrentUser.Id &&
-                            (m.Content.Contains("O magnata sortudo") || 
-                             m.Content.Contains("Sorteando...") || 
-                             m.Content.Contains("SORTEIO CONCLUÍDO!") ||
-                             m.Content.Contains("O próximo sorteio acontecerá") ||
-                             m.Content.Contains("O primeiro sorteio acontecerá"))
+                            (m.Content.Contains("O magnata sortudo") || m.Content.Contains("Sorteando...") || m.Content.Contains("SORTEIO CONCLUÍDO!"))
                         );
 
                         foreach (var msgAntiga in lixoParaApagar)
@@ -140,12 +127,7 @@ namespace Botzinho.Core
 
                             try { await msgStatus.DeleteAsync(); } catch { }
 
-                            // Mensagem do vencedor
                             await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
-
-                            // --- ADIÇÃO: MENSAGEM DO PRÓXIMO SORTEIO COM CONTADOR ANIMADO ---
-                            long unixProximo = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
-                            await channel.SendMessageAsync($"⏳ **Fique de olho!** O próximo sorteio acontecerá <t:{unixProximo}:R>.");
 
                             // Envia log para o seu servidor privado
                             var proximo = DateTime.Now.AddMinutes(15);
@@ -164,7 +146,6 @@ namespace Botzinho.Core
                     await EnviarLogPrivado(client, $"❌ **Erro no Loop de Sorteio:** {ex.Message}");
                 }
 
-                // O bot espera os 15 minutos, enquanto o Discord conta visualmente na tela dos usuários!
                 await Task.Delay(TimeSpan.FromMinutes(15));
             }
         }
