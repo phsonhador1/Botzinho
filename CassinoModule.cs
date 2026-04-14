@@ -182,144 +182,76 @@ namespace Botzinho.Cassino
             using var surface = SKSurface.Create(new SKImageInfo(w, h));
             var canvas = surface.Canvas;
 
-            // Cores baseadas na print polida (Dark Mode / Cockpit)
-            SKColor corFundo = new SKColor(26, 31, 46); // Cockpit escuro idêntico
+            // CORES EXATAS DA PRINT
+            SKColor corFundo = status == "WIN" ? SKColor.Parse("#3dbb7e") : SKColor.Parse("#8c52ff");
             SKColor corLinha = SKColors.White;
-            SKColor corBrilhoVitoria = new SKColor(61, 187, 126, 150); // Verde brilhante da vitoria
-            SKColor corBrilhoCrash = new SKColor(235, 59, 59, 150); // Vermelho brilhante do crash
-            SKColor corBrilhoJogo = new SKColor(255, 255, 255, 100);
 
-            SKTypeface tfBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
-            SKTypeface tfNormal = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
-            string fontPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Poppins-Bold.ttf");
-            if (File.Exists(fontPath)) { using (var stream = File.OpenRead(fontPath)) tfBold = SKTypeface.FromStream(stream); }
-
-            // Fundo Principal (Cockpit) com borda arredondada
+            // Fundo Arredondado Sólido (Sem grade, sem frescura)
             canvas.Clear(SKColors.Transparent);
-            var rectFundo = new SKRect(0, 0, w, h);
             using (var paintFundo = new SKPaint { Color = corFundo, IsAntialias = true })
             {
-                canvas.DrawRoundRect(rectFundo, 15, 15, paintFundo);
+                canvas.DrawRoundRect(new SKRect(0, 0, w, h), 20, 20, paintFundo);
             }
 
-            // Grid de Fundo (Linhas sutis)
-            using (var paintGrid = new SKPaint { Color = new SKColor(255, 255, 255, 20), StrokeWidth = 1, IsAntialias = true })
+            var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+
+            // TEXTO SUPERIOR (ESTRELINHAS + STATUS)
+            string textoTopo = status == "WIN" ? "✦ VITÓRIA!" : "✦ EM JOGO";
+            canvas.DrawText(textoTopo, 40, 60, new SKPaint
             {
-                for (int i = 50; i < w; i += 50) canvas.DrawLine(i, 0, i, h, paintGrid);
-                for (int i = 50; i < h; i += 50) canvas.DrawLine(0, i, w, i, paintGrid);
-            }
+                Color = new SKColor(255, 255, 255, 200),
+                TextSize = 24,
+                Typeface = fontBold,
+                IsAntialias = true
+            });
 
-            // Textos Superiores (Esquerda)
-            if (status == "CRASH")
+            // MULTIPLICADOR GIGANTE NA DIREITA
+            canvas.DrawText($"{multiplicador:F2}x", w - 40, 160, new SKPaint
             {
-                canvas.DrawText("💥 RESULTADO: CRASH!", 30, 50, new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = tfBold, IsAntialias = true });
-            }
-            else if (status == "WIN")
+                Color = SKColors.White,
+                TextSize = 90,
+                Typeface = fontBold,
+                TextAlign = SKTextAlign.Right,
+                IsAntialias = true
+            });
+
+            // --- GRÁFICO (CURVA SUAVE IDENTICA) ---
+            float startX = 60; float startY = h - 60;
+            float endX = w / 2.2f;
+
+            // A altura da linha sobe suavemente
+            float heightOffset = Math.Min((float)((multiplicador - 1.0) * 40), 120);
+            float endY = startY - heightOffset;
+
+            using (var paintLinha = new SKPaint { Color = corLinha, StrokeWidth = 6, Style = SKPaintStyle.Stroke, IsAntialias = true, StrokeCap = SKStrokeCap.Round })
             {
-                canvas.DrawText("✨ VITÓRIA!", 30, 50, new SKPaint { Color = new SKColor(61, 187, 126), TextSize = 22, Typeface = tfBold, IsAntialias = true });
+                var path = new SKPath();
+                path.MoveTo(startX, startY);
+                // Curva suave em direção ao ponto atual
+                path.QuadTo(startX + (endX - startX) / 2, startY, endX, endY);
+                canvas.DrawPath(path, paintLinha);
             }
 
-            // Multiplicador (Centro)
-            var paintMult = new SKPaint { Color = SKColors.White, TextSize = 90, Typeface = tfBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            
-            // Efeito de brilho no multiplicador
-            if (status == "WIN") paintMult.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Solid, 10);
-            canvas.DrawText($"{multiplicador:F2}x", w / 2, h / 2, paintMult);
-            paintMult.MaskFilter = null; // Tira o blur pra desenhar nítido por cima
-            canvas.DrawText($"{multiplicador:F2}x", w / 2, h / 2, paintMult);
+            // BOLINHA NA PONTA
+            canvas.DrawCircle(endX, endY, 8, new SKPaint { Color = SKColors.White, IsAntialias = true });
 
-            // --- GRÁFICO (Curva Suave) ---
-            float startX = 30; float startY = h - 60;
-            float endX = status == "CRASH" ? w - 200 : w - 100; // Para onde a linha vai
-            
-            // Curva baseada no multiplicador
-            float progression = (float)Math.Min((multiplicador - 1.0) / 3.0, 1.0); 
-            float endY = startY - (150 * progression);
-
-            // Desenhar a névoa abaixo da linha (Gradiente)
-            var pathCurva = new SKPath();
-            pathCurva.MoveTo(startX, startY);
-            // Curva Bézier para dar aquele efeito "swoosh"
-            pathCurva.QuadTo(startX + (endX - startX) / 2, startY, endX, endY);
-
-            var pathFill = new SKPath(pathCurva);
-            pathFill.LineTo(endX, h - 60);
-            pathFill.LineTo(startX, h - 60);
-            pathFill.Close();
-
-            SKColor corNevoa = status == "WIN" ? corBrilhoVitoria : (status == "CRASH" ? corBrilhoCrash : corBrilhoJogo);
-            var shaderFill = SKShader.CreateLinearGradient(new SKPoint(0, endY), new SKPoint(0, h - 60), new[] { corNevoa, SKColors.Transparent }, null, SKShaderTileMode.Clamp);
-            
-            using (var paintFill = new SKPaint { Shader = shaderFill, IsAntialias = true })
+            // LINHA DE BASE PONTILHADA SUTIL
+            using (var paintBase = new SKPaint { Color = new SKColor(255, 255, 255, 80), StrokeWidth = 2, Style = SKPaintStyle.Stroke, IsAntialias = true })
             {
-                canvas.DrawPath(pathFill, paintFill);
+                paintBase.PathEffect = SKPathEffect.CreateDash(new float[] { 8, 8 }, 0);
+                canvas.DrawLine(startX, startY + 20, w - 60, startY + 20, paintBase);
             }
 
-            // Desenhar a linha principal
-            using (var paintLinha = new SKPaint { Color = corLinha, StrokeWidth = 5, Style = SKPaintStyle.Stroke, IsAntialias = true })
-            {
-                if (status == "CRASH")
-                {
-                    canvas.DrawPath(pathCurva, paintLinha);
-                }
-                else
-                {
-                    canvas.DrawPath(pathCurva, paintLinha);
-                    // Bolinha na ponta do gráfico
-                    canvas.DrawCircle(endX, endY, 6, new SKPaint { Color = SKColors.White, IsAntialias = true });
-                }
-            }
+            // MARCADORES DE TEXTO NO EIXO (1.0x, 2.0x...)
+            var paintEixo = new SKPaint { Color = new SKColor(255, 255, 255, 120), TextSize = 16, Typeface = fontBold, IsAntialias = true, TextAlign = SKTextAlign.Center };
+            canvas.DrawText("1.0x", startX + 50, startY + 45, paintEixo);
+            canvas.DrawText("2.0x", startX + 180, startY + 45, paintEixo);
+            canvas.DrawText("3.0x", startX + 310, startY + 45, paintEixo);
 
-            // --- DESENHAR O AVIÃO ROXO ---
-            if (status != "CRASH") // Esconde no crash pra ficar igual o design
-            {
-                var imgPathAviao = Path.Combine(AppContext.BaseDirectory, "Assets", "image_12.png");
-                if (File.Exists(imgPathAviao))
-                {
-                    using (var streamAviao = File.OpenRead(imgPathAviao))
-                    using (var originalBitmap = SKBitmap.Decode(streamAviao))
-                    {
-                        using (var surfaceAviaoRoxo = SKSurface.Create(new SKImageInfo(originalBitmap.Width, originalBitmap.Height)))
-                        {
-                            var canvasAviaoRoxo = surfaceAviaoRoxo.Canvas;
-                            canvasAviaoRoxo.Clear(new SKColor(160, 80, 220)); // Roxo da Zoe
-
-                            using (var paintMask = new SKPaint { BlendMode = SKBlendMode.DstIn, IsAntialias = true })
-                            {
-                                canvasAviaoRoxo.DrawBitmap(originalBitmap, 0, 0, paintMask);
-                            }
-
-                            using (var aviaoRoxoImage = surfaceAviaoRoxo.Snapshot())
-                            {
-                                float aviaoX = endX + 10;
-                                float aviaoY = endY - 10;
-                                float esc = 0.3f; // Reduzido para encaixar melhor
-
-                                canvas.Save();
-                                canvas.Translate(aviaoX, aviaoY);
-                                canvas.Scale(esc);
-                                canvas.Translate(-aviaoRoxoImage.Width / 2f, -aviaoRoxoImage.Height / 2f);
-
-                                canvas.DrawImage(aviaoRoxoImage, 0, 0);
-
-                                canvas.Restore();
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Eixo X Base e Marcadores
-            var paintBase = new SKPaint { Color = new SKColor(255, 255, 255, 150), StrokeWidth = 2, IsAntialias = true };
-            canvas.DrawLine(startX, h - 60, w - 30, h - 60, paintBase);
-
-            var paintMarcador = new SKPaint { Color = new SKColor(255, 255, 255, 180), TextSize = 16, Typeface = tfNormal, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            canvas.DrawText("1.0x", startX + 50, h - 35, paintMarcador);
-            canvas.DrawText("2.0x", startX + 250, h - 35, paintMarcador);
-            canvas.DrawText("3.0x", startX + 450, h - 35, paintMarcador);
-
+            // SALVAR
             var pathImg = Path.Combine(Path.GetTempPath(), $"crash_{Guid.NewGuid()}.png");
-            using (var img = surface.Snapshot()) using (var d = img.Encode(SKEncodedImageFormat.Png, 100))
+            using (var img = surface.Snapshot())
+            using (var d = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var s = File.OpenWrite(pathImg)) d.SaveTo(s);
 
             return pathImg;
@@ -596,12 +528,12 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                             {
                                 CrashGamesAtivos.Remove(user.Id);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
-                                
+
                                 newEb.WithDescription($@"💥 **RESULTADO: CRASH!**
 📈 Multiplicador Final: **{currentMult:F2}x**
 
 • <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
-                                
+
                                 var cbFim = new ComponentBuilder()
                                     .WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: new Emoji("💥"))
                                     .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
@@ -613,7 +545,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 long ganhoAtual = (long)(aposta * currentMult);
                                 newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
   ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
-                                
+
                                 var cbPlay = new ComponentBuilder()
                                     .WithButton($"Ganhou {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸")) // Botão principal verde
                                     .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true); // Botão cinza fixo ao lado
