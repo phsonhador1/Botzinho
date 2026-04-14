@@ -14,19 +14,19 @@ namespace Botzinho.Core
         // Variáveis de tempo públicas para o Zpainel ler silenciosamente
         public static long UnixProximoSorteio = 0;
         public static long UnixProximoRank = 0;
-        
+
         // Sua Whitelist
         public static readonly List<ulong> IdsPermitidos = new()
         {
             1431655151105474755, 1472642376970404002, 1437491644286107838,
             1469449943390617714, 1187711938805907527, 877026652167753761,
             1489775731667107883, 1465039524508864848, 1491088346909249697,
-            1445779233052823604
+            1445779233052823604, 1469787135723831480
         };
 
         // ⚠️ CANAL PÚBLICO DO SERVIDOR (Para o Sorteio e Rank)
         public const ulong ID_CANAL_RANK = 1487905632261505024;
-        
+
         // ⚠️ CANAL PRIVADO (SEU SERVIDOR DE LOGS)
         public const ulong ID_CANAL_LOGS = 1492995092166869002;
 
@@ -105,8 +105,8 @@ namespace Botzinho.Core
                         // Limpa lixos antigos (caso ainda tenha sobrado algum contador de antes)
                         var lixoParaApagar = mensagensAntigas.Where(m =>
                             m.Author.Id == client.CurrentUser.Id &&
-                            (m.Content.Contains("O magnata sortudo") || 
-                             m.Content.Contains("Sorteando...") || 
+                            (m.Content.Contains("O magnata sortudo") ||
+                             m.Content.Contains("Sorteando...") ||
                              m.Content.Contains("O próximo sorteio acontecerá") ||
                              m.Content.Contains("Monitoramento iniciado!"))
                         );
@@ -127,7 +127,9 @@ namespace Botzinho.Core
                         {
                             var random = new Random();
                             var ganhador = membros[random.Next(membros.Count)];
-                            long valorSorteado = random.Next(50000, 100001);
+
+                            // ALTERADO: O prêmio agora é entre 10k (10000) e 25k (25000)
+                            long valorSorteado = random.Next(10000, 23000);
 
                             EconomyHelper.AdicionarBanco(channel.Guild.Id, ganhador.Id, valorSorteado);
                             EconomyHelper.RegistrarTransacao(channel.Guild.Id, client.CurrentUser.Id, ganhador.Id, valorSorteado, "SORTEIO_AUTO");
@@ -137,20 +139,20 @@ namespace Botzinho.Core
                             // Anúncio do Ganhador
                             await channel.SendMessageAsync($"<a:ganhador:1493088070923452599> O magnata sortudo desta vez foi: <@{ganhador.Id}>, ganhou <:mais:1493267829611303023> `{EconomyHelper.FormatarSaldo(valorSorteado)}` direto no banco!");
 
-                            // Atualiza a variável silenciosamente para o zpainel
-                            UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
+                            // ALTERADO: Atualiza a variável silenciosamente para o zpainel (10 minutos)
+                            UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds();
 
                             // Loga no privado
-                            var proximo = DateTime.Now.AddMinutes(15);
+                            var proximo = DateTime.Now.AddMinutes(10);
                             await EnviarLogPrivado(client, $"✅ **Sorteio Realizado!**\n🏆 Ganhador: <@{ganhador.Id}>\n⏰ Próximo sorteio às: **{proximo:HH:mm:ss}**");
                         }
                         else
                         {
                             try { await msgStatus.DeleteAsync(); } catch { }
                             await EnviarLogPrivado(client, "⚠️ **Aviso:** Nenhum ID da whitelist encontrado para o sorteio.");
-                            
-                            // Mantém o ciclo vivo silenciosamente
-                            UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeSeconds();
+
+                            // ALTERADO: Mantém o ciclo vivo silenciosamente (10 minutos)
+                            UnixProximoSorteio = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds();
                         }
                     }
                 }
@@ -159,7 +161,8 @@ namespace Botzinho.Core
                     Console.WriteLine($"[Erro Sorteio]: {ex.Message}");
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(15));
+                // ALTERADO: O delay do loop principal agora é de 10 minutos
+                await Task.Delay(TimeSpan.FromMinutes(10));
             }
         }
 
@@ -167,7 +170,7 @@ namespace Botzinho.Core
         {
             try
             {
-                if (ID_CANAL_LOGS == ID_CANAL_RANK) return; 
+                if (ID_CANAL_LOGS == ID_CANAL_RANK) return;
 
                 var logChannel = client.GetChannel(ID_CANAL_LOGS) as SocketTextChannel;
                 if (logChannel != null)
