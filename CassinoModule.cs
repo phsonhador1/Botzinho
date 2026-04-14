@@ -97,7 +97,6 @@ namespace Botzinho.Cassino
 
         private static void DesenharMao(SKCanvas canvas, string title, List<Card> hand, bool revealed, float y, SKTypeface regularFont, SKTypeface boldFont)
         {
-            // Background da área das cartas
             var bgRect = new SKRect(30, y, 870, y + 210);
             canvas.DrawRoundRect(bgRect, 20, 20, new SKPaint { Color = new SKColor(0, 0, 0, 60), IsAntialias = true });
 
@@ -107,14 +106,12 @@ namespace Botzinho.Cassino
             int score = revealed ? BlackjackLogic.CalculateScore(hand) : hand.Skip(1).Sum(c => c.Score);
             string scoreText = revealed ? $"Valor: {score}" : $"Valor: ? + {score}";
 
-            // Fundo do score
             var scorePaint = new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = boldFont, IsAntialias = true };
             float scoreWidth = scorePaint.MeasureText(scoreText);
             var scoreRect = new SKRect(840 - scoreWidth - 20, y + 20, 840, y + 60);
             canvas.DrawRoundRect(scoreRect, 10, 10, new SKPaint { Color = new SKColor(0, 0, 0, 100), IsAntialias = true });
             canvas.DrawText(scoreText, 840 - scoreWidth - 10, y + 48, scorePaint);
 
-            // Centralizar cartas
             float cardWidth = 100;
             float totalCardsWidth = (hand.Count * cardWidth) + ((hand.Count - 1) * 15);
             float startX = (900 - totalCardsWidth) / 2;
@@ -131,43 +128,32 @@ namespace Botzinho.Cassino
         {
             var rect = new SKRect(x, y, x + 100, y + 140);
 
-            // Sombreado da carta para dar efeito 3D
             var shadowRect = new SKRect(x + 2, y + 2, x + 102, y + 142);
             canvas.DrawRoundRect(shadowRect, 8, 8, new SKPaint { Color = new SKColor(0, 0, 0, 80), IsAntialias = true });
 
-            // Fundo da carta (Branco)
             canvas.DrawRoundRect(rect, 8, 8, new SKPaint { Color = SKColors.White, IsAntialias = true });
 
             if (isFaceDown)
             {
-                // Desenha o verso da carta (um quadrado roxo com borda branca)
                 var innerRect = new SKRect(x + 6, y + 6, x + 94, y + 134);
-                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true }); // Cor roxa
-
-                // Letra "Z" no meio para simbolizar a Zoe/Zany
+                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true });
                 var paintLogo = new SKPaint { Color = SKColors.White, TextSize = 40, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
                 canvas.DrawText("Z", x + 50, y + 85, paintLogo);
                 return;
             }
 
-            // Descobre o símbolo e a cor do naipe baseado na letra (P, O, C, E)
             string suitSymbol = card.Suit switch { "P" => "♣", "O" => "♦", "C" => "♥", "E" => "♠", _ => "?" };
             SKColor suitColor = (card.Suit == "O" || card.Suit == "C") ? SKColors.Red : SKColors.Black;
             string displayValue = card.Value.ToUpper();
 
-            // Pincéis para os textos
             var paintText = new SKPaint { Color = suitColor, TextSize = 20, Typeface = font, TextAlign = SKTextAlign.Left, IsAntialias = true };
             var paintSmallSuit = new SKPaint { Color = suitColor, TextSize = 16, Typeface = font, TextAlign = SKTextAlign.Left, IsAntialias = true };
             var paintBigSuit = new SKPaint { Color = suitColor, TextSize = 50, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
 
-            // Canto Superior Esquerdo (Valor + Naipe pequeno)
             canvas.DrawText(displayValue, x + 8, y + 24, paintText);
             canvas.DrawText(suitSymbol, x + 8, y + 42, paintSmallSuit);
-
-            // Centro (Naipe gigante)
             canvas.DrawText(suitSymbol, x + 50, y + 90, paintBigSuit);
 
-            // Canto Inferior Direito (Valor + Naipe pequeno invertido)
             var paintTextRight = new SKPaint { Color = suitColor, TextSize = 20, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
             var paintSmallSuitRight = new SKPaint { Color = suitColor, TextSize = 16, Typeface = font, TextAlign = SKTextAlign.Right, IsAntialias = true };
 
@@ -178,75 +164,98 @@ namespace Botzinho.Cassino
         // --- GERADOR DE IMAGEM DO CRASH IDÊNTICO À ZANY ---
         public static async Task<string> GerarImagemCrash(double multiplicador, string status)
         {
-            int w = 600; int h = 300;
+            int w = 800; int h = 400; // Resolução maior para melhor qualidade
             using var surface = SKSurface.Create(new SKImageInfo(w, h));
             var canvas = surface.Canvas;
 
-            // Cores baseadas nas prints enviadas
-            SKColor corFundo;
+            // Cores baseadas no design polido
+            SKColor corFundo = new SKColor(26, 31, 46); // Fundo "cockpit" (Dark Navy)
             SKColor corLinha = SKColors.White;
-            string textoStatus = "";
-
-            if (status == "JOGANDO") { corFundo = new SKColor(27, 28, 33); textoStatus = ""; } // Fundo escuro
-            else if (status == "CRASH") { corFundo = new SKColor(27, 28, 33); textoStatus = "💥 RESULTADO: CRASH!"; } // Fundo escuro
-            else { corFundo = new SKColor(61, 187, 126); textoStatus = "✨ VITÓRIA!"; } // Fundo Verde
+            SKColor corBrilhoVitoria = new SKColor(61, 187, 126, 150); // Verde brilhante para vitória
+            SKColor corBrilhoCrash = new SKColor(235, 59, 59, 150); // Vermelho brilhante para crash
+            SKColor corBrilhoJogo = new SKColor(255, 255, 255, 100);
 
             SKTypeface tfBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+            SKTypeface tfNormal = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
             string fontPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Poppins-Bold.ttf");
             if (File.Exists(fontPath)) { using (var stream = File.OpenRead(fontPath)) tfBold = SKTypeface.FromStream(stream); }
 
-            // Fundo Sólido
-            canvas.Clear(corFundo);
+            // Fundo Principal (Cockpit) com borda arredondada
+            canvas.Clear(SKColors.Transparent);
+            var rectFundo = new SKRect(0, 0, w, h);
+            using (var paintFundo = new SKPaint { Color = corFundo, IsAntialias = true })
+            {
+                canvas.DrawRoundRect(rectFundo, 15, 15, paintFundo);
+            }
 
-            // Se for CRASH, desenha as informações laterais (idêntico à print)
+            // Grid de Fundo (Linhas sutis)
+            using (var paintGrid = new SKPaint { Color = new SKColor(255, 255, 255, 20), StrokeWidth = 1, IsAntialias = true })
+            {
+                for (int i = 50; i < w; i += 50) canvas.DrawLine(i, 0, i, h, paintGrid);
+                for (int i = 50; i < h; i += 50) canvas.DrawLine(0, i, w, i, paintGrid);
+            }
+
+            // Textos Superiores (Esquerda)
             if (status == "CRASH")
             {
-                canvas.DrawText("💥 RESULTADO: CRASH!", 30, 80, new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = tfBold, IsAntialias = true });
-                canvas.DrawText("📈 Multiplicador Final:", 30, 115, new SKPaint { Color = SKColors.White, TextSize = 20, Typeface = tfBold, IsAntialias = true });
-                canvas.DrawText($"{multiplicador:F2}x", 100, 170, new SKPaint { Color = SKColors.White, TextSize = 50, Typeface = tfBold, IsAntialias = true });
+                canvas.DrawText("💥 RESULTADO: CRASH!", 40, 60, new SKPaint { Color = SKColors.White, TextSize = 28, Typeface = tfBold, IsAntialias = true });
             }
-            else // JOGANDO ou WIN
+            else if (status == "WIN")
             {
-                if (status == "WIN")
-                {
-                    canvas.DrawText("✨ VITÓRIA!", 120, 100, new SKPaint { Color = new SKColor(255, 255, 255, 180), TextSize = 24, Typeface = tfBold, IsAntialias = true });
-                }
-
-                // Multiplicador gigante centralizado/direita
-                canvas.DrawText($"{multiplicador:F2}x", w - 70, 140, new SKPaint { Color = SKColors.White, TextSize = 90, Typeface = tfBold, TextAlign = SKTextAlign.Right, IsAntialias = true });
+                canvas.DrawText("✨ VITÓRIA!", 40, 60, new SKPaint { Color = new SKColor(61, 187, 126), TextSize = 28, Typeface = tfBold, IsAntialias = true });
             }
 
-            // --- GRÁFICO (Efeito de subida longo) ---
-            float startX = 30; float startY = h - 60;
-            float endX = status == "CRASH" ? w - 200 : w - 250; 
+            // Multiplicador (Centro)
+            var paintMult = new SKPaint { Color = SKColors.White, TextSize = 120, Typeface = tfBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
             
-            // Faz o gráfico subir mais quanto maior o multiplicador
-            float progression = (float)Math.Min((multiplicador - 1.0) / 2.0, 1.0); 
-            float endY = startY - (80 * progression);
+            // Efeito de brilho no multiplicador
+            if (status == "WIN") paintMult.MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Solid, 10);
+            canvas.DrawText($"{multiplicador:F2}x", w / 2, h / 2, paintMult);
+            paintMult.MaskFilter = null; // Tira o blur pra desenhar nítido por cima
+            canvas.DrawText($"{multiplicador:F2}x", w / 2, h / 2, paintMult);
 
-            using (var paintLinha = new SKPaint { Color = corLinha, StrokeWidth = 5, Style = SKPaintStyle.Stroke, IsAntialias = true })
+            // --- GRÁFICO (Curva Suave) ---
+            float startX = 60; float startY = h - 80;
+            float endX = status == "CRASH" ? w - 250 : w - 100; // Para onde a linha vai
+            
+            // Curva baseada no multiplicador
+            float progression = (float)Math.Min((multiplicador - 1.0) / 3.0, 1.0); 
+            float endY = startY - (150 * progression);
+
+            // Desenhar a névoa abaixo da linha (Gradiente)
+            var pathCurva = new SKPath();
+            pathCurva.MoveTo(startX, startY);
+            // Curva Bézier para dar aquele efeito "swoosh"
+            pathCurva.QuadTo(startX + (endX - startX) / 2, startY, endX, endY);
+
+            var pathFill = new SKPath(pathCurva);
+            pathFill.LineTo(endX, h - 80);
+            pathFill.LineTo(startX, h - 80);
+            pathFill.Close();
+
+            SKColor corNevoa = status == "WIN" ? corBrilhoVitoria : (status == "CRASH" ? corBrilhoCrash : corBrilhoJogo);
+            var shaderFill = SKShader.CreateLinearGradient(new SKPoint(0, endY), new SKPoint(0, h - 80), new[] { corNevoa, SKColors.Transparent }, null, SKShaderTileMode.Clamp);
+            
+            using (var paintFill = new SKPaint { Shader = shaderFill, IsAntialias = true })
             {
-                // Se for Crash, a linha fica "quebrada" pra baixo idêntico à foto
+                canvas.DrawPath(pathFill, paintFill);
+            }
+
+            // Desenhar a linha principal
+            using (var paintLinha = new SKPaint { Color = corLinha, StrokeWidth = 6, Style = SKPaintStyle.Stroke, IsAntialias = true })
+            {
                 if (status == "CRASH")
                 {
-                    var path = new SKPath();
-                    path.MoveTo(startX, startY);
-                    path.LineTo(startX + 100, startY - 10);
-                    path.LineTo(startX + 180, startY - 15);
-                    path.LineTo(startX + 250, startY - 30);
-                    path.LineTo(endX, endY);
-                    canvas.DrawPath(path, paintLinha);
+                    canvas.DrawPath(pathCurva, paintLinha);
                 }
                 else
                 {
-                    canvas.DrawLine(startX, startY, endX, endY, paintLinha);
-                    // Bolinha na ponta do gráfico
-                    canvas.DrawCircle(endX, endY, 6, new SKPaint { Color = SKColors.White, IsAntialias = true });
+                    canvas.DrawPath(pathCurva, paintLinha);
                 }
             }
 
-            // --- DESENHAR O AVIÃO ROXO ---
-            if (status == "CRASH")
+            // --- DESENHAR O AVIÃO ---
+            if (status != "CRASH") // Esconde no crash pra ficar igual o design
             {
                 var imgPathAviao = Path.Combine(AppContext.BaseDirectory, "Assets", "image_12.png");
                 if (File.Exists(imgPathAviao))
@@ -254,36 +263,46 @@ namespace Botzinho.Cassino
                     using (var streamAviao = File.OpenRead(imgPathAviao))
                     using (var originalBitmap = SKBitmap.Decode(streamAviao))
                     {
-                        using (var surfaceAviaoRoxo = SKSurface.Create(new SKImageInfo(originalBitmap.Width, originalBitmap.Height)))
+                        using (var aviaoImage = SKImage.FromBitmap(originalBitmap)) 
                         {
-                            var canvasAviaoRoxo = surfaceAviaoRoxo.Canvas;
-                            canvasAviaoRoxo.Clear(new SKColor(160, 80, 220)); // Roxo da Zoe
+                            // Calcular o ângulo da tangente no fim da curva Bézier (Aproximado)
+                            double dy = endY - startY;
+                            double dx = endX - startX;
+                            double anguloRad = Math.Atan2(dy, dx * 0.5); // *0.5 suaviza a rotação na curva
+                            float anguloGraus = (float)(anguloRad * (180 / Math.PI)); 
 
-                            using (var paintMask = new SKPaint { BlendMode = SKBlendMode.DstIn, IsAntialias = true })
-                            {
-                                canvasAviaoRoxo.DrawBitmap(originalBitmap, 0, 0, paintMask);
-                            }
+                            float aviaoX = endX + 10;
+                            float aviaoY = endY - 10;
+                            float esc = 0.4f; 
 
-                            using (var aviaoRoxoImage = surfaceAviaoRoxo.Snapshot())
-                            {
-                                float aviaoX = endX + 40; // Um pouco a frente do fim da linha
-                                float aviaoY = endY + 30; // Caindo
-                                float esc = 0.25f; 
+                            canvas.Save();
+                            canvas.Translate(aviaoX, aviaoY);
+                            canvas.RotateDegrees(anguloGraus); 
+                            canvas.Scale(esc);
+                            canvas.Translate(-aviaoImage.Width / 2f, -aviaoImage.Height / 2f);
 
-                                canvas.Save();
-                                canvas.Translate(aviaoX, aviaoY);
-                                canvas.RotateDegrees(35); // Apontando pra baixo
-                                canvas.Scale(esc);
-                                canvas.Translate(-aviaoRoxoImage.Width / 2f, -aviaoRoxoImage.Height / 2f);
+                            canvas.DrawImage(aviaoImage, 0, 0);
 
-                                canvas.DrawImage(aviaoRoxoImage, 0, 0);
-
-                                canvas.Restore();
-                            }
+                            canvas.Restore();
                         }
                     }
                 }
+                else
+                {
+                     // Fallback caso não tenha a imagem do avião
+                     canvas.DrawCircle(endX, endY, 10, new SKPaint { Color = SKColors.White, IsAntialias = true });
+                }
             }
+
+            // Eixo X Base e Marcadores
+            var paintBase = new SKPaint { Color = new SKColor(255, 255, 255, 150), StrokeWidth = 2, Style = SKPaintStyle.Stroke, IsAntialias = true };
+            paintBase.PathEffect = SKPathEffect.CreateDash(new float[] { 5, 5 }, 0);
+            canvas.DrawLine(startX, h - 80, w - 60, h - 80, paintBase);
+
+            var paintMarcador = new SKPaint { Color = new SKColor(255, 255, 255, 180), TextSize = 18, Typeface = tfNormal, TextAlign = SKTextAlign.Center, IsAntialias = true };
+            canvas.DrawText("1.0x", startX + 50, h - 50, paintMarcador);
+            canvas.DrawText("2.0x", startX + 250, h - 50, paintMarcador);
+            canvas.DrawText("3.0x", startX + 450, h - 50, paintMarcador);
 
             var pathImg = Path.Combine(Path.GetTempPath(), $"crash_{Guid.NewGuid()}.png");
             using (var img = surface.Snapshot()) using (var d = img.Encode(SKEncodedImageFormat.Png, 100))
@@ -336,7 +355,6 @@ namespace Botzinho.Cassino
                 return;
             }
             _cooldowns[user.Id] = DateTime.UtcNow;
-            // ---------------------------
 
             // --- ZROLETA ---
             if (content.StartsWith("zroleta"))
@@ -359,12 +377,12 @@ namespace Botzinho.Cassino
                     await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
                     return;
                 }
-                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento! Termine ele antes de começar outro.!"); return; }
+                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento!"); return; }
 
                 RoletaAtiva[user.Id] = valorAposta;
                 EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
 
-                var embed = new EmbedBuilder()
+                var roletaEmbed = new EmbedBuilder()
                     .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithDescription($@"<a:teste:1490570407307378712> **Olá, {user.Mention}! Bem-vindo(a) à Roleta da {_client.CurrentUser.Username}.**
@@ -386,7 +404,7 @@ namespace Botzinho.Cassino
                     .WithButton("Vermelho (1.5x)", $"roleta_vermelho_{user.Id}", ButtonStyle.Danger, new Emoji("🔴"))
                     .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:erro:1493078898462949526>"));
 
-                await msg.Channel.SendMessageAsync(embed: embed, components: components.Build());
+                await msg.Channel.SendMessageAsync(embed: roletaEmbed, components: components.Build());
             }
 
             // --- ZCF / ZCOINFLIP ---
@@ -412,7 +430,6 @@ namespace Botzinho.Cassino
                 CoinflipAtivo[user.Id] = val;
                 EconomyHelper.RemoverBanco(guildId, user.Id, val);
 
-                // Embed com o design idêntico ao seu Print
                 var eb = new EmbedBuilder()
                     .WithAuthor("Cara ou Coroa", IMG_MOEDA)
                     .WithDescription($@"• **Olá,** {user.Mention}**!** Bem-vindo(a) ao jogo **Cara** ou **Coroa**.
@@ -425,9 +442,8 @@ Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da
 <:erro:1493078898462949526> | **Desistir da aposta:**
 Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Color(160, 80, 220)); // Cor roxa da borda
+                    .WithColor(new Color(160, 80, 220)); 
 
-                // Botões cinzas com os emojis corretos
                 var cb = new ComponentBuilder()
                     .WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂"))
                     .WithButton("Coroa", $"cf_coroa_{user.Id}", ButtonStyle.Secondary, new Emoji("👑"))
@@ -459,7 +475,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 BlackjackAtivo[user.Id] = (playerHand, dealerHand, deck, val);
 
-                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(140, 82, 198)); // Cor Roxa Base
+                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(140, 82, 198)); 
 
                 var eb = new EmbedBuilder()
                     .WithAuthor($"Blackjack | {user.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
@@ -507,13 +523,16 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                 string imgPath = await CasinoImageHelper.GerarImagemCrash(1.0, "JOGANDO");
 
                 var eb = new EmbedBuilder()
-                    .WithAuthor($"Crash | {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithAuthor($"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
   ◦ <:dinheiro:1493360319928733838> **Possível ganho:** `{EconomyHelper.FormatarSaldo(aposta)}`")
-                    .WithColor(new Color(27, 28, 33)) // Cor Escura Idêntica ao fundo
+                    .WithColor(new Color(27, 28, 33)) // Cor Escura
+                    .WithFooter($"Rodapé | Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}");
 
-                var cb = new ComponentBuilder().WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"));
+                var cb = new ComponentBuilder()
+                    .WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
+                    .WithButton("1.00x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true); // Botão cinza fixo ao lado
 
                 Discord.Rest.RestUserMessage jogoMsg;
                 using (var stream = File.OpenRead(imgPath))
@@ -549,8 +568,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         string newImg = await CasinoImageHelper.GerarImagemCrash(currentMult, newStatus);
 
                         var newEb = new EmbedBuilder()
-                            .WithAuthor($"Crash | {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                            .WithAuthor($"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                             .WithColor(bateuCrash ? Color.Red : new Color(27, 28, 33))
+                            .WithFooter($"Rodapé | Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                             .WithImageUrl($"attachment://{Path.GetFileName(newImg)}");
 
                         using (var stream = File.OpenRead(newImg))
@@ -562,12 +582,16 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 CrashGamesAtivos.Remove(user.Id);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
                                 
-                                newEb.WithDescription($@"💥 **CRASH!**
+                                newEb.WithDescription($@"💥 **RESULTADO: CRASH!**
+📈 Multiplicador Final: **{currentMult:F2}x**
+
 • <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
                                 
-                                var btnPerdeu = new ComponentBuilder().WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: new Emoji("💥"));
+                                var cbFim = new ComponentBuilder()
+                                    .WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: new Emoji("💥"))
+                                    .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
-                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = btnPerdeu.Build(); }); } catch { }
+                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = cbFim.Build(); }); } catch { }
                             }
                             else
                             {
@@ -575,9 +599,11 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
   ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
                                 
-                                var btnAtivo = new ComponentBuilder().WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"));
+                                var cbPlay = new ComponentBuilder()
+                                    .WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
+                                    .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true); 
 
-                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = btnAtivo.Build(); }); } catch { }
+                                try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = cbPlay.Build(); }); } catch { }
                             }
                         }
                         if (File.Exists(newImg)) File.Delete(newImg);
@@ -823,20 +849,21 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
 
                         var ebWin = new EmbedBuilder()
-                            .WithAuthor($"Crash | {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
-                            .WithDescription($@"✅ **Retirada bem sucedida!**
-
-• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(state.Aposta)}`
+                            .WithAuthor($"✅ Retirada bem sucedida!", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
+                            .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(state.Aposta)}`
   ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(lucroTotal)}`")
                             .WithColor(new Color(61, 187, 126)) // Verde da print
+                            .WithFooter($"Rodapé | Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
                             .WithImageUrl($"attachment://{Path.GetFileName(imgWin)}");
 
-                        var btnWin = new ComponentBuilder().WithButton($"Ganhou {EconomyHelper.FormatarSaldo(lucroTotal)}", "btn_win", ButtonStyle.Success, disabled: true, emote: new Emoji("✅"));
+                        var cbFim = new ComponentBuilder()
+                            .WithButton($"Ganhou {EconomyHelper.FormatarSaldo(lucroTotal)}", "btn_win", ButtonStyle.Success, disabled: true, emote: new Emoji("✅"))
+                            .WithButton($"{state.MultiplicadorAtual:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
                         using (var stream = File.OpenRead(imgWin))
                         {
                             var attachment = new FileAttachment(stream, Path.GetFileName(imgWin));
-                            await component.UpdateAsync(x => { x.Embed = ebWin.Build(); x.Attachments = new[] { attachment }; x.Components = btnWin.Build(); });
+                            await component.UpdateAsync(x => { x.Embed = ebWin.Build(); x.Attachments = new[] { attachment }; x.Components = cbFim.Build(); });
                         }
                         if (File.Exists(imgWin)) File.Delete(imgWin);
 
