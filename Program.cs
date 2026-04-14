@@ -70,7 +70,7 @@ client.Ready += async () =>
 
                         string nomeTop1 = usuario != null ? usuario.Username : "Desconhecido";
 
-                        statusTop1 = $"👑 Top 1: {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)} coins";
+                        statusTop1 = $"👑 O Magnata Rico - {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)} cpoints";
                     }
                 }
             }
