@@ -13,9 +13,9 @@ namespace Botzinho.Cassino
     // --- CLASSES DO BLACKJACK VISUAL ---
     public class Card
     {
-        public string Suit { get; set; } 
-        public string Value { get; set; } 
-        public int Score { get; set; } 
+        public string Suit { get; set; }
+        public string Value { get; set; }
+        public int Score { get; set; }
 
         public string ImagePath => $"{Value.ToLower()}_{GetFullSuitName()}.png";
 
@@ -133,7 +133,7 @@ namespace Botzinho.Cassino
             if (isFaceDown)
             {
                 var innerRect = new SKRect(x + 6, y + 6, x + 94, y + 134);
-                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true }); 
+                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true });
                 var paintLogo = new SKPaint { Color = SKColors.White, TextSize = 40, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
                 canvas.DrawText("Z", x + 50, y + 85, paintLogo);
                 return;
@@ -248,7 +248,7 @@ namespace Botzinho.Cassino
         private static readonly Dictionary<ulong, long> RoletaAtiva = new();
         private static readonly Dictionary<ulong, (List<Card> Player, List<Card> Dealer, List<Card> Deck, long Bet)> BlackjackAtivo = new();
         private static readonly Dictionary<ulong, (double MultiplicadorAtual, bool Retirou, long Aposta)> CrashGamesAtivos = new();
-        
+
         // Guarda as apostas pendentes. Key = ID do Desafiante, Value = (ID do Alvo, Valor)
         private static readonly Dictionary<ulong, (ulong Alvo, long Valor)> ApostasAtivas = new();
 
@@ -311,11 +311,13 @@ namespace Botzinho.Cassino
                     .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithDescription($@"<a:teste:1490570407307378712> **Olá, {user.Mention}! Bem-vindo(a) à Roleta da {_client.CurrentUser.Username}.**
 
-<a:7moneyz:1493015410637930508> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
+<:moedazoe:1493359715420340364>| **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
 
 <:seta:1493089125979656385> | **Como funciona:** Escolha uma cor. Se o sorteio parar nela, você ganha o prêmio!
-⚪ **Branco:** 6.0x (Difícil)
+⚪ **Branco:** 6.0x
+
 ⚫ **Preto:** 1.5x
+
 🔴 **Vermelho:** 1.5x
 
 <:erro:1493078898462949526> | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
@@ -358,7 +360,7 @@ namespace Botzinho.Cassino
                     .WithAuthor("Cara ou Coroa", IMG_MOEDA)
                     .WithDescription($@"• **Olá,** {user.Mention}**!** Bem-vindo(a) ao jogo **Cara** ou **Coroa**.
 
-<:6821purplecash:1493263367488536606> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
+<:moedazoe:1493359715420340364> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(val)}`
 
 <:seta:1493089125979656385> | **Como funciona:**
 Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da aposta; se errar, você perde o valor apostado.
@@ -366,7 +368,7 @@ Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da
 <:erro:1493078898462949526> | **Desistir da aposta:**
 Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Color(160, 80, 220)); 
+                    .WithColor(new Color(160, 80, 220));
 
                 var cb = new ComponentBuilder()
                     .WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂"))
@@ -399,7 +401,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 BlackjackAtivo[user.Id] = (playerHand, dealerHand, deck, val);
 
-                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(140, 82, 198)); 
+                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(140, 82, 198));
 
                 var eb = new EmbedBuilder()
                     .WithAuthor($"Blackjack | {user.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
@@ -456,7 +458,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 var cb = new ComponentBuilder()
                     .WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
-                    .WithButton("1.00x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true); 
+                    .WithButton("1.00x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
                 Discord.Rest.RestUserMessage jogoMsg;
                 using (var stream = File.OpenRead(imgPath))
@@ -507,12 +509,12 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                             {
                                 CrashGamesAtivos.Remove(user.Id);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
-                                
+
                                 newEb.WithDescription($@"💥 **RESULTADO: CRASH!**
 📈 Multiplicador Final: **{currentMult:F2}x**
 
 • <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
-                                
+
                                 var cbFim = new ComponentBuilder()
                                     .WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: new Emoji("💥"))
                                     .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
@@ -524,10 +526,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 long ganhoAtual = (long)(aposta * currentMult);
                                 newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
   ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
-                                
+
                                 var cbPlay = new ComponentBuilder()
                                     .WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
-                                    .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true); 
+                                    .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
                                 try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = cbPlay.Build(); }); } catch { }
                             }
@@ -614,7 +616,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
         private async Task HandleButtons(SocketMessageComponent component)
         {
-            try 
+            try
             {
                 // CORREÇÃO: Avisa ao Discord que recebemos o clique para evitar "Interação falhou" e trava infinita
                 await component.DeferAsync();
@@ -665,7 +667,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     if (ganhou)
                     {
                         EconomyHelper.AdicionarBanco(guildId, userId, premio);
-                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, premio, "ROLETA_GANHO"); 
+                        EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, premio, "ROLETA_GANHO");
                         embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
@@ -673,7 +675,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     }
                     else
                     {
-                        EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, valorAposta, "ROLETA_PERDA"); 
+                        EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, valorAposta, "ROLETA_PERDA");
                         embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
@@ -688,7 +690,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                 {
                     if (component.User.Id != userId) return;
                     if (!CoinflipAtivo.TryGetValue(userId, out long val)) return;
-                    
+
                     if (escolha == "cancel") { CoinflipAtivo.Remove(userId); EconomyHelper.AdicionarBanco(guildId, userId, val); await component.ModifyOriginalResponseAsync(x => { x.Content = $"✅ {component.User.Mention} desistiu."; x.Embed = null; x.Components = null; }); return; }
 
                     CoinflipAtivo.Remove(userId);
@@ -840,11 +842,11 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         // 1. MARCA COMO RETIRADO IMEDIATAMENTE (Faz o loop Task.Run dar break)
                         CrashGamesAtivos[userId] = (state.MultiplicadorAtual, true, state.Aposta);
                         long lucroTotal = (long)(state.Aposta * state.MultiplicadorAtual);
-                        
+
                         EconomyHelper.AdicionarBanco(guildId, userId, lucroTotal);
-                        
+
                         // 2. Remove da memória pra garantir que o loop pare definitivamente
-                        CrashGamesAtivos.Remove(userId); 
+                        CrashGamesAtivos.Remove(userId);
 
                         string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
                         var ebWin = new EmbedBuilder()
@@ -860,10 +862,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         using (var stream = File.OpenRead(imgWin))
                         {
                             var attachment = new FileAttachment(stream, "win.png");
-                            await component.ModifyOriginalResponseAsync(x => { 
-                                x.Embed = ebWin.Build(); 
-                                x.Attachments = new[] { attachment }; 
-                                x.Components = cbFim.Build(); 
+                            await component.ModifyOriginalResponseAsync(x => {
+                                x.Embed = ebWin.Build();
+                                x.Attachments = new[] { attachment };
+                                x.Components = cbFim.Build();
                             });
                         }
                         if (File.Exists(imgWin)) File.Delete(imgWin);
