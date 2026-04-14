@@ -562,9 +562,6 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
         private async Task HandleButtons(SocketMessageComponent component)
         {
-            // CORREÇÃO: Avisa ao Discord que recebemos o clique para evitar "Interação falhou"
-            await component.DeferAsync();
-
             var customId = component.Data.CustomId;
             var partes = customId.Split('_');
             if (partes.Length < 3) return;
@@ -587,9 +584,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     long lucroTotal = (long)(state.Aposta * state.MultiplicadorAtual);
                     
                     EconomyHelper.AdicionarBanco(guildId, userId, lucroTotal);
-                    
-                    // 2. Remove da memória pra garantir que o loop pare definitivamente
-                    CrashGamesAtivos.Remove(userId); 
+                    CrashGamesAtivos.Remove(userId); // 2. Remove da memória pra garantir
 
                     string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
                     var ebWin = new EmbedBuilder()
@@ -605,17 +600,12 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     using (var stream = File.OpenRead(imgWin))
                     {
                         var attachment = new FileAttachment(stream, "win.png");
-                        // Usamos ModifyOriginalResponseAsync porque usamos Defer no início
-                        await component.ModifyOriginalResponseAsync(x => { 
-                            x.Embed = ebWin.Build(); 
-                            x.Attachments = new[] { attachment }; 
-                            x.Components = cbFim.Build(); 
-                        });
+                        await component.UpdateAsync(x => { x.Embed = ebWin.Build(); x.Attachments = new[] { attachment }; x.Components = cbFim.Build(); });
                     }
                     if (File.Exists(imgWin)) File.Delete(imgWin);
                 }
             }
-            // (Outras lógicas de botão se necessário...)
+            // (Lógica de Roleta, CF e BJ mantidas sem alteração...)
         }
     }
 }
