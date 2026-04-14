@@ -562,9 +562,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
         private async Task HandleButtons(SocketMessageComponent component)
         {
-            // --- FIX INTERAÇÃO FALHOU ---
-            // Aviso ao Discord que recebemos o clique e estamos processando (ganhamos mais tempo)
-            await component.DeferLoadingAsync();
+            // CORREÇÃO: Avisa ao Discord que recebemos o clique para evitar "Interação falhou"
+            await component.DeferAsync();
 
             var customId = component.Data.CustomId;
             var partes = customId.Split('_');
@@ -583,13 +582,13 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
             {
                 if (CrashGamesAtivos.TryGetValue(userId, out var state) && !state.Retirou)
                 {
-                    // MARCA COMO RETIRADO IMEDIATAMENTE (O Loop Task.Run vai perceber e parar no próximo tick)
+                    // 1. MARCA COMO RETIRADO IMEDIATAMENTE (Faz o loop Task.Run dar break)
                     CrashGamesAtivos[userId] = (state.MultiplicadorAtual, true, state.Aposta);
                     long lucroTotal = (long)(state.Aposta * state.MultiplicadorAtual);
                     
                     EconomyHelper.AdicionarBanco(guildId, userId, lucroTotal);
                     
-                    // Remolvemos da memória para o loop parar definitivamente
+                    // 2. Remove da memória pra garantir que o loop pare definitivamente
                     CrashGamesAtivos.Remove(userId); 
 
                     string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
@@ -606,7 +605,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     using (var stream = File.OpenRead(imgWin))
                     {
                         var attachment = new FileAttachment(stream, "win.png");
-                        // Usamos FollowupAsync ou ModifyOriginalResponseAsync porque usamos Defer no início
+                        // Usamos ModifyOriginalResponseAsync porque usamos Defer no início
                         await component.ModifyOriginalResponseAsync(x => { 
                             x.Embed = ebWin.Build(); 
                             x.Attachments = new[] { attachment }; 
@@ -614,10 +613,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         });
                     }
                     if (File.Exists(imgWin)) File.Delete(imgWin);
-                    return; // Finaliza aqui
                 }
             }
-            // (Lógica de Roleta, CF e BJ mantidas sem alteração...)
+            // (Outras lógicas de botão se necessário...)
         }
     }
 }
