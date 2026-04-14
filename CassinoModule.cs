@@ -209,7 +209,7 @@ namespace Botzinho.Cassino
             canvas.DrawText($"{multiplicador:F2}x", w - 40, 160, new SKPaint
             {
                 Color = SKColors.White,
-                TextSize = 90,
+                TextSize = 70,
                 Typeface = fontBold,
                 TextAlign = SKTextAlign.Right,
                 IsAntialias = true
