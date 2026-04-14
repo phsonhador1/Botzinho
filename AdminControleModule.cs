@@ -55,7 +55,7 @@ namespace Botzinho.Admin
                         {
                             var random = new Random();
                             var ganhador = membros[random.Next(membros.Count)];
-                            long valorSorteado = random.Next(50000, 100001);
+                            long valorSorteado = new Random().Next(10000, 23000);
 
                             EconomyHelper.AdicionarBanco(guildPublica.Id, ganhador.Id, valorSorteado);
                             EconomyHelper.RegistrarTransacao(guildPublica.Id, _client.CurrentUser.Id, ganhador.Id, valorSorteado, "SORTEIO_AUTO");
