@@ -15,6 +15,9 @@ namespace Botzinho.Core
         public static long UnixProximoSorteio = 0;
         public static long UnixProximoRank = 0;
 
+        // Guarda apenas o último ganhador para evitar repetição seguida
+        private static ulong _ultimoGanhador = 0;
+
         // Sua Whitelist
         public static readonly List<ulong> IdsPermitidos = new()
         {
@@ -123,10 +126,19 @@ namespace Botzinho.Core
                         var listaUsuarios = await channel.Guild.GetUsersAsync().FlattenAsync();
                         var membros = listaUsuarios.Where(u => !u.IsBot && IdsPermitidos.Contains(u.Id)).ToList();
 
+                        // --- EVITA REPETIÇÃO DO ÚLTIMO GANHADOR ---
+                        if (membros.Count > 1 && _ultimoGanhador != 0)
+                        {
+                            membros.RemoveAll(u => u.Id == _ultimoGanhador);
+                        }
+
                         if (membros.Count > 0)
                         {
                             var random = new Random();
                             var ganhador = membros[random.Next(membros.Count)];
+
+                            // Atualiza a variável para o bot lembrar quem foi o sortudo dessa vez
+                            _ultimoGanhador = ganhador.Id;
 
                             // ALTERADO: O prêmio agora é entre 10k (10000) e 25k (25000)
                             long valorSorteado = random.Next(10000, 23000);
