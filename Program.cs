@@ -53,7 +53,7 @@ client.Ready += async () =>
         while (true)
         {
             // 1. Pega o Top 1 da Economia antes de montar os status
-            string statusTop1 = "👑 Top 1: Ninguém"; // Valor padrão caso o banco esteja vazio
+            string statusTop1 = "👑 Top 1: Ninguém";
             try
             {
                 var guildId = client.Guilds.FirstOrDefault()?.Id ?? 0;
@@ -64,10 +64,12 @@ client.Ready += async () =>
                     if (top10 != null && top10.Any())
                     {
                         var top1 = top10.First();
-                        var usuario = client.GetUser(top1.UserId);
+
+                        // CORREÇÃO: Tenta pegar da memória, se não achar, FORÇA a busca na API do Discord
+                        var usuario = client.GetUser(top1.UserId) as IUser ?? await client.Rest.GetUserAsync(top1.UserId);
+
                         string nomeTop1 = usuario != null ? usuario.Username : "Desconhecido";
 
-                        // CORREÇÃO AQUI: Trocamos top1.Banco por top1.Total
                         statusTop1 = $"👑 Top 1: {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)} coins";
                     }
                 }
