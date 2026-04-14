@@ -562,6 +562,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
         private async Task HandleButtons(SocketMessageComponent component)
         {
+            // --- FIX INTERAÇÃO FALHOU ---
+            // Aviso ao Discord que recebemos o clique e estamos processando (ganhamos mais tempo)
+            await component.DeferLoadingAsync();
+
             var customId = component.Data.CustomId;
             var partes = customId.Split('_');
             if (partes.Length < 3) return;
@@ -579,12 +583,14 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
             {
                 if (CrashGamesAtivos.TryGetValue(userId, out var state) && !state.Retirou)
                 {
-                    // 1. MARCA COMO RETIRADO IMEDIATAMENTE (Faz o loop Task.Run dar break)
+                    // MARCA COMO RETIRADO IMEDIATAMENTE (O Loop Task.Run vai perceber e parar no próximo tick)
                     CrashGamesAtivos[userId] = (state.MultiplicadorAtual, true, state.Aposta);
                     long lucroTotal = (long)(state.Aposta * state.MultiplicadorAtual);
                     
                     EconomyHelper.AdicionarBanco(guildId, userId, lucroTotal);
-                    CrashGamesAtivos.Remove(userId); // 2. Remove da memória pra garantir
+                    
+                    // Remolvemos da memória para o loop parar definitivamente
+                    CrashGamesAtivos.Remove(userId); 
 
                     string imgWin = await CasinoImageHelper.GerarImagemCrash(state.MultiplicadorAtual, "WIN");
                     var ebWin = new EmbedBuilder()
@@ -600,9 +606,15 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     using (var stream = File.OpenRead(imgWin))
                     {
                         var attachment = new FileAttachment(stream, "win.png");
-                        await component.UpdateAsync(x => { x.Embed = ebWin.Build(); x.Attachments = new[] { attachment }; x.Components = cbFim.Build(); });
+                        // Usamos FollowupAsync ou ModifyOriginalResponseAsync porque usamos Defer no início
+                        await component.ModifyOriginalResponseAsync(x => { 
+                            x.Embed = ebWin.Build(); 
+                            x.Attachments = new[] { attachment }; 
+                            x.Components = cbFim.Build(); 
+                        });
                     }
                     if (File.Exists(imgWin)) File.Delete(imgWin);
+                    return; // Finaliza aqui
                 }
             }
             // (Lógica de Roleta, CF e BJ mantidas sem alteração...)
