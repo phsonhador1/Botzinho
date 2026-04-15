@@ -496,10 +496,10 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         string newImg = await CasinoImageHelper.GerarImagemCrash(currentMult, newStatus);
 
                         var newEb = new EmbedBuilder()
-                            .WithAuthor(bateuCrash ? "💥 CRASH!" : "✅ Retirada bem sucedida!", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                            .WithColor(bateuCrash ? Color.Red : new Color(61, 187, 126))
-                            .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                            .WithImageUrl($"attachment://upd.png");
+                        .WithAuthor(bateuCrash ? "💥 CRASH!" : $"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                        .WithColor(bateuCrash ? Color.Red : new Color(27, 28, 33)) // Mantém a cor escura enquanto voa
+                        .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                        .WithImageUrl($"attachment://upd.png");
 
                         using (var stream = File.OpenRead(newImg))
                         {
@@ -511,6 +511,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
 
                                 newEb.WithDescription($@"<:perdeu:1493361130075328754> **RESULTADO - CRASHOU PORRA!**
+
 ◦ <:seta:1493089125979656385> Multiplicador Final: **{currentMult:F2}x**
 
 • <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
@@ -945,7 +946,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                         var eb = new EmbedBuilder()
                             .WithAuthor("⚔️ Duelo Finalizado!")
-                            .WithDescription($@"<a:ganhador:1493088070923452599> O sangue foi derramado e temos um campeão!
+                            .WithDescription($@"<a:ganhador:1493088070923452599> !
 
 <a:trofeu:1493063952060387479> **Vencedor:** <@{vencedorId}>
 💰 **Levou pra casa:** `{EconomyHelper.FormatarSaldo(premioTotal)}` coins
