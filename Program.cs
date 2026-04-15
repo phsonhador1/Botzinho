@@ -70,7 +70,7 @@ client.Ready += async () =>
 
                         string nomeTop1 = usuario != null ? usuario.Username : "Desconhecido";
 
-                        statusTop1 = $"👑 O Magnata Rico - {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)} cpoints";
+                        statusTop1 = $"👑 O Magnata Rico - {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)}";
                     }
                 }
             }
@@ -84,7 +84,7 @@ client.Ready += async () =>
             {
                 $"💜 Atualmente em {client.Guilds.Count} servidores",
                 "💜 Online | Pronta Para Ajudar!",
-                "✨ zhelp para descobrir todos os meus comandos",
+                "✨ use zhelp para descobrir os comandos",
                 statusTop1 // <--- Adicionado aqui!
             };
 
@@ -167,6 +167,6 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         });
 
         await channel.DeleteAsync();
-        await newChannel.SendMessageAsync($"");
+        await newChannel.SendMessageAsync($"canal limpo por {Context.User.Username}");
     }
 }
