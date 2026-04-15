@@ -28,7 +28,7 @@ namespace Botzinho.Core
         };
 
         // ⚠️ CANAL PÚBLICO DO SERVIDOR (Para o Sorteio e Rank)
-        public const ulong ID_CANAL_RANK = 1487905632261505024;
+        public const ulong ID_CANAL_RANK = 148790563226150;
 
         // ⚠️ CANAL PRIVADO (SEU SERVIDOR DE LOGS)
         public const ulong ID_CANAL_LOGS = 1492995092166869002;
