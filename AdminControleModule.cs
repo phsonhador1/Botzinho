@@ -1,5 +1,4 @@
 using Discord;
-using Discord.Interactions; // Adicionado para o Slash Command funcionar
 using Discord.WebSocket;
 using Botzinho.Economy;
 using Botzinho.Core;
@@ -90,50 +89,47 @@ namespace Botzinho.Admin
 
                         await msg.Channel.SendMessageAsync(embed: eb.Build());
                     }
+
+                    // --- COMANDO ZDD (MENSAGEM GLOBAL) ---
+                    else if (content.StartsWith("zdd "))
+                    {
+                        // Pega a mensagem original usando msg.Content para não perder letras maiúsculas
+                        string[] partes = msg.Content.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+
+                        if (partes.Length < 3)
+                        {
+                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zdd [id_do_canal] [sua mensagem aqui]`");
+                            return;
+                        }
+
+                        string canalIdStr = partes[1];
+                        string textoMensagem = partes[2];
+
+                        if (ulong.TryParse(canalIdStr, out ulong canalId))
+                        {
+                            var channelDestino = _client.GetChannel(canalId) as ITextChannel;
+                            
+                            if (channelDestino != null)
+                            {
+                                await channelDestino.SendMessageAsync(textoMensagem);
+                                await msg.Channel.SendMessageAsync($"✅ Mensagem enviada com sucesso no canal **{channelDestino.Name}**!");
+                            }
+                            else
+                            {
+                                await msg.Channel.SendMessageAsync("❌ Erro: Canal não encontrado. O bot não tem acesso ou o ID está errado.");
+                            }
+                        }
+                        else
+                        {
+                            await msg.Channel.SendMessageAsync("❌ Erro: O ID do canal é inválido. Certifique-se de colar apenas os números do ID.");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[Erro Admin Module]: {ex.Message}");
                 }
             }); return Task.CompletedTask;
-        }
-    }
-
-    // --- NOVO SISTEMA ADICIONADO AQUI ---
-    public class OwnerModule : InteractionModuleBase<SocketInteractionContext>
-    {
-        [SlashCommand("zavisar_global", "Envia uma mensagem em um canal (Apenas Dono)")]
-        public async Task AvisarGlobal(
-            [Summary("canal_id", "ID do canal de destino")] string canalId,
-            [Summary("mensagem", "A mensagem que a Zoe vai enviar")] string mensagem)
-        {
-            // Bloqueio de Segurança: Apenas o seu ID pode usar
-            if (Context.User.Id != 1472642376970404002)
-            {
-                await RespondAsync("❌ Você não tem permissão para usar comandos de desenvolvedor.", ephemeral: true);
-                return;
-            }
-
-            // Tenta converter o texto para um ID de canal válido
-            if (ulong.TryParse(canalId, out ulong channelIdFinal))
-            {
-                // Pega o canal em qualquer servidor que a Zoe esteja
-                var channel = Context.Client.GetChannel(channelIdFinal) as ITextChannel;
-
-                if (channel != null)
-                {
-                    await channel.SendMessageAsync(mensagem);
-                    await RespondAsync($"✅ Mensagem enviada com sucesso no canal **{channel.Name}**!", ephemeral: true);
-                }
-                else
-                {
-                    await RespondAsync("❌ Canal não encontrado. Verifique se o ID está correto e se a Zoe está no servidor.", ephemeral: true);
-                }
-            }
-            else
-            {
-                await RespondAsync("❌ O ID do canal é inválido. Digite apenas números.", ephemeral: true);
-            }
         }
     }
 }
