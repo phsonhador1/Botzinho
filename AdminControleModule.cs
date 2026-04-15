@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Interactions; // Adicionado para o Slash Command funcionar
 using Discord.WebSocket;
 using Botzinho.Economy;
 using Botzinho.Core;
@@ -13,7 +14,7 @@ namespace Botzinho.Admin
         private readonly DiscordSocketClient _client;
 
         // ⚠️ COLOQUE O ID DA SUA GUILDA (SERVIDOR) PÚBLICA AQUI
-        private const ulong ID_SERVIDOR_PUBLICO = 1487244494272200774;
+        private const ulong ID_SERVIDOR_PUBLICO = 148724449427220077;
 
         public AdminControleModule(DiscordSocketClient client)
         {
@@ -95,6 +96,44 @@ namespace Botzinho.Admin
                     Console.WriteLine($"[Erro Admin Module]: {ex.Message}");
                 }
             }); return Task.CompletedTask;
+        }
+    }
+
+    // --- NOVO SISTEMA ADICIONADO AQUI ---
+    public class OwnerModule : InteractionModuleBase<SocketInteractionContext>
+    {
+        [SlashCommand("zavisar_global", "Envia uma mensagem em um canal (Apenas Dono)")]
+        public async Task AvisarGlobal(
+            [Summary("canal_id", "ID do canal de destino")] string canalId,
+            [Summary("mensagem", "A mensagem que a Zoe vai enviar")] string mensagem)
+        {
+            // Bloqueio de Segurança: Apenas o seu ID pode usar
+            if (Context.User.Id != 1472642376970404002)
+            {
+                await RespondAsync("❌ Você não tem permissão para usar comandos de desenvolvedor.", ephemeral: true);
+                return;
+            }
+
+            // Tenta converter o texto para um ID de canal válido
+            if (ulong.TryParse(canalId, out ulong channelIdFinal))
+            {
+                // Pega o canal em qualquer servidor que a Zoe esteja
+                var channel = Context.Client.GetChannel(channelIdFinal) as ITextChannel;
+
+                if (channel != null)
+                {
+                    await channel.SendMessageAsync(mensagem);
+                    await RespondAsync($"✅ Mensagem enviada com sucesso no canal **{channel.Name}**!", ephemeral: true);
+                }
+                else
+                {
+                    await RespondAsync("❌ Canal não encontrado. Verifique se o ID está correto e se a Zoe está no servidor.", ephemeral: true);
+                }
+            }
+            else
+            {
+                await RespondAsync("❌ O ID do canal é inválido. Digite apenas números.", ephemeral: true);
+            }
         }
     }
 }
