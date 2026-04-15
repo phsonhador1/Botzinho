@@ -17,10 +17,10 @@ namespace Botzinho.Core
         public HelpModule(DiscordSocketClient client)
         {
             _client = client;
-            
+
             // Assinamos os eventos UMA ÚNICA VEZ aqui no construtor
             _client.MessageReceived += HandleMessage;
-            _client.SelectMenuExecuted += HandleSelectMenu; 
+            _client.SelectMenuExecuted += HandleSelectMenu;
         }
 
         private async Task HandleMessage(SocketMessage msg)
@@ -36,7 +36,7 @@ namespace Botzinho.Core
                 // --- TRAVA DE 2 SEGUNDOS ---
                 if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
                 {
-                    var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, Calma Ae! Aguarde **2 segundos** para abrir o **Painel** novamente.");
+                    var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, Vai com Calma viadinho, Aguarde **2 segundos** para abrir o **zhelp** novamente.");
                     _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                     return;
                 }
@@ -81,7 +81,7 @@ namespace Botzinho.Core
                 // Trava de segurança: só quem digitou zhelp pode clicar no menu dele
                 if (component.User.Id != userId)
                 {
-                    await component.RespondAsync("<:erro:1493078898462949526> Este painel não é seu! Digite `zhelp` para abrir o seu próprio menu.", ephemeral: true);
+                    await component.RespondAsync("<:erro:1493078898462949526> Este painel não é seu Puta! Digite **zhelp** para abrir o seu próprio menu.", ephemeral: true);
                     return;
                 }
 
@@ -147,9 +147,9 @@ namespace Botzinho.Core
                 var cb = new ComponentBuilder().WithSelectMenu(menuBuilder);
 
                 // CORREÇÃO: Usamos ModifyOriginalResponseAsync porque demos DeferAsync no topo!
-                await component.ModifyOriginalResponseAsync(x => { 
-                    x.Embed = eb.Build(); 
-                    x.Components = cb.Build(); 
+                await component.ModifyOriginalResponseAsync(x => {
+                    x.Embed = eb.Build();
+                    x.Components = cb.Build();
                 });
             }
         }
