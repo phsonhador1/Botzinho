@@ -496,7 +496,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         string newImg = await CasinoImageHelper.GerarImagemCrash(currentMult, newStatus);
 
                         var newEb = new EmbedBuilder()
-                        .WithAuthor(bateuCrash ? "💥 CRASH!" : $"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                        .WithAuthor(bateuCrash ? "CRASH!" : $"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                         .WithColor(bateuCrash ? Color.Red : new Color(27, 28, 33)) // Mantém a cor escura enquanto voa
                         .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                         .WithImageUrl($"attachment://upd.png");
@@ -525,8 +525,9 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                             else
                             {
                                 long ganhoAtual = (long)(aposta * currentMult);
-                                newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
-  ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
+                                newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`   
+
+  ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`"); 
 
                                 var cbPlay = new ComponentBuilder()
                                     .WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
