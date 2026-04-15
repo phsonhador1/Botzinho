@@ -319,10 +319,10 @@ namespace Botzinho.Economy
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
                     // Cooldown de 2 segundos (Padrão para comandos de economia)
-                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
+                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 3)
                     {
-                        var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para usar outro comando.");
-                        _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
+                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, calma ai viadinho abusado! Aguarde **3 segundos** para usar outro **comando**.");
+                        _ = Task.Delay(3000).ContinueWith(_ => aviso.DeleteAsync());
                         return;
                     }
                     _cooldowns[user.Id] = DateTime.UtcNow;
