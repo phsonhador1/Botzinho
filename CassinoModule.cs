@@ -274,7 +274,7 @@ namespace Botzinho.Cassino
             if (!cmds.Any(c => content.StartsWith(c))) return;
             if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 2)
             {
-                var aviso = await msg.Channel.SendMessageAsync($"⏳ {user.Mention}, vá com calma! Aguarde **2 segundos** para apostar novamente.");
+                var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, Calma ai seu arrombado! Aguarde **2 segundos** para apostar novamente.");
                 _ = Task.Delay(2000).ContinueWith(_ => aviso.DeleteAsync());
                 return;
             }
@@ -284,7 +284,7 @@ namespace Botzinho.Cassino
             if (content.StartsWith("zroleta"))
             {
                 string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (partes.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Uso correto:** `zroleta [valor]` ou `zroleta all`."); return; }
+                if (partes.Length < 2) { await msg.Channel.SendMessageAsync("❓ Caralho, usa essa Porra direito: **zroleta [valor]** ou **zroleta all**."); return; }
 
                 long saldoBanco = EconomyHelper.GetBanco(guildId, user.Id);
                 long valorAposta = 0;
@@ -301,7 +301,7 @@ namespace Botzinho.Cassino
                     await msg.Channel.SendMessageAsync($@"<:erro:1493078898462949526> Você não tem **coins** em banco para apostar.");
                     return;
                 }
-                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento! Termine ele antes de começar outro.!"); return; }
+                if (RoletaAtiva.ContainsKey(user.Id)) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você já tem um jogo em andamento burro! Termine ele antes de começar outro.!"); return; }
 
                 RoletaAtiva[user.Id] = valorAposta;
                 EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
@@ -498,7 +498,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         var newEb = new EmbedBuilder()
                             .WithAuthor(bateuCrash ? "💥 CRASH!" : "✅ Retirada bem sucedida!", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                             .WithColor(bateuCrash ? Color.Red : new Color(61, 187, 126))
-                            .WithFooter($"Rodapé | Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                            .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                             .WithImageUrl($"attachment://upd.png");
 
                         using (var stream = File.OpenRead(newImg))
@@ -510,8 +510,8 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 CrashGamesAtivos.Remove(user.Id);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
 
-                                newEb.WithDescription($@"💥 **RESULTADO: CRASH!**
-📈 Multiplicador Final: **{currentMult:F2}x**
+                                newEb.WithDescription($@"<:perdeu:1493361130075328754> **RESULTADO - CRASHOU PORRA!**
+◦ <:seta:1493089125979656385> Multiplicador Final: **{currentMult:F2}x**
 
 • <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
 
@@ -596,11 +596,11 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 var eb = new EmbedBuilder()
                     .WithAuthor("⚔️ Duelo de Apostas", "https://cdn-icons-png.flaticon.com/512/3063/3063822.png")
-                    .WithDescription($@"<a:teste:1490570407307378712> O jogador {user.Mention} desafiou você para um X1!
+                    .WithDescription($@"<a:teste:1490570407307378712> O viadinho {user.Mention} desafiou você para um X1!
 
-<a:7moneyz:1493015410637930508> | **Valor cobrado de cada:** `{EconomyHelper.FormatarSaldo(val)}`
+• <:dinheiro:1493360319928733838> | **Valor cobrado de cada:** `{EconomyHelper.FormatarSaldo(val)}`
 
-<a:trofeu:1493063952060387479> | **Prêmio ao Vencedor:** `{EconomyHelper.FormatarSaldo(val * 2)}`
+◦ <:moedazoe:1493359715420340364> | **Prêmio ao Vencedor:** `{EconomyHelper.FormatarSaldo(val * 2)}`
 
 {alvo.Mention}, você tem coragem de aceitar?")
                     .WithColor(new Color(160, 80, 220))
@@ -671,7 +671,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
 🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
-<a:7moneyz:1493015410637930508> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
+<:dinheiro:1493360319928733838> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
                     }
                     else
                     {
