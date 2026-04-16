@@ -90,6 +90,16 @@ namespace Botzinho.Admin
                         await msg.Channel.SendMessageAsync(embed: eb.Build());
                     }
 
+                    // --- NOVO: COMANDO ZPING (VER LATÊNCIA) ---
+                    else if (content == "zping")
+                    {
+                        // Pega a latência atual do bot em milissegundos
+                        int latency = _client.Latency;
+                        
+                        // Envia a resposta bonitinha
+                        await msg.Channel.SendMessageAsync($"🏓 **Pong!** Minha latência atual é de `{latency}ms`.");
+                    }
+
                     // --- COMANDO ZDD (MENSAGEM GLOBAL) ---
                     else if (content.StartsWith("zdd "))
                     {
