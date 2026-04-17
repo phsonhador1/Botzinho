@@ -195,9 +195,9 @@ namespace Botzinho.Economy
 
         public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank)
         {
-            int width = 500; 
-            int height = 650; 
-            
+            int width = 500;
+            int height = 650;
+
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
@@ -239,32 +239,32 @@ namespace Botzinho.Economy
             float avY = 130;
             float avRadius = 70;
             var avRect = new SKRect((width / 2) - avRadius, avY - avRadius, (width / 2) + avRadius, avY + avRadius);
-            
+
             using var http = new HttpClient();
             try
             {
                 var bytes = await http.GetByteArrayAsync(user.GetAvatarUrl(ImageFormat.Png, 256) ?? user.GetDefaultAvatarUrl());
                 using var bmp = SKBitmap.Decode(bytes);
-                var path = new SKPath(); 
+                var path = new SKPath();
                 path.AddOval(avRect);
-                
-                canvas.Save(); 
+
+                canvas.Save();
                 canvas.ClipPath(path, SKClipOperation.Intersect, true);
-                canvas.DrawBitmap(bmp, avRect); 
+                canvas.DrawBitmap(bmp, avRect);
                 canvas.Restore();
             }
-            catch 
-            { 
+            catch
+            {
                 canvas.DrawOval(avRect, new SKPaint { Color = new SKColor(40, 40, 40), IsAntialias = true });
             }
 
             // Anel do Avatar (Borda grossa e estilizada)
-            using var ringPaint = new SKPaint 
-            { 
-                Style = SKPaintStyle.Stroke, 
-                StrokeWidth = 4, 
-                Color = PurpleTheme, 
-                IsAntialias = true 
+            using var ringPaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 4,
+                Color = PurpleTheme,
+                IsAntialias = true
             };
             canvas.DrawOval(avRect, ringPaint);
 
@@ -285,10 +285,10 @@ namespace Botzinho.Economy
 
             // 7. Salvar e Retornar
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
-            using (var img = surface.Snapshot()) 
+            using (var img = surface.Snapshot())
             using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var str = File.OpenWrite(p)) data.SaveTo(str);
-            
+
             return p;
         }
 
@@ -442,7 +442,9 @@ namespace Botzinho.Economy
                         {
                             // Logando o Depósito All
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
-                            await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention}, Sucesso! você depositou `{EconomyHelper.FormatarSaldo(carteira)}` cpoints no banco!");
+
+                            // RESPOSTA ADAPTADA AQUI
+                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013> seu deposito de  **{carteira}** foi concluído com sucesso.");
                         }
                     }
                     else if (content.StartsWith("zdep"))
@@ -457,7 +459,9 @@ namespace Botzinho.Economy
                         {
                             EconomyHelper.AdicionarBanco(guildId, user.Id, valor);
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, valor, "DEPOSITO");
-                            await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention}, Sucesso! você depositou `+ {EconomyHelper.FormatarSaldo(valor)}` cpoints!");
+
+                            // RESPOSTA ADAPTADA AQUI
+                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013> Seu depósito de **{valor}** foi concluído com sucesso.");
                         }
                     }
                     else if (content == "zsaldo")
