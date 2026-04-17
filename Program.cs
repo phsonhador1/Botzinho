@@ -90,7 +90,7 @@ client.Ready += async () =>
 
             for (int i = 0; i < statusAtual.Length; i++)
             {
-                await client.SetStatusAsync(UserStatus.Online);
+                await client.SetStatusAsync(UserStatus.DoNotDisturb);
                 await client.SetCustomStatusAsync(statusAtual[i]);
                 await Task.Delay(TimeSpan.FromSeconds(15));
             }
