@@ -83,7 +83,7 @@ client.Ready += async () =>
             string[] statusAtual = new[]
             {
                 $"💜 Atualmente em {client.Guilds.Count} servidores",
-                "💜 Online | Pronta Para Ajudar!",
+                "🙂 Online | Pronta Para Ajudar!",
                 "✨ use zhelp para descobrir os comandos",
                 statusTop1 // <--- Adicionado aqui!
             };
