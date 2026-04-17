@@ -167,6 +167,6 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         });
 
         await channel.DeleteAsync();
-        await newChannel.SendMessageAsync($"canal limpo por {Context.User.Username}");
+        await newChannel.SendMessageAsync($".");
     }
 }
