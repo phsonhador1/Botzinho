@@ -185,56 +185,138 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO) ---
+    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO PREMIUM) ---
     public static class EconomyImageHelper
     {
-        private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220);
+        private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220); // Roxo Zoe
+        private static readonly SKColor GoldTheme = new SKColor(255, 180, 0);    // Dourado para o Total
+        private static readonly SKColor DarkBg = new SKColor(10, 8, 18);         // Fundo escuro
+        private static readonly SKColor CardBg = new SKColor(22, 18, 35);        // Fundo do cartão central
 
         public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank)
         {
-            int width = 450; int height = 550;
+            int width = 500; 
+            int height = 650; 
+            
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
-            canvas.Clear(new SKColor(12, 10, 20));
 
-            var cardRect = new SKRect(20, 20, width - 20, height - 20);
-            canvas.DrawRoundRect(cardRect, 30, 30, new SKPaint { Color = new SKColor(20, 18, 35), IsAntialias = true });
-            canvas.DrawRoundRect(cardRect, 30, 30, new SKPaint { Color = PurpleTheme, Style = SKPaintStyle.Stroke, StrokeWidth = 2, IsAntialias = true });
+            // 1. Fundo com Gradiente Radial (Brilho sutil no centro)
+            using var bgPaint = new SKPaint();
+            bgPaint.Shader = SKShader.CreateRadialGradient(
+                new SKPoint(width / 2, height / 2),
+                Math.Max(width, height),
+                new[] { new SKColor(25, 20, 45), DarkBg },
+                new[] { 0f, 1f },
+                SKShaderTileMode.Clamp);
+            canvas.DrawRect(0, 0, width, height, bgPaint);
 
+            // 2. Sombra do Cartão Principal
+            var cardRect = new SKRect(25, 25, width - 25, height - 25);
+            using var shadowPaint = new SKPaint
+            {
+                Color = new SKColor(0, 0, 0, 150),
+                ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 20, 20, new SKColor(0, 0, 0, 200)),
+                IsAntialias = true
+            };
+            canvas.DrawRoundRect(cardRect, 30, 30, shadowPaint);
+
+            // 3. Fundo do Cartão Principal
+            using var cardPaint = new SKPaint { Color = CardBg, IsAntialias = true };
+            canvas.DrawRoundRect(cardRect, 30, 30, cardPaint);
+
+            // Borda do Cartão (Brilho no topo)
+            using var highlightPaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.5f,
+                Color = new SKColor(255, 255, 255, 25), // Branco super transparente
+                IsAntialias = true
+            };
+            canvas.DrawRoundRect(cardRect, 30, 30, highlightPaint);
+
+            // 4. Desenhar Avatar (Top Center)
+            float avY = 130;
+            float avRadius = 70;
+            var avRect = new SKRect((width / 2) - avRadius, avY - avRadius, (width / 2) + avRadius, avY + avRadius);
+            
             using var http = new HttpClient();
             try
             {
                 var bytes = await http.GetByteArrayAsync(user.GetAvatarUrl(ImageFormat.Png, 256) ?? user.GetDefaultAvatarUrl());
                 using var bmp = SKBitmap.Decode(bytes);
-                var avRect = new SKRect(width / 2 - 70, 50, width / 2 + 70, 190);
-                var path = new SKPath(); path.AddOval(avRect);
-                canvas.Save(); canvas.ClipPath(path, SKClipOperation.Intersect, true);
-                canvas.DrawBitmap(bmp, avRect); canvas.Restore();
-                canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 3, Color = PurpleTheme, IsAntialias = true });
+                var path = new SKPath(); 
+                path.AddOval(avRect);
+                
+                canvas.Save(); 
+                canvas.ClipPath(path, SKClipOperation.Intersect, true);
+                canvas.DrawBitmap(bmp, avRect); 
+                canvas.Restore();
             }
-            catch { }
+            catch 
+            { 
+                canvas.DrawOval(avRect, new SKPaint { Color = new SKColor(40, 40, 40), IsAntialias = true });
+            }
 
-            var boldFont = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
-            canvas.DrawText(user.Username, width / 2, 235, new SKPaint { Color = SKColors.White, TextSize = 24, Typeface = boldFont, TextAlign = SKTextAlign.Center, IsAntialias = true });
+            // Anel do Avatar (Borda grossa e estilizada)
+            using var ringPaint = new SKPaint 
+            { 
+                Style = SKPaintStyle.Stroke, 
+                StrokeWidth = 4, 
+                Color = PurpleTheme, 
+                IsAntialias = true 
+            };
+            canvas.DrawOval(avRect, ringPaint);
 
-            float startY = 280;
-            DrawSlimPill(canvas, "Carteira", wallet, width, startY, PurpleTheme);
-            DrawSlimPill(canvas, "Banco", bank, width, startY + 80, PurpleTheme);
-            DrawSlimPill(canvas, "Total", wallet + bank, width, startY + 160, new SKColor(255, 180, 0));
+            // 5. Nome do Usuário
+            var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
+            using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 28, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
+            canvas.DrawText(user.Username, width / 2, 245, namePaint);
 
+            // Linha divisória sutil abaixo do nome
+            using var linePaint = new SKPaint { Color = new SKColor(255, 255, 255, 20), StrokeWidth = 2, IsAntialias = true };
+            canvas.DrawLine(width / 2 - 100, 270, width / 2 + 100, 270, linePaint);
+
+            // 6. Painéis de Saldo
+            float startY = 300;
+            DrawModernPanel(canvas, "CARTEIRA", wallet, width, startY, PurpleTheme, fontBold);
+            DrawModernPanel(canvas, "BANCO", bank, width, startY + 95, PurpleTheme, fontBold);
+            DrawModernPanel(canvas, "TOTAL", wallet + bank, width, startY + 190, GoldTheme, fontBold);
+
+            // 7. Salvar e Retornar
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
-            using (var img = surface.Snapshot()) using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
+            using (var img = surface.Snapshot()) 
+            using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
             using (var str = File.OpenWrite(p)) data.SaveTo(str);
+            
             return p;
         }
 
-        private static void DrawSlimPill(SKCanvas canvas, string label, long valor, int width, float y, SKColor accent)
+        private static void DrawModernPanel(SKCanvas canvas, string label, long valor, int totalWidth, float y, SKColor accent, SKTypeface font)
         {
-            var rect = new SKRect(50, y, width - 50, y + 60);
-            canvas.DrawRoundRect(rect, 15, 15, new SKPaint { Color = new SKColor(35, 32, 55), IsAntialias = true });
-            canvas.DrawRoundRect(new SKRect(50, y + 10, 54, y + 50), 2, 2, new SKPaint { Color = accent, IsAntialias = true });
-            canvas.DrawText(label.ToUpper(), 70, y + 22, new SKPaint { Color = new SKColor(180, 180, 200), TextSize = 12, IsAntialias = true });
-            canvas.DrawText(EconomyHelper.FormatarSaldo(valor) + " cpoints", 70, y + 48, new SKPaint { Color = SKColors.White, TextSize = 18, Typeface = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold), IsAntialias = true });
+            float pWidth = totalWidth - 90;
+            float pHeight = 75;
+            float x = 45;
+
+            var rect = new SKRect(x, y, x + pWidth, y + pHeight);
+
+            using var panelBg = new SKPaint { Color = new SKColor(14, 12, 22), IsAntialias = true };
+            canvas.DrawRoundRect(rect, 12, 12, panelBg);
+
+            var indicatorRect = new SKRect(x, y + 15, x + 5, y + pHeight - 15);
+            using var indicatorPaint = new SKPaint { Color = accent, IsAntialias = true };
+            canvas.DrawRoundRect(indicatorRect, 2, 2, indicatorPaint);
+
+            using var labelPaint = new SKPaint { Color = new SKColor(130, 125, 145), TextSize = 13, Typeface = font, IsAntialias = true };
+            canvas.DrawText(label, x + 20, y + 28, labelPaint);
+
+            string valorFormatado = EconomyHelper.FormatarSaldo(valor);
+            using var valuePaint = new SKPaint { Color = SKColors.White, TextSize = 34, Typeface = font, IsAntialias = true };
+            canvas.DrawText(valorFormatado, x + 20, y + 62, valuePaint);
+
+            float valueWidth = valuePaint.MeasureText(valorFormatado);
+            using var cpointsPaint = new SKPaint { Color = accent, TextSize = 16, Typeface = font, IsAntialias = true };
+            canvas.DrawText("cpoints", x + 25 + valueWidth, y + 60, cpointsPaint);
         }
 
         public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top)
