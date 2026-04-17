@@ -444,7 +444,7 @@ namespace Botzinho.Economy
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
 
                             // RESPOSTA ADAPTADA AQUI
-                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013> seu deposito de  **{carteira}** foi concluído com sucesso.");
+                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013>   Seu deposito de  **{carteira}** foi concluído com sucesso.");
                         }
                     }
                     else if (content.StartsWith("zdep"))
