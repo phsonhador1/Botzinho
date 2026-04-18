@@ -387,7 +387,20 @@ namespace Botzinho.Economy
 
         public EconomyHandler(DiscordSocketClient client)
         {
-            _client = client; _client.MessageReceived += HandleMessage;
+            _client = client;
+            _client.MessageReceived += HandleMessage;
+
+            // ADICIONADO: Necessário para o botão de lembrete não dar erro de Interação Falhou
+            _client.ButtonExecuted += HandleButtonAsync;
+        }
+
+        // ADICIONADO: Método que responde ao clique no botão
+        private async Task HandleButtonAsync(SocketMessageComponent component)
+        {
+            if (component.Data.CustomId == "btn_lembrete_daily")
+            {
+                await component.RespondAsync("⏰ **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu Daily estiver pronto.", ephemeral: true);
+            }
         }
 
         private Task HandleMessage(SocketMessage msg)
@@ -409,6 +422,7 @@ namespace Botzinho.Economy
                     }
                     _cooldowns[user.Id] = DateTime.UtcNow;
 
+                    // --- ZDAILY ATUALIZADO (PREMIUM) ---
                     if (content == "zdaily")
                     {
                         // Trava de 24 horas
@@ -423,10 +437,29 @@ namespace Botzinho.Economy
                         }
 
                         long g = new Random().Next(167000, 180001);
+                        int xpGanho = new Random().Next(15, 45); // XP visual para o Embed
+
                         EconomyHelper.AdicionarSaldo(guildId, user.Id, g);
                         EconomyHelper.AtualizarDaily(guildId, user.Id); // Salva que o usuário acabou de pegar
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, user.Id, g, "DAILY");
-                        await msg.Channel.SendMessageAsync($"<:acerto:1493079138783727756> {user.Mention} Zdaily Coletado com Sucesso!, `+ {EconomyHelper.FormatarSaldo(g)}` cpoints no **Diário**!");
+
+                        // Criando o Embed Profissional
+                        var eb = new EmbedBuilder()
+                            .WithColor(new Color(160, 80, 220)) // Roxo da Zoe
+                            .WithTitle("<:calendario:1495171666844713173> Daily")
+                            .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
+                                             $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
+                                             $"• ➕ **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
+                                             $"• 🌟 **+{xpGanho}XP**\n\n" +
+                                             $"• <:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n" +
+                                             $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
+                            .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
+
+                        // Criando o Botão de Lembrete
+                        var cb = new ComponentBuilder()
+                            .WithButton("Definir lembrete", "btn_lembrete_daily", ButtonStyle.Secondary, Emote.Parse("<a:sino:1495172950767173833>"));
+
+                        await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
                     else if (content == "zdep all")
                     {
