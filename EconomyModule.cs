@@ -161,7 +161,31 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@type", type); cmd.ExecuteNonQuery();
         }
 
-        public static string FormatarSaldo(long valor) => valor >= 1000000 ? $"{valor / 1000000.0:F2}M" : valor >= 1000 ? $"{valor / 1000.0:F2}K" : valor.ToString();
+        // AGORA SUPORTA BILHÕES E TRILHÕES NA VISUALIZAÇÃO
+        public static string FormatarSaldo(long valor)
+        {
+            if (valor >= 1_000_000_000_000) return $"{valor / 1_000_000_000_000.0:F2}T";
+            if (valor >= 1_000_000_000) return $"{valor / 1_000_000_000.0:F2}B";
+            if (valor >= 1_000_000) return $"{valor / 1_000_000.0:F2}M";
+            if (valor >= 1_000) return $"{valor / 1_000.0:F2}K";
+            return valor.ToString();
+        }
+
+        // AGORA SUPORTA CONVERTER 'B' e 'T' DIGITADOS PELO USUÁRIO
+        public static long ConverterLetraParaNumero(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return 0;
+            string valTxt = input.ToLower().Trim();
+            try 
+            {
+                if (valTxt.EndsWith("t")) return (long)(double.Parse(valTxt.Replace("t", "")) * 1_000_000_000_000);
+                if (valTxt.EndsWith("b")) return (long)(double.Parse(valTxt.Replace("b", "")) * 1_000_000_000);
+                if (valTxt.EndsWith("m")) return (long)(double.Parse(valTxt.Replace("m", "")) * 1_000_000);
+                if (valTxt.EndsWith("k")) return (long)(double.Parse(valTxt.Replace("k", "")) * 1_000);
+                return long.TryParse(valTxt, out var v) ? v : 0;
+            } 
+            catch { return 0; }
+        }
 
         public static long GetPosicaoRank(ulong guildId, ulong userId)
         {
@@ -399,7 +423,7 @@ namespace Botzinho.Economy
         {
             if (component.Data.CustomId == "btn_lembrete_daily")
             {
-                await component.RespondAsync("⏰ **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu Daily estiver pronto.", ephemeral: true);
+                await component.RespondAsync("<a:sino:1495172950767173833> **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
             }
         }
 
@@ -449,9 +473,10 @@ namespace Botzinho.Economy
                             .WithTitle("<:calendario:1495171666844713173> Daily")
                             .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
                                              $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
-                                             $"• ➕ **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
-                                             $"• 🌟 **+{xpGanho}XP**\n\n" +
-                                             $"• <:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n" +
+
+                                             $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
+                                             $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
+                                             $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
                                              $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
                             .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
 
@@ -477,7 +502,7 @@ namespace Botzinho.Economy
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, user.Id, carteira, "DEPOSITO");
 
                             // RESPOSTA ADAPTADA AQUI
-                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013>   Seu deposito de  **{carteira}** foi concluído com sucesso.");
+                            await ((SocketUserMessage)msg).ReplyAsync($"<a:sucess:1494692628372132013>  Seu deposito de **{carteira}** foi concluído com sucesso.");
                         }
                     }
                     else if (content.StartsWith("zdep"))
@@ -486,7 +511,7 @@ namespace Botzinho.Economy
                         if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zdep (valor)` ou `zdep all`."); return; }
                         long carteira = EconomyHelper.GetSaldo(guildId, user.Id);
                         string valTxt = p[1].ToLower();
-                        long valor = valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.TryParse(valTxt, out var v) ? v : 0;
+                        long valor = EconomyHelper.ConverterLetraParaNumero(valTxt);
                         if (valor <= 0 || carteira < valor) { await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Saldo insuficiente na carteira."); return; }
                         if (EconomyHelper.RemoverSaldo(guildId, user.Id, valor))
                         {
@@ -515,7 +540,7 @@ namespace Botzinho.Economy
                         if (alvo != null)
                         {
                             string valTxt = content.Split(' ').Last().ToLower();
-                            long v = valTxt.EndsWith("k") ? (long)(double.Parse(valTxt.Replace("k", "")) * 1000) : valTxt.EndsWith("m") ? (long)(double.Parse(valTxt.Replace("m", "")) * 1000000) : long.Parse(valTxt);
+                            long v = EconomyHelper.ConverterLetraParaNumero(valTxt);
                             EconomyHelper.AdicionarSaldo(guildId, alvo.Id, v);
                             await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(v)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                         }
@@ -554,7 +579,7 @@ namespace Botzinho.Economy
                             return;
                         }
 
-                        // 3. Processar o Valor (all, k, m, número)
+                        // 3. Processar o Valor (all, k, m, b, t, número)
                         long saldoDoador = EconomyHelper.GetBanco(guildId, user.Id);
                         long valorTransferencia = 0;
                         string vTxt = partes[2].ToLower();
@@ -562,9 +587,7 @@ namespace Botzinho.Economy
                         if (vTxt == "all") { valorTransferencia = saldoDoador; }
                         else
                         {
-                            valorTransferencia = vTxt.EndsWith("k") ? (long)(double.Parse(vTxt.Replace("k", "")) * 1000) :
-                                                  vTxt.EndsWith("m") ? (long)(double.Parse(vTxt.Replace("m", "")) * 1000000) :
-                                                  long.TryParse(vTxt, out var v) ? v : 0;
+                            valorTransferencia = EconomyHelper.ConverterLetraParaNumero(vTxt);
                         }
 
                         // 4. Validações de Saldo
