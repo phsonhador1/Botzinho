@@ -187,9 +187,9 @@ namespace Botzinho.Economy
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"INSERT INTO economy_users (guild_id, user_id, saldo, banco) VALUES (@gid, @uid, @valor, 0)
                                 ON CONFLICT (guild_id, user_id) DO UPDATE SET saldo = @valor, banco = 0";
-            cmd.Parameters.AddWithValue("@gid", guildId.ToString()); 
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
-            cmd.Parameters.AddWithValue("@valor", valor); 
+            cmd.Parameters.AddWithValue("@valor", valor);
             cmd.ExecuteNonQuery();
         }
 
@@ -642,7 +642,7 @@ namespace Botzinho.Economy
 
                         if (alvo == null || partes.Length < 3)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zsetsaldo @usuario [novo_valor]`\n*Exemplo para zerar:* `zsetsaldo @Zoe 0`\n*Exemplo para definir:* `zsetsaldo @Zoe 10b`.");
+                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zsetsaldo @usuario");
                             return;
                         }
 
@@ -654,7 +654,7 @@ namespace Botzinho.Economy
                         EconomyHelper.SetSaldo(guildId, alvo.Id, novoValor);
                         EconomyHelper.RegistrarTransacao(guildId, user.Id, alvo.Id, novoValor, "SET_SALDO_TOTAL");
 
-                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> **Ajuste de Saldo!** O saldo total de {alvo.Mention} foi redefinido para `{EconomyHelper.FormatarSaldo(novoValor)}` cpoints (Carteira atualizada, banco zerado).");
+                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> O saldo de {alvo.Mention} foi redefinido para **{EconomyHelper.FormatarSaldo(novoValor)}**");
                     }
                     if (content.StartsWith("zpay"))
                     {
