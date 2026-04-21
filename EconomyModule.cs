@@ -33,7 +33,36 @@ namespace Botzinho.Economy
                 
                 CREATE TABLE IF NOT EXISTS economy_transactions (
                     id SERIAL PRIMARY KEY, guild_id TEXT, sender_id TEXT, 
-                    receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);";
+                    receiver_id TEXT, amount BIGINT, type TEXT, data TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+                CREATE TABLE IF NOT EXISTS daily_reminders (
+                    user_id TEXT, 
+                    guild_id TEXT, 
+                    remind_at TIMESTAMP, 
+                    PRIMARY KEY (user_id, guild_id));";
+            cmd.ExecuteNonQuery();
+        }
+
+        // --- FUNÇÕES DE LEMBRETE (NOVO) ---
+        public static void SalvarLembrete(ulong guildId, ulong userId, DateTime dataAviso)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO daily_reminders (guild_id, user_id, remind_at) VALUES (@gid, @uid, @dt)
+                                ON CONFLICT (user_id, guild_id) DO UPDATE SET remind_at = @dt";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@dt", dataAviso);
+            cmd.ExecuteNonQuery();
+        }
+
+        public static void RemoverLembrete(ulong guildId, ulong userId)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM daily_reminders WHERE guild_id = @gid AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
             cmd.ExecuteNonQuery();
         }
 
@@ -161,7 +190,6 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@type", type); cmd.ExecuteNonQuery();
         }
 
-        // AGORA SUPORTA BILHÕES E TRILHÕES NA VISUALIZAÇÃO
         public static string FormatarSaldo(long valor)
         {
             if (valor >= 1_000_000_000_000) return $"{valor / 1_000_000_000_000.0:F2}T";
@@ -171,7 +199,6 @@ namespace Botzinho.Economy
             return valor.ToString();
         }
 
-        // AGORA SUPORTA CONVERTER 'B' e 'T' DIGITADOS PELO USUÁRIO
         public static long ConverterLetraParaNumero(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return 0;
@@ -416,14 +443,59 @@ namespace Botzinho.Economy
 
             // ADICIONADO: Necessário para o botão de lembrete não dar erro de Interação Falhou
             _client.ButtonExecuted += HandleButtonAsync;
+
+            // INICIANDO O VIGILANTE DE LEMBRETES
+            _ = Task.Run(() => VigilanteLembretes());
         }
 
-        // ADICIONADO: Método que responde ao clique no botão
+        // NOVO: Loop que checa o banco e envia DM
+        private async Task VigilanteLembretes()
+        {
+            while (true)
+            {
+                try
+                {
+                    using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
+                    await conn.OpenAsync();
+                    using var cmd = conn.CreateCommand();
+                    
+                    cmd.CommandText = "SELECT user_id, guild_id FROM daily_reminders WHERE remind_at <= @agora";
+                    cmd.Parameters.AddWithValue("@agora", DateTime.Now);
+                    
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        ulong userId = ulong.Parse(reader.GetString(0));
+                        ulong guildId = ulong.Parse(reader.GetString(1));
+
+                        _ = Task.Run(async () => {
+                            try {
+                                var user = await _client.GetUserAsync(userId);
+                                if (user != null) {
+                                    await user.SendMessageAsync($"<a:sino:1495172950767173833> **O seu Daily está pronto!**\nJá pode voltar ao servidor e usar o comando `zdaily` para coletar as suas moedas de hoje!");
+                                }
+                            } catch { /* DM fechada */ }
+                            
+                            EconomyHelper.RemoverLembrete(guildId, userId);
+                        });
+                    }
+                }
+                catch (Exception ex) { Console.WriteLine("Erro no Vigilante: " + ex.Message); }
+
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
+        }
+
+        // ADICIONADO: Método que responde ao clique no botão e salva o lembrete
         private async Task HandleButtonAsync(SocketMessageComponent component)
         {
             if (component.Data.CustomId == "btn_lembrete_daily")
             {
-                await component.RespondAsync("<a:sino:1495172950767173833> **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
+                // Salva o lembrete para daqui a exatas 24 horas
+                DateTime horaAviso = DateTime.Now.AddHours(24);
+                EconomyHelper.SalvarLembrete(component.GuildId ?? 0, component.User.Id, horaAviso);
+
+                await component.RespondAsync($"<a:sino:1495172950767173833> **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
             }
         }
 
