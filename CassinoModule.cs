@@ -313,26 +313,31 @@ namespace Botzinho.Cassino
 
 <:moedazoe:1493359715420340364>| **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
 
-<:seta:1493089125979656385> | **Como funciona:** Escolha uma cor. Se o sorteio parar nela, você ganha o prêmio!
-⚪ **Branco:** 6.0x
+<:seta:1493089125979656385> | **Como funciona:** Ao escolher uma cor abaixo, representada pelos botões, você terá a chance de 
+ganhar com base nos multiplicadores. Cada cor tem 
+seu próprio multiplicador. Se a roleta parar na cor escolhida, você 
+receberá uma recompensa de acordo com o multiplicador
+correspondente.
 
-⚫ **Preto:** 1.5x
+<:branco:1496239921420177558> **Branco:** 6.0x
 
-🔴 **Vermelho:** 1.5x
+<:preto:1496239962784268348> **Preto:** 1.5x
+
+<:red:1496239943423365292> **Vermelho:** 1.5x
 
 <:erro:1493078898462949526> | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
-                    .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl())
+                    .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49)).Build();
 
                 var components = new ComponentBuilder()
-                    .WithButton("Branco (6.0x)", $"roleta_branco_{user.Id}", ButtonStyle.Secondary, new Emoji("⚪"))
-                    .WithButton("Preto (1.5x)", $"roleta_preto_{user.Id}", ButtonStyle.Secondary, new Emoji("⚫"))
-                    .WithButton("Vermelho (1.5x)", $"roleta_vermelho_{user.Id}", ButtonStyle.Danger, new Emoji("🔴"))
+                    .WithButton("Branco (6.0x)", $"roleta_branco_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:branco:1496239921420177558>"))
+                    .WithButton("Preto (1.5x)", $"roleta_preto_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:preto:1496239962784268348>"))
+                    .WithButton("Vermelho (1.5x)", $"roleta_vermelho_{user.Id}", ButtonStyle.Danger, Emote.Parse("<:red:1496239943423365292>"))
                     .WithButton(null, $"roleta_cancel_{user.Id}", ButtonStyle.Secondary, Emote.Parse("<:erro:1493078898462949526>"));
 
                 await msg.Channel.SendMessageAsync(embed: embed, components: components.Build());
             }
-
+            
             // --- ZCF / ZCOINFLIP ---
 
             else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
