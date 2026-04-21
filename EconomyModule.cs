@@ -180,6 +180,18 @@ namespace Botzinho.Economy
             return cmd.ExecuteNonQuery() > 0;
         }
 
+        public static void SetSaldo(ulong guildId, ulong userId, long valor)
+        {
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO economy_users (guild_id, user_id, saldo) VALUES (@gid, @uid, @valor)
+                                ON CONFLICT (guild_id, user_id) DO UPDATE SET saldo = @valor";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@valor", valor);
+            cmd.ExecuteNonQuery();
+        }
+
         public static void RegistrarTransacao(ulong guildId, ulong sender, ulong receiver, long amount, string type)
         {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
@@ -190,6 +202,7 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@type", type); cmd.ExecuteNonQuery();
         }
 
+        // AGORA SUPORTA BILHÕES E TRILHÕES NA VISUALIZAÇÃO
         public static string FormatarSaldo(long valor)
         {
             if (valor >= 1_000_000_000_000) return $"{valor / 1_000_000_000_000.0:F2}T";
@@ -199,6 +212,7 @@ namespace Botzinho.Economy
             return valor.ToString();
         }
 
+        // AGORA SUPORTA CONVERTER 'B' e 'T' DIGITADOS PELO USUÁRIO
         public static long ConverterLetraParaNumero(string input)
         {
             if (string.IsNullOrWhiteSpace(input)) return 0;
@@ -458,10 +472,10 @@ namespace Botzinho.Economy
                     using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
                     await conn.OpenAsync();
                     using var cmd = conn.CreateCommand();
-                    
+
                     cmd.CommandText = "SELECT user_id, guild_id FROM daily_reminders WHERE remind_at <= @agora";
                     cmd.Parameters.AddWithValue("@agora", DateTime.Now);
-                    
+
                     using var reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
@@ -469,13 +483,16 @@ namespace Botzinho.Economy
                         ulong guildId = ulong.Parse(reader.GetString(1));
 
                         _ = Task.Run(async () => {
-                            try {
+                            try
+                            {
                                 var user = await _client.GetUserAsync(userId);
-                                if (user != null) {
+                                if (user != null)
+                                {
                                     await user.SendMessageAsync($"<a:sino:1495172950767173833> **O seu Daily está pronto!**\nJá pode voltar ao servidor e usar o comando `zdaily` para coletar as suas moedas de hoje!");
                                 }
-                            } catch { /* DM fechada */ }
-                            
+                            }
+                            catch { /* DM fechada */ }
+
                             EconomyHelper.RemoverLembrete(guildId, userId);
                         });
                     }
@@ -506,7 +523,7 @@ namespace Botzinho.Economy
                 {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
-                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "ztransacoes", "ztranscoes", "zroubar" };
+                    string[] cmds = { "zsaldo", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "zsetsaldo", "ztransacoes", "ztranscoes", "zroubar" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
                     // Cooldown de 2 segundos (Padrão para comandos de economia)
@@ -616,6 +633,27 @@ namespace Botzinho.Economy
                             EconomyHelper.AdicionarSaldo(guildId, alvo.Id, v);
                             await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram adicionados `{EconomyHelper.FormatarSaldo(v)}` cpoints para <:pessoa:1493010183352483840> {alvo.Mention}.");
                         }
+                    }
+                    else if (content.StartsWith("zsetsaldo") && EconomyHelper.IDsAutorizados.Contains(user.Id))
+                    {
+                        var alvo = msg.MentionedUsers.FirstOrDefault();
+                        string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                        if (alvo == null || partes.Length < 3)
+                        {
+                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zsetsaldo @usuario");
+                            return;
+                        }
+
+                        string valTxt = partes[2].ToLower();
+                        long novoValor = EconomyHelper.ConverterLetraParaNumero(valTxt);
+
+                        if (novoValor < 0) novoValor = 0;
+
+                        EconomyHelper.SetSaldo(guildId, alvo.Id, novoValor);
+                        EconomyHelper.RegistrarTransacao(guildId, user.Id, alvo.Id, novoValor, "SET_SALDO");
+
+                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> A carteira de {alvo.Mention} foi **redefinida** para **{EconomyHelper.FormatarSaldo(novoValor)}**");
                     }
                     if (content.StartsWith("zpay"))
                     {
