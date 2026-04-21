@@ -176,14 +176,14 @@ namespace Botzinho.Economy
         {
             if (string.IsNullOrWhiteSpace(input)) return 0;
             string valTxt = input.ToLower().Trim();
-            try 
+            try
             {
                 if (valTxt.EndsWith("t")) return (long)(double.Parse(valTxt.Replace("t", "")) * 1_000_000_000_000);
                 if (valTxt.EndsWith("b")) return (long)(double.Parse(valTxt.Replace("b", "")) * 1_000_000_000);
                 if (valTxt.EndsWith("m")) return (long)(double.Parse(valTxt.Replace("m", "")) * 1_000_000);
                 if (valTxt.EndsWith("k")) return (long)(double.Parse(valTxt.Replace("k", "")) * 1_000);
                 return long.TryParse(valTxt, out var v) ? v : 0;
-            } 
+            }
             catch { return 0; }
         }
 
@@ -492,7 +492,7 @@ namespace Botzinho.Economy
 
                         if (carteira <= 0)
                         {
-                            await msg.Channel.SendMessageAsync("<:negativo:1492950137587241114> Você não tem saldo na carteira para depositar.");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não tem saldo na carteira para depositar.");
                             return;
                         }
 
