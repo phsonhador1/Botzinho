@@ -319,11 +319,6 @@ seu próprio multiplicador. Se a roleta parar na cor escolhida, você
 receberá uma recompensa de acordo com o multiplicador
 correspondente.
 
-<:branco:1496239921420177558> **Branco:** 6.0x
-
-<:preto:1496239962784268348> **Preto:** 1.5x
-
-<:red:1496239943423365292> **Vermelho:** 1.5x
 
 <:erro:1493078898462949526> | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl())
