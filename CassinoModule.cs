@@ -337,9 +337,6 @@ correspondente.
 
             else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
             {
-                var embed = new EmbedBuilder()
-                    .WithThumbnailUrl("https://media.discordapp.net/attachments/1168256801981079632/1168536905399406592/gambling_5458667.png?ex=69e8c84c&is=69e776cc&hm=acd4a36afc7040e01b3a7d5716b60e2c96e2938bf9e7db0fcdd111661a661508&");
-
                 string[] p = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (p.Length < 2) { await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zcoinflip (valor)`"); return; }
                 long banco = EconomyHelper.GetBanco(guildId, user.Id);
@@ -676,7 +673,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, premio, "ROLETA_GANHO");
                         embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
 
-🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+🎡 A roleta parou no: **{corSorteada}**
 <:dinheiro:1493360319928733838> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
                     }
                     else
@@ -684,7 +681,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, valorAposta, "ROLETA_PERDA");
                         embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
 
-🎡 A roleta parou no: {emojiCor} **{corSorteada.ToUpper()}**
+🎡 A roleta parou no: **{corSorteada.ToLower()}**
 <:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
                     }
 
