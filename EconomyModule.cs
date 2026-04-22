@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using Discord.Rest;
 using Npgsql;
 using SkiaSharp;
 using System;
@@ -11,6 +12,7 @@ using System.Net.Http;
 
 namespace Botzinho.Economy
 {
+    // --- 1. LÓGICA DE BANCO DE DADOS E AUXILIARES ---
     public static class EconomyHelper
     {
         public static string GetConnectionString() => Environment.GetEnvironmentVariable("DATABASE_URL") ?? throw new Exception("DATABASE_URL nao configurado!");
@@ -270,7 +272,7 @@ namespace Botzinho.Economy
                 new[] { 0f, 1f }, SKShaderTileMode.Clamp);
             canvas.DrawRect(bannerRect, bannerPaint);
 
-            // Decoração de nuvem/onda no banner (efeito visual)
+            // Decoração de nuvem/onda no banner
             DrawWavePattern(canvas, width, 200);
 
             // CARD BRANCO PRINCIPAL
@@ -278,7 +280,7 @@ namespace Botzinho.Economy
             canvas.DrawRoundRect(cardRect, 25, 25, new SKPaint { Color = CardBg, IsAntialias = true });
 
             // AVATAR GIGANTE (direita, semi-sobreposto)
-            float avX = width - 140;
+            float avX = width - 150; // Centralizando melhor no espaço direito
             float avY = 160;
             float avRadius = 100;
             var avRect = new SKRect(avX - avRadius, avY - avRadius, avX + avRadius, avY + avRadius);
@@ -302,22 +304,30 @@ namespace Botzinho.Economy
 
             canvas.DrawOval(avRect, new SKPaint { Style = SKPaintStyle.Stroke, StrokeWidth = 6, Color = CardBg, IsAntialias = true });
 
-            // USERNAME EM PÍLULA
+            // USERNAME EM PÍLULA PREMIUM
             string displayName = (user as SocketGuildUser)?.Nickname ?? user.GlobalName ?? user.Username;
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
             var fontNormal = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
 
-            using var namePaint = new SKPaint { Color = new SKColor(40, 40, 60), TextSize = 32, Typeface = fontBold, IsAntialias = true };
+            using var namePaint = new SKPaint { Color = new SKColor(30, 30, 45), TextSize = 36, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
             float nameWidth = namePaint.MeasureText(displayName);
 
-            float pillX = avX - nameWidth / 2 - 40;
-            float pillY = avY + avRadius + 30;
-            float pillW = nameWidth + 80;
-            float pillH = 45;
+            float pillW = Math.Max(nameWidth + 100, 240); // Espaçamento e tamanho premium
+            float pillH = 55;
+            float pillX = avX;
+            float pillY = avY + avRadius + 25; // Distância correta do avatar
 
-            canvas.DrawRoundRect(new SKRect(pillX - pillW / 2, pillY, pillX + pillW / 2, pillY + pillH), 25, 25,
-                new SKPaint { Color = new SKColor(245, 245, 250), IsAntialias = true });
-            canvas.DrawText(displayName, pillX, pillY + 33, namePaint);
+            var pillRect = new SKRect(pillX - pillW / 2, pillY, pillX + pillW / 2, pillY + pillH);
+
+            // Sombra sutil para a pílula do nome
+            using var pillShadow = new SKPaint { Color = new SKColor(0, 0, 0, 15), ImageFilter = SKImageFilter.CreateDropShadow(0, 5, 8, 8, new SKColor(0, 0, 0, 20)), IsAntialias = true };
+            canvas.DrawRoundRect(pillRect, pillH / 2, pillH / 2, pillShadow);
+
+            // Fundo da pílula do nome
+            canvas.DrawRoundRect(pillRect, pillH / 2, pillH / 2, new SKPaint { Color = SKColors.White, IsAntialias = true });
+
+            // Texto centralizado
+            canvas.DrawText(displayName, pillX, pillY + 38, namePaint);
 
             // GRID DE CARDS (2x2)
             float col1X = 80;
@@ -357,23 +367,18 @@ namespace Botzinho.Economy
 
         private static void DrawStatCard(SKCanvas canvas, string title, string value, string subtext, float x, float y, float w, float h, SKTypeface fontBold, SKTypeface fontNormal, SKColor accentColor)
         {
-            // Card background
             canvas.DrawRoundRect(new SKRect(x, y, x + w, y + h), 15, 15,
                 new SKPaint { Color = new SKColor(250, 250, 255), IsAntialias = true });
 
-            // Left accent bar
             canvas.DrawRoundRect(new SKRect(x, y, x + 8, y + h), 4, 4,
                 new SKPaint { Color = accentColor, IsAntialias = true });
 
-            // Title
             using var titlePaint = new SKPaint { Color = new SKColor(130, 130, 150), TextSize = 16, Typeface = fontNormal, IsAntialias = true };
             canvas.DrawText(title, x + 25, y + 30, titlePaint);
 
-            // Value
             using var valuePaint = new SKPaint { Color = new SKColor(40, 40, 60), TextSize = 28, Typeface = fontBold, IsAntialias = true };
             canvas.DrawText(value, x + 25, y + 70, valuePaint);
 
-            // Subtext
             if (!string.IsNullOrEmpty(subtext))
             {
                 using var subPaint = new SKPaint { Color = new SKColor(160, 160, 170), TextSize = 14, Typeface = fontNormal, IsAntialias = true };
@@ -406,7 +411,8 @@ namespace Botzinho.Economy
             canvas.DrawRoundRect(cardRect, 40, 40, borderPaint);
 
             float avRadius = 95;
-            var avRect = new SKRect((width / 2) - avRadius, 160 - avRadius, (width / 2) + avRadius, 160 + avRadius);
+            float avY = 160;
+            var avRect = new SKRect((width / 2) - avRadius, avY - avRadius, (width / 2) + avRadius, avY + avRadius);
 
             using var http = new HttpClient();
             try
@@ -427,8 +433,20 @@ namespace Botzinho.Economy
             string displayName = (user as SocketGuildUser)?.Nickname ?? user.GlobalName ?? user.Username;
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
 
-            using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 34, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            canvas.DrawText(displayName, width / 2, 280, namePaint);
+            // USERNAME EM PÍLULA PREMIUM ESCURA
+            using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 36, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
+            float nameWidth = namePaint.MeasureText(displayName);
+
+            float pillW = Math.Max(nameWidth + 100, 240);
+            float pillH = 55;
+            float pillX = width / 2;
+            float pillY = avY + avRadius + 25;
+
+            var pillRect = new SKRect(pillX - pillW / 2, pillY, pillX + pillW / 2, pillY + pillH);
+
+            using var nameBgPaint = new SKPaint { Color = new SKColor(255, 255, 255, 20), IsAntialias = true };
+            canvas.DrawRoundRect(pillRect, pillH / 2, pillH / 2, nameBgPaint);
+            canvas.DrawText(displayName, pillX, pillY + 38, namePaint);
 
             DrawModernPanel(canvas, "Carteira", wallet, width, 370, PurpleGradientStart, fontBold);
             DrawModernPanel(canvas, "Banco", bank, width, 465, PurpleGradientEnd, fontBold);
