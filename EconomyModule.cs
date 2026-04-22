@@ -1147,7 +1147,7 @@ namespace Botzinho.Economy
 
                         if (alvo.Id == user.Id)
                         {
-                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, Emoji.Parse("<:placa:1496639283224772639>"));
+                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, Emote.Parse("<:placa:1496639283224772639>"));
                         }
                         else
                         {
