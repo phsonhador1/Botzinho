@@ -251,7 +251,7 @@ namespace Botzinho.Economy
         }
     }
 
-    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO PREMIUM) ---
+    // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO PREMIUM EM PÍLULAS) ---
     public static class EconomyImageHelper
     {
         private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220); // Roxo Zoe
@@ -262,7 +262,7 @@ namespace Botzinho.Economy
         public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank)
         {
             int width = 500;
-            int height = 650;
+            int height = 700; // Tela levemente mais alta para acomodar o avatar maior
 
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
@@ -285,31 +285,31 @@ namespace Botzinho.Economy
                 ImageFilter = SKImageFilter.CreateDropShadow(0, 10, 20, 20, new SKColor(0, 0, 0, 200)),
                 IsAntialias = true
             };
-            canvas.DrawRoundRect(cardRect, 30, 30, shadowPaint);
+            canvas.DrawRoundRect(cardRect, 40, 40, shadowPaint);
 
             // 3. Fundo do Cartão Principal
             using var cardPaint = new SKPaint { Color = CardBg, IsAntialias = true };
-            canvas.DrawRoundRect(cardRect, 30, 30, cardPaint);
+            canvas.DrawRoundRect(cardRect, 40, 40, cardPaint);
 
-            // Borda do Cartão (Brilho no topo)
+            // Borda do Cartão
             using var highlightPaint = new SKPaint
             {
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 1.5f,
-                Color = new SKColor(255, 255, 255, 25), // Branco super transparente
+                Color = new SKColor(255, 255, 255, 25),
                 IsAntialias = true
             };
-            canvas.DrawRoundRect(cardRect, 30, 30, highlightPaint);
+            canvas.DrawRoundRect(cardRect, 40, 40, highlightPaint);
 
-            // 4. Desenhar Avatar (Top Center)
-            float avY = 130;
-            float avRadius = 70;
+            // 4. Desenhar Avatar GIGANTE (Top Center) - 190px (Raio 95)
+            float avY = 160;
+            float avRadius = 95;
             var avRect = new SKRect((width / 2) - avRadius, avY - avRadius, (width / 2) + avRadius, avY + avRadius);
 
             using var http = new HttpClient();
             try
             {
-                var bytes = await http.GetByteArrayAsync(user.GetAvatarUrl(ImageFormat.Png, 256) ?? user.GetDefaultAvatarUrl());
+                var bytes = await http.GetByteArrayAsync(user.GetAvatarUrl(ImageFormat.Png, 512) ?? user.GetDefaultAvatarUrl());
                 using var bmp = SKBitmap.Decode(bytes);
                 var path = new SKPath();
                 path.AddOval(avRect);
@@ -328,26 +328,33 @@ namespace Botzinho.Economy
             using var ringPaint = new SKPaint
             {
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 4,
+                StrokeWidth = 6,
                 Color = PurpleTheme,
                 IsAntialias = true
             };
             canvas.DrawOval(avRect, ringPaint);
 
-            // 5. Nome do Usuário
+            // 5. Apelido do Usuário em Fundo Pílula (Ignora Username de login)
+            string displayName = (user as SocketGuildUser)?.Nickname ?? user.GlobalName ?? user.Username;
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
-            using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 28, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            canvas.DrawText(user.Username, width / 2, 245, namePaint);
+            using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 32, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
+            
+            float nameWidth = namePaint.MeasureText(displayName);
+            float namePillWidth = Math.Max(nameWidth + 80, 220); // Fundo cinza com tamanho responsivo
+            float namePillHeight = 55;
+            float namePillY = 280;
+            var namePillRect = new SKRect((width / 2) - (namePillWidth / 2), namePillY, (width / 2) + (namePillWidth / 2), namePillY + namePillHeight);
+            
+            using var nameBgPaint = new SKPaint { Color = new SKColor(255, 255, 255, 30), IsAntialias = true };
+            canvas.DrawRoundRect(namePillRect, namePillHeight / 2, namePillHeight / 2, nameBgPaint);
+            
+            canvas.DrawText(displayName, width / 2, namePillY + 38, namePaint);
 
-            // Linha divisória sutil abaixo do nome
-            using var linePaint = new SKPaint { Color = new SKColor(255, 255, 255, 20), StrokeWidth = 2, IsAntialias = true };
-            canvas.DrawLine(width / 2 - 100, 270, width / 2 + 100, 270, linePaint);
-
-            // 6. Painéis de Saldo
-            float startY = 300;
-            DrawModernPanel(canvas, "CARTEIRA", wallet, width, startY, PurpleTheme, fontBold);
-            DrawModernPanel(canvas, "BANCO", bank, width, startY + 95, PurpleTheme, fontBold);
-            DrawModernPanel(canvas, "TOTAL", wallet + bank, width, startY + 190, GoldTheme, fontBold);
+            // 6. Painéis de Saldo 100% Arredondados (Estilo Pílula)
+            float startY = 370;
+            DrawModernPanel(canvas, "Carteira", wallet, width, startY, PurpleTheme, fontBold, "C");
+            DrawModernPanel(canvas, "Banco", bank, width, startY + 95, PurpleTheme, fontBold, "B");
+            DrawModernPanel(canvas, "Total", wallet + bank, width, startY + 190, GoldTheme, fontBold, "T");
 
             // 7. Salvar e Retornar
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -358,31 +365,41 @@ namespace Botzinho.Economy
             return p;
         }
 
-        private static void DrawModernPanel(SKCanvas canvas, string label, long valor, int totalWidth, float y, SKColor accent, SKTypeface font)
+        private static void DrawModernPanel(SKCanvas canvas, string label, long valor, int totalWidth, float y, SKColor accent, SKTypeface font, string iconLetter)
         {
-            float pWidth = totalWidth - 90;
-            float pHeight = 75;
+            float pWidth = totalWidth - 90; // Margens laterais
+            float pHeight = 80;
             float x = 45;
 
             var rect = new SKRect(x, y, x + pWidth, y + pHeight);
 
+            // Fundo escuro da pílula
             using var panelBg = new SKPaint { Color = new SKColor(14, 12, 22), IsAntialias = true };
-            canvas.DrawRoundRect(rect, 12, 12, panelBg);
+            canvas.DrawRoundRect(rect, pHeight / 2, pHeight / 2, panelBg);
 
-            var indicatorRect = new SKRect(x, y + 15, x + 5, y + pHeight - 15);
-            using var indicatorPaint = new SKPaint { Color = accent, IsAntialias = true };
-            canvas.DrawRoundRect(indicatorRect, 2, 2, indicatorPaint);
+            // Círculo com Ícone/Letra na esquerda
+            float circleRadius = (pHeight / 2) - 10;
+            float circleX = x + pHeight / 2;
+            float circleY = y + pHeight / 2;
+            using var circleBg = new SKPaint { Color = accent, IsAntialias = true };
+            canvas.DrawCircle(circleX, circleY, circleRadius, circleBg);
 
-            using var labelPaint = new SKPaint { Color = new SKColor(130, 125, 145), TextSize = 13, Typeface = font, IsAntialias = true };
-            canvas.DrawText(label, x + 20, y + 28, labelPaint);
+            using var iconPaint = new SKPaint { Color = SKColors.White, TextSize = 24, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
+            canvas.DrawText(iconLetter, circleX, circleY + 8, iconPaint);
 
+            // Textos organizados exatamente igual à imagem branca
+            float textX = x + pHeight + 15;
+            
+            // "Carteira" ou "Banco"
+            using var labelPaint = new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = font, IsAntialias = true };
+            canvas.DrawText(label, textX, y + 32, labelPaint);
+
+            // Valor exato e abreviado (Ex: 269127 (269.13K))
             string valorFormatado = EconomyHelper.FormatarSaldo(valor);
-            using var valuePaint = new SKPaint { Color = SKColors.White, TextSize = 34, Typeface = font, IsAntialias = true };
-            canvas.DrawText(valorFormatado, x + 20, y + 62, valuePaint);
-
-            float valueWidth = valuePaint.MeasureText(valorFormatado);
-            using var cpointsPaint = new SKPaint { Color = accent, TextSize = 16, Typeface = font, IsAntialias = true };
-            canvas.DrawText("cpoints", x + 25 + valueWidth, y + 60, cpointsPaint);
+            string valorStr = $"{valor} ({valorFormatado})";
+            
+            using var valuePaint = new SKPaint { Color = new SKColor(180, 180, 200), TextSize = 18, Typeface = font, IsAntialias = true };
+            canvas.DrawText(valorStr, textX, y + 60, valuePaint);
         }
 
         public static async Task<string> GerarImagemRank(SocketGuild guild, List<(ulong UserId, long Total)> top)
@@ -642,7 +659,7 @@ namespace Botzinho.Economy
 
                         if (alvo == null || partes.Length < 3)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zsetsaldo @usuario");
+                            await msg.Channel.SendMessageAsync("❓ **Modo de uso:** `zsetsaldo @usuario [novo_valor]`\n*Exemplo para zerar:* `zsetsaldo @Zoe 0`\n*Exemplo para definir:* `zsetsaldo @Zoe 10b`.");
                             return;
                         }
 
@@ -739,11 +756,15 @@ namespace Botzinho.Economy
                     // --- COMANDO ZROUBAR (AGRESSIVO - FOCO NA CARTEIRA) ---
                     else if (content.StartsWith("zroubar"))
                     {
-                        // 1. TIMEOUT DE 30 MINUTOS (Específico para Roubo)
+                        // 1. TIMEOUT DE 30 MINUTOS (Específico para Roubo em Embed)
                         if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 25)
                         {
                             var tempoRestante = 25 - (DateTime.UtcNow - lastSteal).TotalMinutes;
-                            var aviso = await msg.Channel.SendMessageAsync($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                            var ebCooldown = new EmbedBuilder()
+                                .WithColor(new Color(255, 71, 87)) // Vermelho
+                                .WithDescription($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                            
+                            var aviso = await msg.Channel.SendMessageAsync(embed: ebCooldown.Build());
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
                         }
@@ -776,7 +797,14 @@ namespace Botzinho.Economy
 
                         if (saldoCarteiraVitima <= 0)
                         {
-                            await msg.Channel.SendMessageAsync($"<:atencao:1493350891749642240> {user.Mention} tentou roubar {vitima.Mention}, mas ele estava duro kkk **Carteira vazia!**");
+                            // --- ROUBO FRACASSADO (EMBED) ---
+                            var ebFracasso = new EmbedBuilder()
+                                .WithColor(new Color(43, 45, 49)) // Cor escura/neutra
+                                .WithAuthor("Assalto Fracassado", "https://cdn-icons-png.flaticon.com/512/4338/4338873.png")
+                                .WithDescription($"<:atencao:1493350891749642240> {user.Mention} tentou roubar {vitima.Mention}, mas ele estava duro kkk\n\n**Carteira vazia!** Nenhuma moeda foi levada.")
+                                .WithThumbnailUrl(vitima.GetAvatarUrl() ?? vitima.GetDefaultAvatarUrl());
+
+                            await msg.Channel.SendMessageAsync(embed: ebFracasso.Build());
 
                             // Aplica o timeout mesmo se falhar (para não ficarem spamando)
                             _stealCooldowns[user.Id] = DateTime.UtcNow;
@@ -801,8 +829,15 @@ namespace Botzinho.Economy
                                 // Aplica o timeout de 30 minutos agora que teve sucesso
                                 _stealCooldowns[user.Id] = DateTime.UtcNow;
 
-                                // 6. Mensagem de Sucesso (Agressiva e sem Embed)
-                                await msg.Channel.SendMessageAsync($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!** <:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em <:dinheiro:1493360319928733838> `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!");
+                                // --- ROUBO BEM SUCEDIDO (EMBED PREMIUM) ---
+                                var ebSucesso = new EmbedBuilder()
+                                    .WithColor(new Color(255, 71, 87)) // Vermelho perigo
+                                    .WithAuthor("Assalto Bem Sucedido!", "https://cdn-icons-png.flaticon.com/512/2569/2569198.png")
+                                    .WithDescription($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!**\n\n" +
+                                                     $"<:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em <:dinheiro:1493360319928733838> `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!")
+                                    .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
+
+                                await msg.Channel.SendMessageAsync(embed: ebSucesso.Build());
                             }
                             else
                             {
