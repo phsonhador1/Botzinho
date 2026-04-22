@@ -376,11 +376,10 @@ namespace Botzinho.Economy
             if (nivel >= 25) badges.Add("Lendário");
             else if (nivel >= 10) badges.Add("Veterano");
             else if (nivel >= 5) badges.Add("Ativo");
+            else if (nivel >= 2) badges.Add("Puto");
 
             if (reps >= 50) badges.Add("Popular");
             else if (reps >= 10) badges.Add("Querido");
-
-            if (IDsAutorizados.Contains(userId)) badges.Add("Staff");
 
             return badges;
         }
