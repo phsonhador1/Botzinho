@@ -74,7 +74,7 @@ namespace Botzinho.Economy
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
             var res = cmd.ExecuteScalar();
             if (res != null && res != DBNull.Value) return Convert.ToDateTime(res);
-            return DateTime.MinValue; 
+            return DateTime.MinValue;
         }
 
         public static void AtualizarDaily(ulong guildId, ulong userId)
@@ -85,7 +85,7 @@ namespace Botzinho.Economy
                                 ON CONFLICT (guild_id, user_id) DO UPDATE SET ultimo_daily = @dt";
             cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
-            cmd.Parameters.AddWithValue("@dt", DateTime.Now); 
+            cmd.Parameters.AddWithValue("@dt", DateTime.Now);
             cmd.ExecuteNonQuery();
         }
 
@@ -183,9 +183,9 @@ namespace Botzinho.Economy
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"INSERT INTO economy_users (guild_id, user_id, saldo, banco) VALUES (@gid, @uid, @valor, 0)
                                 ON CONFLICT (guild_id, user_id) DO UPDATE SET saldo = @valor, banco = 0";
-            cmd.Parameters.AddWithValue("@gid", guildId.ToString()); 
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
             cmd.Parameters.AddWithValue("@uid", userId.ToString());
-            cmd.Parameters.AddWithValue("@valor", valor); 
+            cmd.Parameters.AddWithValue("@valor", valor);
             cmd.ExecuteNonQuery();
         }
 
@@ -305,12 +305,12 @@ namespace Botzinho.Economy
             string displayName = (user as SocketGuildUser)?.Nickname ?? user.GlobalName ?? user.Username;
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
             using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 34, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            
+
             float nameWidth = namePaint.MeasureText(displayName);
             float pillW = Math.Max(nameWidth + 60, 200);
             float pillY = 300;
             var pillRect = new SKRect(avX - pillW / 2, pillY, avX + pillW / 2, pillY + 45);
-            
+
             canvas.DrawRoundRect(pillRect, 22, 22, new SKPaint { Color = new SKColor(255, 255, 255, 15), IsAntialias = true });
             canvas.DrawText(displayName, avX, pillY + 32, namePaint);
 
@@ -321,12 +321,12 @@ namespace Botzinho.Economy
             float cardH = 90;
 
             // Linha 1
-            DrawProfileCard(canvas, "💰 Patrimônio", EconomyHelper.FormatarSaldo(totalCoins), startX, startY, cardW, cardH, GoldTheme, fontBold);
-            DrawProfileCard(canvas, "🌟 Nível / XP", "Nvl: 1 (0/100)", startX + cardW + 20, startY, cardW, cardH, new SKColor(100, 200, 100), fontBold);
+            DrawProfileCard(canvas, " Patrimônio", EconomyHelper.FormatarSaldo(totalCoins), startX, startY, cardW, cardH, GoldTheme, fontBold);
+            DrawProfileCard(canvas, " Nível / XP", "Nvl: 1 (0/100)", startX + cardW + 20, startY, cardW, cardH, new SKColor(100, 200, 100), fontBold);
 
             // Linha 2
-            DrawProfileCard(canvas, "🎖️ Badges", "Nenhuma", startX, startY + cardH + 20, cardW, cardH, new SKColor(220, 100, 100), fontBold);
-            DrawProfileCard(canvas, "👍 Reputações", "0 Reps", startX + cardW + 20, startY + cardH + 20, cardW, cardH, new SKColor(100, 150, 255), fontBold);
+            DrawProfileCard(canvas, " Badges", "Nenhuma", startX, startY + cardH + 20, cardW, cardH, new SKColor(220, 100, 100), fontBold);
+            DrawProfileCard(canvas, " Reputações", "0 Reps", startX + cardW + 20, startY + cardH + 20, cardW, cardH, new SKColor(100, 150, 255), fontBold);
 
             // Salvar
             var p = Path.Combine(Path.GetTempPath(), $"perfil_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -341,7 +341,7 @@ namespace Botzinho.Economy
         {
             var rect = new SKRect(x, y, x + w, y + h);
             canvas.DrawRoundRect(rect, 15, 15, new SKPaint { Color = new SKColor(28, 25, 40), IsAntialias = true });
-            
+
             var lineRect = new SKRect(x, y + 15, x + 6, y + h - 15);
             canvas.DrawRoundRect(lineRect, 3, 3, new SKPaint { Color = accent, IsAntialias = true });
 
@@ -423,13 +423,13 @@ namespace Botzinho.Economy
             string displayName = (user as SocketGuildUser)?.Nickname ?? user.GlobalName ?? user.Username;
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
             using var namePaint = new SKPaint { Color = SKColors.White, TextSize = 34, Typeface = fontBold, TextAlign = SKTextAlign.Center, IsAntialias = true };
-            
+
             float nameWidth = namePaint.MeasureText(displayName);
             float pillW = Math.Max(nameWidth + 80, 220);
             float pillH = 55;
             float pillY = 280;
             var pillRect = new SKRect((width / 2) - (pillW / 2), pillY, (width / 2) + (pillW / 2), pillY + pillH);
-            
+
             using var nameBgPaint = new SKPaint { Color = new SKColor(255, 255, 255, 30), IsAntialias = true };
             canvas.DrawRoundRect(pillRect, pillH / 2, pillH / 2, nameBgPaint);
             canvas.DrawText(displayName, width / 2, pillY + 38, namePaint);
@@ -469,13 +469,13 @@ namespace Botzinho.Economy
             canvas.DrawText(iconLetter, circleX, circleY + 8, iconPaint);
 
             float textX = x + pHeight + 15;
-            
+
             using var labelPaint = new SKPaint { Color = SKColors.White, TextSize = 22, Typeface = font, IsAntialias = true };
             canvas.DrawText(label, textX, y + 32, labelPaint);
 
             string valorFormatado = EconomyHelper.FormatarSaldo(valor);
             string valorStr = $"{valor} ({valorFormatado})";
-            
+
             using var valuePaint = new SKPaint { Color = new SKColor(180, 180, 200), TextSize = 18, Typeface = font, IsAntialias = true };
             canvas.DrawText(valorStr, textX, y + 60, valuePaint);
         }
@@ -619,7 +619,7 @@ namespace Botzinho.Economy
                 {
                     if (msg.Author.IsBot || msg is not SocketUserMessage) return;
                     var user = msg.Author as SocketGuildUser; var content = msg.Content.ToLower().Trim(); var guildId = user.Guild.Id;
-                    
+
                     // ADICIONADO ZPERFIL NA LISTA
                     string[] cmds = { "zsaldo", "zperfil", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "zsetsaldo", "ztransacoes", "ztranscoes", "zroubar" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
@@ -638,14 +638,14 @@ namespace Botzinho.Economy
                     {
                         var alvo = msg.MentionedUsers.FirstOrDefault() ?? user;
                         long total = EconomyHelper.GetSaldo(guildId, alvo.Id) + EconomyHelper.GetBanco(guildId, alvo.Id);
-                        
+
                         var p = await EconomyImageHelper.GerarImagemPerfil(alvo, total);
-                        
+
                         var cb = new ComponentBuilder()
                             .WithButton("Alterar Bio", "btn_bio_dummy", ButtonStyle.Secondary, new Emoji("📝"))
                             .WithButton("Enviar reputação", "btn_rep_dummy", ButtonStyle.Secondary, new Emoji("🤝"));
 
-                        await msg.Channel.SendFileAsync(p, components: cb.Build()); 
+                        await msg.Channel.SendFileAsync(p, components: cb.Build());
                         File.Delete(p);
                     }
                     // --- ZDAILY ATUALIZADO (PREMIUM) ---
@@ -858,7 +858,7 @@ namespace Botzinho.Economy
                             var ebCooldown = new EmbedBuilder()
                                 .WithColor(new Color(255, 71, 87)) // Vermelho
                                 .WithDescription($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
-                            
+
                             var aviso = await msg.Channel.SendMessageAsync(embed: ebCooldown.Build());
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
