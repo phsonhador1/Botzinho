@@ -1147,7 +1147,7 @@ namespace Botzinho.Economy
 
                         if (alvo.Id == user.Id)
                         {
-                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, new Emoji("📝"));
+                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, Emoji.Parse("<:placa:1496639283224772639>"));
                         }
                         else
                         {
@@ -1164,7 +1164,7 @@ namespace Botzinho.Economy
                         string[] partes = msg.Content.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
                         if (partes.Length < 2)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso:** `zbio <texto da sua bio>`\n*Exemplo: zbio Eu amo o Zoe Bot!*");
+                            await msg.Channel.SendMessageAsync("❓ **Uso:** **zbio <texto da sua bio>**\n*Exemplo: **zbio Eu amo a Zoe Bot :)**");
                             return;
                         }
                         string novaBio = partes[1].Trim();
@@ -1185,20 +1185,20 @@ namespace Botzinho.Economy
                         if (partes.Length >= 2 && partes[1] == "remover")
                         {
                             EconomyHelper.DefinirAmigo(guildId, user.Id, null);
-                            await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, seu melhor amigo foi **removido** do perfil.");
+                            await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> Feito! Seu melhor amigo foi **removido** do perfil.");
                             return;
                         }
 
                         var amigo = msg.MentionedUsers.FirstOrDefault();
                         if (amigo == null)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso:** `zamigo @usuario` para definir seu melhor amigo\n*Ou: `zamigo remover` para remover.*");
+                            await msg.Channel.SendMessageAsync("❓ **Uso:** **zamigo @usuario** para definir seu melhor amigo\n*Ou: **zamigo remover** para remover.");
                             return;
                         }
 
                         if (amigo.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo, solitário kkk");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo");
                             return;
                         }
 
@@ -1209,7 +1209,7 @@ namespace Botzinho.Economy
                         }
 
                         EconomyHelper.DefinirAmigo(guildId, user.Id, amigo.Id);
-                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
+                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> Pronto! Agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
                     }
                     // --- ZDAILY ---
                     else if (content == "zdaily")
