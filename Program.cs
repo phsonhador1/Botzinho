@@ -2,6 +2,11 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Lavalink4NET;
+using Lavalink4NET.Extensions;
+using Lavalink4NET.DiscordNet; // <--- CORRIGIDO COM PONTO
 using System;
 using System.Linq;
 using System.Threading;
@@ -10,21 +15,40 @@ using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
+using Botzinho.Music;
 
-// --- CONFIGURAÇÃO DE INTENTS (ESSENCIAL PARA ECONOMIA) ---
+// --- CONFIGURAÇÃO DE INTENTS ---
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
-    // AllUnprivileged + Privileged Intents garante que o bot leia mensagens e membros sem erro
     GatewayIntents = GatewayIntents.AllUnprivileged |
                      GatewayIntents.MessageContent |
-                     GatewayIntents.GuildMembers,
+                     GatewayIntents.GuildMembers |
+                     GatewayIntents.GuildVoiceStates,
     AlwaysDownloadUsers = true,
     MessageCacheSize = 100
 });
 
-var services = new ServiceCollection()
-    .AddSingleton(client)
-    .BuildServiceProvider();
+// --- MONTA O HOST PARA O LAVALINK4NET ---
+var hostBuilder = Host.CreateDefaultBuilder()
+    .ConfigureServices(services =>
+    {
+        services.AddSingleton(client);
+        services.AddSingleton<DiscordSocketClient>(client);
+
+        services.AddLavalink();
+        services.ConfigureLavalink(options =>
+        {
+            // === COLOQUE SEUS DADOS AQUI ===
+            options.BaseAddress = new Uri("COLE_AQUI_O_SEU_LINK_DO_RAILWAY_COM_HTTPS");
+            options.Passphrase = "COLE_AQUI_A_SUA_SENHA";
+            options.ReadyTimeout = TimeSpan.FromSeconds(15);
+        });
+
+        services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+    });
+
+var host = hostBuilder.Build();
+var services = host.Services;
 
 // --- INICIALIZAÇÃO DOS MÓDULOS ---
 new Botzinho.Admin.AdminControleModule(client);
@@ -32,21 +56,25 @@ var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
 
 ModerationHelper.InicializarTabelas();
-
-// AQUI ESTÁ O SEGREDO: Instanciar o Handler para ele começar a ouvir os comandos zsaldo/zperfil
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
-
 var cassino = new Botzinho.Cassino.CassinoModule(client);
 var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
+var audioService = services.GetRequiredService<IAudioService>();
+var musicHandler = new Botzinho.Music.MusicHandler(client, audioService);
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
 client.Ready += async () =>
 {
-    // Registro de Comandos Slash
+    _ = Task.Run(async () => {
+        try { await host.StartAsync(); }
+        catch (Exception ex) { Console.WriteLine($"[Lavalink Start Error]: {ex.Message}"); }
+    });
+
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
@@ -55,7 +83,6 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
-    // --- LOOP DE STATUS COM O TOP 1 ---
     _ = Task.Run(async () =>
     {
         while (true)
@@ -102,16 +129,12 @@ client.InteractionCreated += async interaction =>
     await interactionService.ExecuteCommandAsync(ctx, services);
 };
 
-// --- LOGIN ---
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new Exception("DISCORD_TOKEN nao configurado!");
 
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
-
 await Task.Delay(Timeout.Infinite);
-
-// --- CLASSES DE COMANDOS SLASH ---
 
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
