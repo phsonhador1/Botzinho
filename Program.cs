@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Lavalink4NET;
 using Lavalink4NET.Extensions;
-using Lavalink4NET.DiscordNet; // <--- CORRIGIDO COM PONTO
+using Lavalink4NET.DiscordNet; 
 using System;
 using System.Linq;
 using System.Threading;
@@ -38,9 +38,12 @@ var hostBuilder = Host.CreateDefaultBuilder()
         services.AddLavalink();
         services.ConfigureLavalink(options =>
         {
-            // === COLOQUE SEUS DADOS AQUI ===
-            options.BaseAddress = new Uri("COLE_AQUI_O_SEU_LINK_DO_RAILWAY_COM_HTTPS");
-            options.Passphrase = "COLE_AQUI_A_SUA_SENHA";
+            // === CORRIGIDO: Adicionado "https://" e fallback para Variáveis de Ambiente ===
+            string host = Environment.GetEnvironmentVariable("LAVALINK_HOST") ?? "https://lavalink-production-98e2.up.railway.app";
+            string senha = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") ?? "jacb2018";
+
+            options.BaseAddress = new Uri(host);
+            options.Passphrase = senha;
             options.ReadyTimeout = TimeSpan.FromSeconds(15);
         });
 
