@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Lavalink4NET;
 using Lavalink4NET.Extensions;
-using Lavalink4NET.DiscordNet; 
+using Lavalink4NET.DiscordNet; // Pacote da v4
 using System;
 using System.Linq;
 using System.Threading;
@@ -23,33 +23,36 @@ var client = new DiscordSocketClient(new DiscordSocketConfig
     GatewayIntents = GatewayIntents.AllUnprivileged |
                      GatewayIntents.MessageContent |
                      GatewayIntents.GuildMembers |
-                     GatewayIntents.GuildVoiceStates,
+                     GatewayIntents.GuildVoiceStates, // <--- Vital para ouvir a call
     AlwaysDownloadUsers = true,
     MessageCacheSize = 100
 });
 
-// --- MONTA O HOST PARA O LAVALINK4NET ---
+// --- CONFIGURAÇÃO DO HOST ---
+// --- CONFIGURAÇÃO DO HOST ---
 var hostBuilder = Host.CreateDefaultBuilder()
     .ConfigureServices(services =>
     {
+        // 1. Registra as instâncias do cliente do Discord (Garante que o Lavalink ache o bot)
         services.AddSingleton(client);
         services.AddSingleton<DiscordSocketClient>(client);
+        services.AddSingleton<Discord.WebSocket.BaseSocketClient>(client);
 
+        // 2. FAZ A PONTE MANUALMENTE (Substitui o AddDiscordNet que deu erro)
+        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, Lavalink4NET.DiscordNet.DiscordClientWrapper>();
+
+        // 3. Registra o Lavalink
         services.AddLavalink();
+
         services.ConfigureLavalink(options =>
         {
-            // === CORRIGIDO: Adicionado "https://" e fallback para Variáveis de Ambiente ===
-            string host = Environment.GetEnvironmentVariable("LAVALINK_HOST") ?? "https://lavalink-production-98e2.up.railway.app";
-            string senha = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") ?? "jacb2018";
-
-            options.BaseAddress = new Uri(host);
-            options.Passphrase = senha;
+            options.BaseAddress = new Uri(Environment.GetEnvironmentVariable("LAVALINK_HOST") ?? "https://lavalink-production-98e2.up.railway.app");
+            options.Passphrase = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") ?? "jacb2018";
             options.ReadyTimeout = TimeSpan.FromSeconds(15);
         });
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
-
 var host = hostBuilder.Build();
 var services = host.Services;
 
@@ -61,16 +64,21 @@ var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
+
 var cassino = new Botzinho.Cassino.CassinoModule(client);
 var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
+// --- INTEGRAÇÃO DE MÚSICA ---
 var audioService = services.GetRequiredService<IAudioService>();
 var musicHandler = new Botzinho.Music.MusicHandler(client, audioService);
 
+// ATENÇÃO: As linhas manuais de VoiceStateUpdated foram APAGADAS daqui. Não coloque de volta!
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
+// --- EVENTO READY ---
 client.Ready += async () =>
 {
     _ = Task.Run(async () => {
@@ -86,6 +94,7 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
+    // --- LOOP DE STATUS ---
     _ = Task.Run(async () =>
     {
         while (true)
@@ -101,21 +110,13 @@ client.Ready += async () =>
                     {
                         var top1 = top10.First();
                         var usuario = client.GetUser(top1.UserId) as IUser ?? await client.Rest.GetUserAsync(top1.UserId);
-                        string nomeTop1 = usuario != null ? usuario.Username : "Desconhecido";
-                        statusTop1 = $"👑 O Magnata Rico - {nomeTop1} com {EconomyHelper.FormatarSaldo(top1.Total)}";
+                        statusTop1 = $"👑 O Magnata Rico - {(usuario != null ? usuario.Username : "Desconhecido")} com {EconomyHelper.FormatarSaldo(top1.Total)}";
                     }
                 }
             }
             catch (Exception ex) { Console.WriteLine($"Erro status: {ex.Message}"); }
 
-            string[] statusAtual = new[]
-            {
-                $"💜 Atualmente em {client.Guilds.Count} servidores",
-                "🙂 Online | Pronta Para Ajudar!",
-                "✨ use zhelp para descobrir os comandos",
-                statusTop1
-            };
-
+            string[] statusAtual = { $"💜 {client.Guilds.Count} servidores", "🙂 Online!", "✨ zhelp", statusTop1 };
             foreach (var st in statusAtual)
             {
                 await client.SetStatusAsync(UserStatus.DoNotDisturb);
@@ -132,24 +133,19 @@ client.InteractionCreated += async interaction =>
     await interactionService.ExecuteCommandAsync(ctx, services);
 };
 
-var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-    ?? throw new Exception("DISCORD_TOKEN nao configurado!");
-
+var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? throw new Exception("TOKEN MISSING");
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 await Task.Delay(Timeout.Infinite);
 
+// --- CLASSES DE COMANDOS SLASH ---
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("configserver", "Configura permissoes do servidor")]
     public async Task ConfigServerAsync()
     {
         var user = (SocketGuildUser)Context.User;
-        if (!AdminModule.PodeUsarEconfigStatic(user))
-        {
-            await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true);
-            return;
-        }
+        if (!AdminModule.PodeUsarEconfigStatic(user)) { await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true); return; }
         await DeferAsync();
         var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
         var components = AdminModule.CriarMenuPrincipal();
@@ -164,22 +160,15 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
     public async Task NukeAsync()
     {
         var user = (SocketGuildUser)Context.User;
-        var guildId = Context.Guild.Id;
-        var resultado = AdminModule.ChecarPermissaoCompleta(guildId, user, "nuke", GuildPermission.ManageChannels);
-        if (resultado != null)
-        {
-            await RespondAsync(resultado, ephemeral: true);
-            return;
-        }
+        var resultado = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "nuke", GuildPermission.ManageChannels);
+        if (resultado != null) { await RespondAsync(resultado, ephemeral: true); return; }
         await DeferAsync(ephemeral: true);
         var channel = (ITextChannel)Context.Channel;
-        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
-        {
+        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props => {
             props.Topic = channel.Topic;
             props.CategoryId = channel.CategoryId;
             props.Position = channel.Position;
             props.IsNsfw = channel.IsNsfw;
-            props.SlowModeInterval = channel.SlowModeInterval;
             props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(channel.PermissionOverwrites.ToList());
         });
         await channel.DeleteAsync();
