@@ -35,6 +35,8 @@ var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
+new Botzinho.Music.MusicModule(client);
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
 client.Ready += async () =>
