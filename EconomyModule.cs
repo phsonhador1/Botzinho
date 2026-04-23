@@ -336,11 +336,37 @@ namespace Botzinho.Economy
         }
 
         // Adiciona XP e retorna quantos níveis subiu (0 se não subiu)
+        // OTIMIZADO: usa apenas 1 conexão com o banco em vez de 3
         public static int AdicionarXp(ulong guildId, ulong userId, int ganho)
         {
-            GarantirPerfil(guildId, userId);
-            var (_, nivel, xp, _, _) = GetPerfil(guildId, userId);
+            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
 
+            // 1. Garante perfil (UPSERT)
+            using (var cmdInsert = conn.CreateCommand())
+            {
+                cmdInsert.CommandText = @"INSERT INTO economy_profiles (guild_id, user_id) VALUES (@gid, @uid)
+                                         ON CONFLICT (guild_id, user_id) DO NOTHING";
+                cmdInsert.Parameters.AddWithValue("@gid", guildId.ToString());
+                cmdInsert.Parameters.AddWithValue("@uid", userId.ToString());
+                cmdInsert.ExecuteNonQuery();
+            }
+
+            // 2. Lê nível e XP atuais
+            int nivel = 1, xp = 0;
+            using (var cmdGet = conn.CreateCommand())
+            {
+                cmdGet.CommandText = "SELECT nivel, xp FROM economy_profiles WHERE guild_id = @gid AND user_id = @uid";
+                cmdGet.Parameters.AddWithValue("@gid", guildId.ToString());
+                cmdGet.Parameters.AddWithValue("@uid", userId.ToString());
+                using var reader = cmdGet.ExecuteReader();
+                if (reader.Read())
+                {
+                    nivel = reader.GetInt32(0);
+                    xp = reader.GetInt32(1);
+                }
+            }
+
+            // 3. Calcula novos valores
             xp += ganho;
             int niveisSubidos = 0;
             int xpNecessario = GetXpNecessario(nivel);
@@ -353,14 +379,16 @@ namespace Botzinho.Economy
                 xpNecessario = GetXpNecessario(nivel);
             }
 
-            using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE economy_profiles SET nivel = @nvl, xp = @xp WHERE guild_id = @gid AND user_id = @uid";
-            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
-            cmd.Parameters.AddWithValue("@uid", userId.ToString());
-            cmd.Parameters.AddWithValue("@nvl", nivel);
-            cmd.Parameters.AddWithValue("@xp", xp);
-            cmd.ExecuteNonQuery();
+            // 4. Salva
+            using (var cmdUpdate = conn.CreateCommand())
+            {
+                cmdUpdate.CommandText = "UPDATE economy_profiles SET nivel = @nvl, xp = @xp WHERE guild_id = @gid AND user_id = @uid";
+                cmdUpdate.Parameters.AddWithValue("@gid", guildId.ToString());
+                cmdUpdate.Parameters.AddWithValue("@uid", userId.ToString());
+                cmdUpdate.Parameters.AddWithValue("@nvl", nivel);
+                cmdUpdate.Parameters.AddWithValue("@xp", xp);
+                cmdUpdate.ExecuteNonQuery();
+            }
 
             return niveisSubidos;
         }
@@ -1071,27 +1099,35 @@ namespace Botzinho.Economy
                     var guildId = user.Guild.Id;
 
                     // ============= SISTEMA DE XP POR MENSAGEM (60s cooldown) =============
+                    // Roda em background (fire-and-forget) pra não travar o processamento de comandos
                     if (!_xpChatCooldowns.TryGetValue(user.Id, out var lastXp) || (DateTime.UtcNow - lastXp).TotalSeconds >= 60)
                     {
                         _xpChatCooldowns[user.Id] = DateTime.UtcNow;
-                        int ganho = new Random().Next(8, 18);
-                        int subiu = EconomyHelper.AdicionarXp(guildId, user.Id, ganho);
-
-                        if (subiu > 0)
-                        {
-                            var (_, nivelAtual, _, _, _) = EconomyHelper.GetPerfil(guildId, user.Id);
+                        _ = Task.Run(async () => {
                             try
                             {
-                                var avisoNvl = await msg.Channel.SendMessageAsync($"<:levelup:1495174376885063841> {user.Mention} subiu para o **Nível {nivelAtual}**! Parabéns!");
-                                _ = Task.Delay(6000).ContinueWith(_ => avisoNvl.DeleteAsync());
+                                int ganho = new Random().Next(8, 18);
+                                int subiu = EconomyHelper.AdicionarXp(guildId, user.Id, ganho);
+
+                                if (subiu > 0)
+                                {
+                                    var (_, nivelAtual, _, _, _) = EconomyHelper.GetPerfil(guildId, user.Id);
+                                    try
+                                    {
+                                        var avisoNvl = await msg.Channel.SendMessageAsync($"<:levelup:1495174376885063841> {user.Mention} subiu para o **Nível {nivelAtual}**! Parabéns!");
+                                        _ = Task.Delay(6000).ContinueWith(_ => avisoNvl.DeleteAsync());
+                                    }
+                                    catch { }
+                                }
                             }
-                            catch { }
-                        }
+                            catch (Exception ex) { Console.WriteLine($"[XP BG Error]: {ex.Message}"); }
+                        });
                     }
 
                     string[] cmds = { "zsaldo", "zperfil", "zdaily", "zrank", "zpay", "zdep", "zaddsaldo", "zsetsaldo", "ztransacoes", "ztranscoes", "zroubar", "zamigo", "zbio" };
                     if (!cmds.Any(c => content.StartsWith(c))) return;
 
+                    // Cooldown só se aplica para comandos válidos
                     if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 3)
                     {
                         var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, calma ai viadinho abusado! Aguarde **3 segundos** para usar outro **comando**.");
@@ -1584,7 +1620,7 @@ namespace Botzinho.Economy
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
                 }
-                catch { }
+                catch (Exception ex) { Console.WriteLine($"[HandleMessage Error]: {ex.Message}\n{ex.StackTrace}"); }
             }); return Task.CompletedTask;
         }
     }
