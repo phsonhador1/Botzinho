@@ -166,6 +166,11 @@ namespace Botzinho.Music
                     result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.None);
                 else
                     result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.YouTube);
+                if (!result.HasMatches)
+                {
+                    Console.WriteLine("[Music] YouTube falhou, tentando SoundCloud...");
+                    result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.SoundCloud);
+                }
             }
             catch (Exception ex)
             {
