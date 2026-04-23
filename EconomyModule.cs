@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Botzinho.Economy
 {
@@ -258,11 +259,14 @@ namespace Botzinho.Economy
         // ================ NOVO SISTEMA DE PERFIL ========================
         // ================================================================
 
+        // Fórmula do XP necessário para o próximo nível
+        // Nível 1->2: 100 XP | Nível 2->3: 220 XP | Nível 3->4: 360 XP ...
         public static int GetXpNecessario(int nivel)
         {
             return 100 + (nivel - 1) * 120;
         }
 
+        // Garante que o perfil existe no banco (cria se não existir)
         public static void GarantirPerfil(ulong guildId, ulong userId)
         {
             using var conn = new NpgsqlConnection(GetConnectionString()); conn.Open();
@@ -274,6 +278,7 @@ namespace Botzinho.Economy
             cmd.ExecuteNonQuery();
         }
 
+        // Retorna (bio, nivel, xp, reps, amigoId)
         public static (string Bio, int Nivel, int Xp, int Reps, string AmigoId) GetPerfil(ulong guildId, ulong userId)
         {
             GarantirPerfil(guildId, userId);
@@ -330,6 +335,7 @@ namespace Botzinho.Economy
             cmd.ExecuteNonQuery();
         }
 
+        // Adiciona XP e retorna quantos níveis subiu (0 se não subiu)
         public static int AdicionarXp(ulong guildId, ulong userId, int ganho)
         {
             GarantirPerfil(guildId, userId);
@@ -359,6 +365,7 @@ namespace Botzinho.Economy
             return niveisSubidos;
         }
 
+        // Calcula badges do usuário baseado em estatísticas
         public static List<string> CalcularBadges(ulong guildId, ulong userId, long totalCoins, int nivel, int reps)
         {
             var badges = new List<string>();
@@ -369,10 +376,11 @@ namespace Botzinho.Economy
             if (nivel >= 25) badges.Add("Lendário");
             else if (nivel >= 10) badges.Add("Veterano");
             else if (nivel >= 5) badges.Add("Ativo");
-            else if (nivel >= 2) badges.Add("Puto");
 
             if (reps >= 50) badges.Add("Popular");
             else if (reps >= 10) badges.Add("Querido");
+
+            if (IDsAutorizados.Contains(userId)) badges.Add("Staff");
 
             return badges;
         }
@@ -386,6 +394,7 @@ namespace Botzinho.Economy
         private static readonly SKColor DarkBg = new SKColor(10, 8, 18);         // Fundo escuro
         private static readonly SKColor CardBg = new SKColor(22, 18, 35);        // Fundo do cartão central
 
+        // --- IMAGEM DO NOVO PERFIL (PREMIUM / FUNCIONAL) ---
         public static async Task<string> GerarImagemPerfil(
             SocketUser user,
             long totalCoins,
@@ -403,8 +412,10 @@ namespace Botzinho.Economy
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
+            // 0. Fundo Branco Base
             canvas.Clear(new SKColor(245, 243, 248));
 
+            // 1. BANNER SUPERIOR - Gradiente roxo com nuvens estilizadas
             var bannerRect = new SKRect(0, 0, width, 240);
 
             using var skyPaint = new SKPaint();
@@ -420,6 +431,7 @@ namespace Botzinho.Economy
                 SKShaderTileMode.Clamp);
             canvas.DrawRect(bannerRect, skyPaint);
 
+            // Nuvens decorativas
             DrawCloud(canvas, 80, 60, 120, new SKColor(210, 160, 220, 200));
             DrawCloud(canvas, 260, 40, 100, new SKColor(180, 130, 200, 220));
             DrawCloud(canvas, 420, 80, 140, new SKColor(220, 170, 230, 190));
@@ -429,6 +441,7 @@ namespace Botzinho.Economy
             DrawCloud(canvas, 540, 170, 100, new SKColor(130, 80, 170, 240));
             DrawCloud(canvas, 720, 130, 120, new SKColor(180, 130, 205, 210));
 
+            // 2. AVATAR GIGANTE (Direita)
             float avX = 700;
             float avY = 260;
             float avRadius = 110;
@@ -468,6 +481,7 @@ namespace Botzinho.Economy
             };
             canvas.DrawOval(avRect, avBorder);
 
+            // 3. PÍLULA DO NOME (abaixo do avatar)
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
             var fontReg = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Normal);
 
@@ -493,6 +507,7 @@ namespace Botzinho.Economy
             canvas.DrawRoundRect(pillNameRect, pillNameH / 2, pillNameH / 2, pillBg);
             canvas.DrawText(displayName, avX, pillNameY + 34, namePaint);
 
+            // 4. CARD PRINCIPAL À ESQUERDA
             float cardX = 40;
             float cardY = 200;
             float cardW = 560;
@@ -510,6 +525,7 @@ namespace Botzinho.Economy
             using var cardPaint = new SKPaint { Color = new SKColor(235, 232, 240), IsAntialias = true };
             canvas.DrawRoundRect(mainCardRect, 22, 22, cardPaint);
 
+            // 4.1 BIO
             using var bioPaint = new SKPaint
             {
                 Color = new SKColor(35, 35, 45),
@@ -521,6 +537,7 @@ namespace Botzinho.Economy
             if (bioExibida.Length > 55) bioExibida = bioExibida.Substring(0, 52) + "...";
             canvas.DrawText(bioExibida, cardX + 25, cardY + 40, bioPaint);
 
+            // 5. GRID DE PÍLULAS
             float pilStartX = cardX + 25;
             float pilStartY = cardY + 65;
             float pilW = 250;
@@ -532,6 +549,7 @@ namespace Botzinho.Economy
                 ? (badges.Count == 1 ? badges[0] : $"{badges[0]} +{badges.Count - 1}")
                 : "Nenhuma";
 
+            // Linha 1 - Coins | Nível
             DrawProfilePill(canvas, pilStartX, pilStartY, pilW, pilH,
                 IconType.Coin, EconomyHelper.FormatarSaldo(totalCoins), "Coins",
                 PurpleTheme, fontBold, fontReg);
@@ -540,6 +558,7 @@ namespace Botzinho.Economy
                 IconType.Star, $"Nível: {nivel}", $"{xpAtual}/{xpTotal} XP",
                 PurpleTheme, fontBold, fontReg);
 
+            // Linha 2 - Badges | Reps
             DrawProfilePill(canvas, pilStartX, pilStartY + pilH + gapY, pilW, pilH,
                 IconType.Medal, "Badges", badgesText,
                 PurpleTheme, fontBold, fontReg);
@@ -548,6 +567,7 @@ namespace Botzinho.Economy
                 IconType.ThumbUp, "Reps", reps.ToString(),
                 PurpleTheme, fontBold, fontReg);
 
+            // Linha 3 - Amigo(a)
             string amigoExibido = string.IsNullOrEmpty(amigoNome) ? "Nenhum" : amigoNome;
             if (amigoExibido.Length > 14) amigoExibido = amigoExibido.Substring(0, 12) + "..";
 
@@ -555,6 +575,7 @@ namespace Botzinho.Economy
                 IconType.Heart, "Amigo(a)", amigoExibido,
                 PurpleTheme, fontBold, fontReg);
 
+            // Salvar
             var p = Path.Combine(Path.GetTempPath(), $"perfil_{user.Id}_{DateTime.Now.Ticks}.png");
             using (var img = surface.Snapshot())
             using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
@@ -563,8 +584,10 @@ namespace Botzinho.Economy
             return p;
         }
 
+        // Enum de ícones desenhados vetorialmente (sem emoji, sem bugs)
         private enum IconType { Coin, Star, Medal, ThumbUp, Heart }
 
+        // Desenha uma nuvem estilizada
         private static void DrawCloud(SKCanvas canvas, float cx, float cy, float size, SKColor color)
         {
             using var paint = new SKPaint { Color = color, IsAntialias = true };
@@ -577,6 +600,7 @@ namespace Botzinho.Economy
             canvas.DrawCircle(cx + r * 1.5f, cy + r * 0.4f, r * 0.6f, paint);
         }
 
+        // Desenha ícones vetoriais (sem depender de fontes emoji)
         private static void DrawIcon(SKCanvas canvas, IconType tipo, float cx, float cy, float size, SKColor color)
         {
             using var paint = new SKPaint { Color = color, IsAntialias = true, Style = SKPaintStyle.Fill };
@@ -585,6 +609,7 @@ namespace Botzinho.Economy
             switch (tipo)
             {
                 case IconType.Coin:
+                    // Moeda: círculo com "$"
                     canvas.DrawCircle(cx, cy, size * 0.5f, paint);
                     using (var inner = new SKPaint { Color = new SKColor(255, 255, 255, 80), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2 })
                     {
@@ -597,6 +622,7 @@ namespace Botzinho.Economy
                     break;
 
                 case IconType.Star:
+                    // Estrela 5 pontas
                     var starPath = new SKPath();
                     float sr = size * 0.5f;
                     for (int i = 0; i < 10; i++)
@@ -613,6 +639,7 @@ namespace Botzinho.Economy
                     break;
 
                 case IconType.Medal:
+                    // Medalha: fita + círculo
                     var ribbonPath = new SKPath();
                     ribbonPath.MoveTo(cx - size * 0.3f, cy - size * 0.5f);
                     ribbonPath.LineTo(cx - size * 0.15f, cy - size * 0.1f);
@@ -635,15 +662,17 @@ namespace Botzinho.Economy
                     break;
 
                 case IconType.ThumbUp:
+                    // Joinha (thumbs up)
                     var thumbPath = new SKPath();
                     float s = size * 0.4f;
+                    // Punho
                     thumbPath.MoveTo(cx - s * 0.9f, cy + s * 0.2f);
                     thumbPath.LineTo(cx - s * 0.9f, cy + s * 1.0f);
                     thumbPath.LineTo(cx + s * 0.6f, cy + s * 1.0f);
                     thumbPath.LineTo(cx + s * 0.6f, cy + s * 0.2f);
                     thumbPath.Close();
                     canvas.DrawPath(thumbPath, paint);
-                    
+                    // Polegar
                     var thumbTop = new SKPath();
                     thumbTop.MoveTo(cx - s * 0.4f, cy + s * 0.2f);
                     thumbTop.LineTo(cx - s * 0.1f, cy - s * 0.9f);
@@ -655,6 +684,7 @@ namespace Botzinho.Economy
                     break;
 
                 case IconType.Heart:
+                    // Coração
                     var heart = new SKPath();
                     float h = size * 0.45f;
                     heart.MoveTo(cx, cy + h * 0.9f);
@@ -666,6 +696,7 @@ namespace Botzinho.Economy
             }
         }
 
+        // Desenha uma pílula do perfil
         private static void DrawProfilePill(SKCanvas canvas, float x, float y, float w, float h,
             IconType iconTipo, string title, string subtitle, SKColor accent, SKTypeface fontBold, SKTypeface fontReg)
         {
@@ -681,6 +712,7 @@ namespace Botzinho.Economy
             using var circleBg = new SKPaint { Color = accent, IsAntialias = true };
             canvas.DrawCircle(circleX, circleY, circleR, circleBg);
 
+            // Desenha o ícone vetorial dentro do círculo
             DrawIcon(canvas, iconTipo, circleX, circleY, circleR * 1.4f, SKColors.White);
 
             float textX = x + h + 10;
@@ -712,6 +744,7 @@ namespace Botzinho.Economy
             }
         }
 
+        // --- IMAGEM DO SALDO (inalterado) ---
         public static async Task<string> GerarImagemSaldo(SocketUser user, long wallet, long bank)
         {
             int width = 500;
@@ -904,7 +937,7 @@ namespace Botzinho.Economy
         private readonly DiscordSocketClient _client;
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
         private static readonly Dictionary<ulong, DateTime> _stealCooldowns = new();
-        private static readonly Dictionary<ulong, DateTime> _xpChatCooldowns = new();
+        private static readonly Dictionary<ulong, DateTime> _xpChatCooldowns = new(); // Cooldown de XP por chat (60s)
 
         public EconomyHandler(DiscordSocketClient client)
         {
@@ -956,16 +989,20 @@ namespace Botzinho.Economy
             }
         }
 
+        // ============= HANDLER DE BOTÕES =============
         private async Task HandleButtonAsync(SocketMessageComponent component)
         {
+            // --- LEMBRETE DO DAILY ---
             if (component.Data.CustomId == "btn_lembrete_daily")
             {
                 DateTime horaAviso = DateTime.Now.AddHours(24);
                 EconomyHelper.SalvarLembrete(component.GuildId ?? 0, component.User.Id, horaAviso);
+
                 await component.RespondAsync($"<a:sino:1495172950767173833> **Lembrete ativado!** Em breve a Zoe vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
                 return;
             }
 
+            // --- ALTERAR BIO (abre modal) ---
             if (component.Data.CustomId == "btn_bio_alterar")
             {
                 var modal = new ModalBuilder()
@@ -979,6 +1016,7 @@ namespace Botzinho.Economy
                 return;
             }
 
+            // --- ENVIAR REPUTAÇÃO ---
             if (component.Data.CustomId.StartsWith("btn_rep_enviar:"))
             {
                 ulong alvoId = ulong.Parse(component.Data.CustomId.Split(':')[1]);
@@ -1002,6 +1040,7 @@ namespace Botzinho.Economy
             }
         }
 
+        // ============= HANDLER DO MODAL DA BIO =============
         private async Task HandleModalAsync(SocketModal modal)
         {
             if (modal.Data.CustomId == "modal_alterar_bio")
@@ -1031,6 +1070,7 @@ namespace Botzinho.Economy
                     var content = msg.Content.ToLower().Trim();
                     var guildId = user.Guild.Id;
 
+                    // ============= SISTEMA DE XP POR MENSAGEM (60s cooldown) =============
                     if (!_xpChatCooldowns.TryGetValue(user.Id, out var lastXp) || (DateTime.UtcNow - lastXp).TotalSeconds >= 60)
                     {
                         _xpChatCooldowns[user.Id] = DateTime.UtcNow;
@@ -1060,6 +1100,7 @@ namespace Botzinho.Economy
                     }
                     _cooldowns[user.Id] = DateTime.UtcNow;
 
+                    // --- ZPERFIL (FUNCIONAL) ---
                     if (content.StartsWith("zperfil"))
                     {
                         var alvo = msg.MentionedUsers.FirstOrDefault() ?? (SocketUser)user;
@@ -1068,6 +1109,7 @@ namespace Botzinho.Economy
                         var perfil = EconomyHelper.GetPerfil(guildId, alvo.Id);
                         int xpNecessario = EconomyHelper.GetXpNecessario(perfil.Nivel);
 
+                        // Resolver nome do amigo
                         string amigoNome = "Nenhum";
                         if (!string.IsNullOrEmpty(perfil.AmigoId) && ulong.TryParse(perfil.AmigoId, out ulong amigoUlong))
                         {
@@ -1084,6 +1126,7 @@ namespace Botzinho.Economy
                             }
                         }
 
+                        // Calcular badges
                         var badges = EconomyHelper.CalcularBadges(guildId, alvo.Id, total, perfil.Nivel, perfil.Reps);
 
                         var p = await EconomyImageHelper.GerarImagemPerfil(
@@ -1098,11 +1141,13 @@ namespace Botzinho.Economy
                             badges
                         );
 
+                        // Botões: Alterar Bio (só funciona se for o dono do perfil)
+                        // Enviar Reputação (só aparece se NÃO for o dono)
                         var cb = new ComponentBuilder();
 
                         if (alvo.Id == user.Id)
                         {
-                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, Emote.Parse("<:placa:1496639283224772639>"));
+                            cb.WithButton("Alterar Bio", "btn_bio_alterar", ButtonStyle.Secondary, new Emoji("📝"));
                         }
                         else
                         {
@@ -1113,12 +1158,13 @@ namespace Botzinho.Economy
                         await msg.Channel.SendFileAsync(p, components: cb.Build());
                         File.Delete(p);
                     }
+                    // --- ZBIO (alternativa via comando) ---
                     else if (content.StartsWith("zbio"))
                     {
                         string[] partes = msg.Content.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
                         if (partes.Length < 2)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso:** **zbio <texto da sua bio>**\n*Exemplo: **zbio Eu amo a Zoe Bot :)**");
+                            await msg.Channel.SendMessageAsync("❓ **Uso:** `zbio <texto da sua bio>`\n*Exemplo: zbio Eu amo o Zoe Bot!*");
                             return;
                         }
                         string novaBio = partes[1].Trim();
@@ -1130,27 +1176,29 @@ namespace Botzinho.Economy
                         EconomyHelper.AtualizarBio(guildId, user.Id, novaBio);
                         await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, sua bio foi atualizada para:\n> {novaBio}");
                     }
+                    // --- ZAMIGO (definir melhor amigo) ---
                     else if (content.StartsWith("zamigo"))
                     {
                         string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
+                        // zamigo remover -> remove o amigo atual
                         if (partes.Length >= 2 && partes[1] == "remover")
                         {
                             EconomyHelper.DefinirAmigo(guildId, user.Id, null);
-                            await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> Feito! Seu melhor amigo foi **removido** do perfil.");
+                            await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, seu melhor amigo foi **removido** do perfil.");
                             return;
                         }
 
                         var amigo = msg.MentionedUsers.FirstOrDefault();
                         if (amigo == null)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso:** **zamigo @usuario** para definir seu melhor amigo\n*Ou: **zamigo remover** para remover.");
+                            await msg.Channel.SendMessageAsync("❓ **Uso:** `zamigo @usuario` para definir seu melhor amigo\n*Ou: `zamigo remover` para remover.*");
                             return;
                         }
 
                         if (amigo.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo, solitário kkk");
                             return;
                         }
 
@@ -1161,8 +1209,9 @@ namespace Botzinho.Economy
                         }
 
                         EconomyHelper.DefinirAmigo(guildId, user.Id, amigo.Id);
-                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> Pronto! Agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
+                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
                     }
+                    // --- ZDAILY ---
                     else if (content == "zdaily")
                     {
                         DateTime ultimoDaily = EconomyHelper.GetUltimoDaily(guildId, user.Id);
@@ -1182,21 +1231,22 @@ namespace Botzinho.Economy
                         EconomyHelper.AtualizarDaily(guildId, user.Id);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, user.Id, g, "DAILY");
 
+                        // Daily dá XP também
                         int subiu = EconomyHelper.AdicionarXp(guildId, user.Id, xpGanho);
 
                         var eb = new EmbedBuilder()
-                            .WithColor(new Color(160, 80, 220))
+              .WithColor(new Color(160, 80, 220))
                             .WithTitle("<:calendario:1495171666844713173> Daily")
-                            .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
-                                $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
-                                $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
-                                $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
-                                $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
-                                $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
-                            .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png");
+              .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
+                      $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
+                      $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
+                      $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
+                      $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
+                      $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
+              .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
 
                         var cb = new ComponentBuilder()
-                            .WithButton("Definir lembrete", "btn_lembrete_daily", ButtonStyle.Secondary, Emote.Parse("<a:sino:1495172950767173833>"));
+              .WithButton("Definir lembrete", "btn_lembrete_daily", ButtonStyle.Secondary, Emote.Parse("<a:sino:1495172950767173833>"));
 
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
 
@@ -1340,6 +1390,7 @@ namespace Botzinho.Economy
                             EconomyHelper.AdicionarBanco(guildId, mencionado.Id, valorTransferencia);
                             EconomyHelper.RegistrarTransacao(guildId, user.Id, mencionado.Id, valorTransferencia, "TRANSFERENCIA_DIRETA");
 
+                            // XP por comando de economia
                             EconomyHelper.AdicionarXp(guildId, user.Id, 15);
 
                             await msg.Channel.SendMessageAsync($"<a:lealdade:1493009439522033735> **Sucesso!** Foram transferidos `{EconomyHelper.FormatarSaldo(valorTransferencia)}` cpoints para <:pessoa:1493010183352483840> {mencionado.Mention}.");
@@ -1350,6 +1401,7 @@ namespace Botzinho.Economy
                             await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> Ocorreu um erro interno ao processar a transferência.");
                         }
                     }
+
                     else if (content.StartsWith("zroubar"))
                     {
                         if (_stealCooldowns.TryGetValue(user.Id, out var lastSteal) && (DateTime.UtcNow - lastSteal).TotalMinutes < 25)
@@ -1357,7 +1409,7 @@ namespace Botzinho.Economy
                             var tempoRestante = 25 - (DateTime.UtcNow - lastSteal).TotalMinutes;
                             var ebCooldown = new EmbedBuilder()
                               .WithColor(new Color(255, 71, 87))
-                              .WithDescription($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
+                                              .WithDescription($"<a:negativo:1492950137587241114> {user.Mention}, Espere Filho da Puta! O cheiro de crime ainda está no ar. Aguarde `{tempoRestante:F0} minutos` para tentar roubar novamente.");
 
                             var aviso = await msg.Channel.SendMessageAsync(embed: ebCooldown.Build());
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
@@ -1390,10 +1442,10 @@ namespace Botzinho.Economy
                         if (saldoCarteiraVitima <= 0)
                         {
                             var ebFracasso = new EmbedBuilder()
-                                .WithColor(new Color(43, 45, 49))
+                .WithColor(new Color(43, 45, 49))
                                 .WithAuthor("Assalto Fracassado", "https://cdn-icons-png.flaticon.com/512/4338/4338873.png")
-                                .WithDescription($"<:atencao:1493350891749642240> {user.Mention} tentou roubar {vitima.Mention}, mas ele estava duro kkk\n\n**Carteira vazia!** Nenhuma moeda foi levada.")
-                                .WithThumbnailUrl(vitima.GetAvatarUrl() ?? vitima.GetDefaultAvatarUrl());
+                .WithDescription($"<:atencao:1493350891749642240> {user.Mention} tentou roubar {vitima.Mention}, mas ele estava duro kkk\n\n**Carteira vazia!** Nenhuma moeda foi levada.")
+                .WithThumbnailUrl(vitima.GetAvatarUrl() ?? vitima.GetDefaultAvatarUrl());
 
                             await msg.Channel.SendMessageAsync(embed: ebFracasso.Build());
                             _stealCooldowns[user.Id] = DateTime.UtcNow;
@@ -1410,14 +1462,15 @@ namespace Botzinho.Economy
                                 EconomyHelper.RegistrarTransacao(guildId, vitima.Id, user.Id, valorRoubado, "ROUBO_CARTEIRA_METADE");
                                 _stealCooldowns[user.Id] = DateTime.UtcNow;
 
+                                // XP por comando de economia
                                 EconomyHelper.AdicionarXp(guildId, user.Id, 20);
 
                                 var ebSucesso = new EmbedBuilder()
-                                    .WithColor(new Color(255, 71, 87))
+                  .WithColor(new Color(255, 71, 87))
                                     .WithAuthor("Assalto Bem Sucedido!", "https://cdn-icons-png.flaticon.com/512/2569/2569198.png")
-                                    .WithDescription($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!**\n\n" +
-                                        $"<:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em <:dinheiro:1493360319928733838> `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!")
-                                    .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
+                  .WithDescription($"<:blackninja:1493348778705424464> **TEMOS UM LADRÃO AQUI NO SERVER!**\n\n" +
+                          $"<:ladrao:1493349791340433479> {user.Mention} acaba de passar a mão em <:dinheiro:1493360319928733838> `{EconomyHelper.FormatarSaldo(valorRoubado)}` cpoints na carteira de {vitima.Mention}!")
+                  .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
 
                                 await msg.Channel.SendMessageAsync(embed: ebSucesso.Build());
                             }
@@ -1432,15 +1485,16 @@ namespace Botzinho.Economy
                             await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Ocorreu um erro interno ao tentar processar o crime.");
                         }
                     }
+
                     else if (content.StartsWith("ztransacoes") || content.StartsWith("ztranscoes"))
                     {
                         var usuarioAlvo = msg.MentionedUsers.FirstOrDefault() ?? (SocketUser)user;
                         var transacoes = EconomyHelper.GetTransacoes(guildId, usuarioAlvo.Id);
 
                         var eb = new EmbedBuilder()
-                            .WithAuthor($"Transações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
-                            .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/2830/2830284.png")
-                            .WithColor(new Color(43, 45, 49));
+                          .WithAuthor($"Transações | {_client.CurrentUser.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
+                          .WithThumbnailUrl("https://cdn-icons-png.flaticon.com/512/2830/2830284.png")
+                          .WithColor(new Color(43, 45, 49));
 
                         if (transacoes.Count == 0)
                         {
@@ -1523,18 +1577,14 @@ namespace Botzinho.Economy
                         eb.WithFooter($"Página: 1/1 • Hoje às {DateTime.Now.AddHours(-3):HH:mm}");
 
                         var cb = new ComponentBuilder()
-                            .WithButton(null, "extrato_back", ButtonStyle.Secondary, new Emoji("⬅️"), disabled: true)
-                            .WithButton(null, "extrato_search", ButtonStyle.Secondary, new Emoji("🔍"), disabled: true)
-                            .WithButton(null, "extrato_next", ButtonStyle.Secondary, new Emoji("➡️"), disabled: true);
+                          .WithButton(null, "extrato_back", ButtonStyle.Secondary, new Emoji("⬅️"), disabled: true)
+                          .WithButton(null, "extrato_search", ButtonStyle.Secondary, new Emoji("🔍"), disabled: true)
+                          .WithButton(null, "extrato_next", ButtonStyle.Secondary, new Emoji("➡️"), disabled: true);
 
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
                     }
                 }
-                // --- AQUI ESTÁ O SEGREDO: O BOT AGORA AVISA O QUE DEU ERRADO ---
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"\n[ERRO FATAL NO ECONOMY]: {ex.Message}\n{ex.StackTrace}\n");
-                }
+                catch { }
             }); return Task.CompletedTask;
         }
     }
