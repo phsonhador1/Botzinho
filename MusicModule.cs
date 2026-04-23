@@ -243,57 +243,56 @@ namespace Botzinho.Music
         private async Task StartPlaying(IVoiceChannel voiceChannel, ITextChannel textChannel)
         {
             var guildId = voiceChannel.GuildId;
-            _isPlaying[guildId] = true;
 
-            IAudioClient audioClient;
-            if (!_audioClients.ContainsKey(guildId))
+            try
             {
-                audioClient = await voiceChannel.ConnectAsync();
-                _audioClients[guildId] = audioClient;
-            }
-            else
-            {
-                audioClient = _audioClients[guildId];
-            }
-
-            while (_queues.ContainsKey(guildId) && _queues[guildId].Count > 0)
-            {
-                var track = _queues[guildId].Dequeue();
-                _isPlaying[guildId] = true;
-                _skipRequested[guildId] = false; // Reseta o request de skip para a nova música
-
-                string finalUrl = track.Url;
-
-                // Lazy Loading: Se veio do Spotify, pesquisa o áudio correspondente no YT só na hora de tocar
-                if (track.IsSpotify)
+                IAudioClient audioClient;
+                if (!_audioClients.ContainsKey(guildId))
                 {
-                    try
+                    Console.WriteLine($"[INFO] Tentando conectar ao canal de voz: {voiceChannel.Name}");
+                    // Adicionamos o Wait() ou configuramos para garantir a conexão
+                    audioClient = await voiceChannel.ConnectAsync();
+                    _audioClients[guildId] = audioClient;
+                    Console.WriteLine("[INFO] Conectado com sucesso!");
+                }
+                else
+                {
+                    audioClient = _audioClients[guildId];
+                }
+
+                _isPlaying[guildId] = true;
+
+                while (_queues.ContainsKey(guildId) && _queues[guildId].Count > 0)
+                {
+                    var track = _queues[guildId].Dequeue();
+                    _skipRequested[guildId] = false;
+
+                    string finalUrl = track.Url;
+
+                    if (track.IsSpotify)
                     {
                         var video = await _youtube.Search.GetVideosAsync(track.Title).FirstOrDefaultAsync();
-                        if (video != null)
-                        {
-                            finalUrl = video.Url;
-                            track.Duration = video.Duration?.ToString(@"mm\:ss") ?? "00:00";
-                        }
+                        if (video != null) finalUrl = video.Url;
                     }
-                    catch { /* Se falhar, tenta tocar a próxima */ }
+
+                    if (!string.IsNullOrEmpty(finalUrl))
+                    {
+                        await textChannel.SendMessageAsync($"🎶 Tocando agora: **{track.Title}**");
+                        await StreamAudio(guildId, finalUrl);
+                    }
+
+                    if (!_audioClients.ContainsKey(guildId)) break;
                 }
-
-                if (!string.IsNullOrEmpty(finalUrl))
-                {
-                    var msgTocando = await textChannel.SendMessageAsync($"🎶 Tocando agora: **{track.Title}** (`{track.Duration}`)");
-
-                    await StreamAudio(guildId, finalUrl);
-
-                    // Apaga a mensagem de "Tocando agora" quando a música acabar ou for pulada
-                    try { await msgTocando.DeleteAsync(); } catch { }
-                }
-
-                // Se deram !stop ou o bot foi desconectado
-                if (!_audioClients.ContainsKey(guildId)) break;
             }
-
-            _isPlaying[guildId] = false;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERRO CRÍTICO NO PLAYER]: {ex.Message}");
+                await textChannel.SendMessageAsync("❌ Erro ao tentar conectar ou tocar áudio. Verifique as permissões do bot.");
+            }
+            finally
+            {
+                _isPlaying[guildId] = false;
+            }
         }
 
         private async Task StreamAudio(ulong guildId, string url)
