@@ -163,13 +163,21 @@ namespace Botzinho.Music
             try
             {
                 if (isUrl)
-                    result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.None);
-                else
-                    result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.YouTube);
-                if (!result.HasMatches)
                 {
-                    Console.WriteLine("[Music] YouTube falhou, tentando SoundCloud...");
+                    result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.None);
+                }
+                else
+                {
+                    // SoundCloud primeiro (mais estável que YouTube quebrado)
+                    Console.WriteLine($"[Music] Buscando no SoundCloud: {query}");
                     result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.SoundCloud);
+
+                    // Se SoundCloud não achar, tenta YouTube como último recurso
+                    if (!result.HasMatches)
+                    {
+                        Console.WriteLine("[Music] SoundCloud sem resultado, tentando YouTube...");
+                        result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.YouTube);
+                    }
                 }
             }
             catch (Exception ex)
