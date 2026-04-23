@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using Lavalink4NET;
 using Lavalink4NET.Clients;
@@ -435,19 +435,30 @@ namespace Botzinho.Music
         {
             try
             {
+                // Se não passamos um ID de canal (ex: zskip), tentamos descobrir onde o bot já está
+                if (voiceChannelId == 0)
+                {
+                    var guild = _client.GetGuild(guildId);
+                    voiceChannelId = guild?.CurrentUser.VoiceChannel?.Id ?? 0;
+                }
+
+                // Se mesmo assim for 0 e queremos tocar algo, não há como prosseguir
+                if (voiceChannelId == 0 && conectar) return null;
+
+                // O Lavalink v4 exige que o canal seja passado no Retrieve para criar o player
                 var retrieveOptions = new PlayerRetrieveOptions(
                     ChannelBehavior: conectar ? PlayerChannelBehavior.Join : PlayerChannelBehavior.None
                 );
 
                 var playerOptions = new QueuedLavalinkPlayerOptions
                 {
-                    // Volume inicial 50% (valor de 0.0 a 1.0)
-                    InitialVolume = 0.5f
+                    InitialVolume = 0.8f, // Zoe já entra com volume bom
+                    HistoryCapacity = 10  // Permite zback no futuro
                 };
 
                 var result = await _audioService.Players.RetrieveAsync<QueuedLavalinkPlayer, QueuedLavalinkPlayerOptions>(
                     guildId: guildId,
-                    memberVoiceChannel: voiceChannelId == 0 ? null : voiceChannelId,
+                    memberVoiceChannel: voiceChannelId,
                     playerFactory: PlayerFactory.Queued,
                     options: Microsoft.Extensions.Options.Options.Create(playerOptions),
                     retrieveOptions: retrieveOptions
@@ -455,7 +466,8 @@ namespace Botzinho.Music
 
                 if (!result.IsSuccess)
                 {
-                    Console.WriteLine($"[Music] Falha ao obter player: {result.Status}");
+                    // Log detalhado para sabermos por que falhou
+                    Console.WriteLine($"[Music Debug] Falha no player: {result.Status}");
                     return null;
                 }
 
