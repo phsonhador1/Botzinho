@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Lavalink4NET;
 using Lavalink4NET.Extensions;
-using Lavalink4NET.DiscordNet; // Pacote da v4
+using Lavalink4NET.DiscordNet;
 using System;
 using System.Linq;
 using System.Threading;
@@ -17,46 +17,55 @@ using Botzinho.Moderation;
 using Botzinho.Economy;
 using Botzinho.Music;
 
-// --- CONFIGURAÇÃO DE INTENTS ---
+// ==============================================================
+// CLIENTE DISCORD
+// ==============================================================
 var client = new DiscordSocketClient(new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.AllUnprivileged |
                      GatewayIntents.MessageContent |
                      GatewayIntents.GuildMembers |
-                     GatewayIntents.GuildVoiceStates, // <--- Vital para ouvir a call
+                     GatewayIntents.GuildVoiceStates,
     AlwaysDownloadUsers = true,
     MessageCacheSize = 100
 });
 
-// --- CONFIGURAÇÃO DO HOST ---
-// --- CONFIGURAÇÃO DO HOST ---
+// ==============================================================
+// HOST (DI + Lavalink)
+// ==============================================================
 var hostBuilder = Host.CreateDefaultBuilder()
     .ConfigureServices(services =>
     {
-        // 1. Registra as instâncias do cliente do Discord (Garante que o Lavalink ache o bot)
         services.AddSingleton(client);
         services.AddSingleton<DiscordSocketClient>(client);
-        services.AddSingleton<Discord.WebSocket.BaseSocketClient>(client);
+        services.AddSingleton<BaseSocketClient>(client);
 
-        // 2. FAZ A PONTE MANUALMENTE (Substitui o AddDiscordNet que deu erro)
-        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, Lavalink4NET.DiscordNet.DiscordClientWrapper>();
+        // Ponte Lavalink <-> Discord.NET
+        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, DiscordClientWrapper>();
 
-        // 3. Registra o Lavalink
         services.AddLavalink();
 
         services.ConfigureLavalink(options =>
         {
-            options.BaseAddress = new Uri(Environment.GetEnvironmentVariable("LAVALINK_HOST") ?? "https://lavalink-production-98e2.up.railway.app");
-            options.Passphrase = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") ?? "jacb2018";
+            options.BaseAddress = new Uri(
+                Environment.GetEnvironmentVariable("LAVALINK_HOST")
+                ?? "https://lavalink-production-98e2.up.railway.app"
+            );
+            options.Passphrase =
+                Environment.GetEnvironmentVariable("LAVALINK_PASSWORD")
+                ?? "jacb2018";
             options.ReadyTimeout = TimeSpan.FromSeconds(15);
         });
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
+
 var host = hostBuilder.Build();
 var services = host.Services;
 
-// --- INICIALIZAÇÃO DOS MÓDULOS ---
+// ==============================================================
+// INICIALIZAÇÃO DOS MÓDULOS
+// ==============================================================
 new Botzinho.Admin.AdminControleModule(client);
 var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
@@ -70,22 +79,19 @@ var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
-// --- INTEGRAÇÃO DE MÚSICA ---
+// ==============================================================
+// MÚSICA (Lavalink)
+// ==============================================================
 var audioService = services.GetRequiredService<IAudioService>();
 var musicHandler = new Botzinho.Music.MusicHandler(client, audioService);
 
-// ATENÇÃO: As linhas manuais de VoiceStateUpdated foram APAGADAS daqui. Não coloque de volta!
-
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
-// --- EVENTO READY ---
+// ==============================================================
+// EVENTO READY (depois que o Discord conecta)
+// ==============================================================
 client.Ready += async () =>
 {
-    _ = Task.Run(async () => {
-        try { await host.StartAsync(); }
-        catch (Exception ex) { Console.WriteLine($"[Lavalink Start Error]: {ex.Message}"); }
-    });
-
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
@@ -94,7 +100,7 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
-    // --- LOOP DE STATUS ---
+    // Loop de status
     _ = Task.Run(async () =>
     {
         while (true)
@@ -133,19 +139,47 @@ client.InteractionCreated += async interaction =>
     await interactionService.ExecuteCommandAsync(ctx, services);
 };
 
-var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? throw new Exception("TOKEN MISSING");
+// ==============================================================
+// ★★★ ORDEM CORRETA DE INICIALIZAÇÃO ★★★
+//
+// 1º) Login + Start do Discord → ABRE o gateway e começa a receber eventos
+// 2º) host.StartAsync() → Lavalink começa a ouvir os eventos do Discord
+//     (IDiscordClientWrapper precisa dos eventos JÁ estarem acontecendo
+//      pra conseguir capturar os VoiceServerUpdate/VoiceStateUpdate)
+// 3º) host.WaitForShutdownAsync() → Mantém o processo vivo (substitui o
+//     Task.Delay(Infinite), que NÃO rodava os IHostedService do Lavalink)
+// ==============================================================
+
+var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+    ?? throw new Exception("TOKEN MISSING");
+
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
-await Task.Delay(Timeout.Infinite);
 
-// --- CLASSES DE COMANDOS SLASH ---
+// IMPORTANTE: start o host APÓS o Discord estar iniciado.
+// Assim o Lavalink já pega o wrapper funcionando.
+await host.StartAsync();
+
+Console.WriteLine("[Boot] Host iniciado. Lavalink deve estar conectando...");
+
+// Mantém o processo vivo executando os IHostedService do Lavalink
+await host.WaitForShutdownAsync();
+
+
+// ==============================================================
+// CLASSES DE COMANDOS SLASH
+// ==============================================================
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("configserver", "Configura permissoes do servidor")]
     public async Task ConfigServerAsync()
     {
         var user = (SocketGuildUser)Context.User;
-        if (!AdminModule.PodeUsarEconfigStatic(user)) { await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true); return; }
+        if (!AdminModule.PodeUsarEconfigStatic(user))
+        {
+            await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true);
+            return;
+        }
         await DeferAsync();
         var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
         var components = AdminModule.CriarMenuPrincipal();
@@ -164,7 +198,8 @@ public class NukeModule : InteractionModuleBase<SocketInteractionContext>
         if (resultado != null) { await RespondAsync(resultado, ephemeral: true); return; }
         await DeferAsync(ephemeral: true);
         var channel = (ITextChannel)Context.Channel;
-        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props => {
+        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
+        {
             props.Topic = channel.Topic;
             props.CategoryId = channel.CategoryId;
             props.Position = channel.Position;
