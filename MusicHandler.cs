@@ -223,7 +223,7 @@ namespace Botzinho.Music
             // ★ Embed limpo — título sem link, mas mantém a capa (thumbnail)
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithAuthor(position == 0 ? " Tocando agora" : $"<:maiszoe:1494070196871364689> Adicionado à fila (posição #{position})")
+                .WithAuthor(position == 0 ? " Tocando agora" : $" Adicionado à fila (posição #{position})")
                 .WithTitle(track.Title)
                 .WithDescription($"**Artista:** {track.Author}\n**Duração:** **{FormatarDuracao(track.Duration)}**")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "")
