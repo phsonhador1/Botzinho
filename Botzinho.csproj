@@ -11,6 +11,6 @@
 		<PackageReference Include="SkiaSharp" Version="2.88.8" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.8" />
 		<PackageReference Include="Lavalink4NET" Version="4.0.27" />
-		<PackageReference Include="Lavalink4NET.Discord.NET" Version="4.0.27" />
+		<PackageReference Include="Lavalink4NET.Discord.Net" Version="4.0.27" />
 	</ItemGroup>
 </Project>
