@@ -40,8 +40,9 @@ var hostBuilder = Host.CreateDefaultBuilder()
         services.AddSingleton<DiscordSocketClient>(client);
         services.AddSingleton<BaseSocketClient>(client);
 
-        // Ponte Lavalink <-> Discord.NET
-        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, DiscordClientWrapper>();
+        // CORREÇÃO: Método oficial do Lavalink4NET v4 para conectar com o Discord.Net
+        // CORREÇÃO: Registra manualmente a ponte do Discord.Net para o Lavalink
+        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, Lavalink4NET.DiscordNet.DiscordClientWrapper>();
 
         services.AddLavalink();
 
@@ -140,16 +141,8 @@ client.InteractionCreated += async interaction =>
 };
 
 // ==============================================================
-// ★★★ ORDEM CORRETA DE INICIALIZAÇÃO ★★★
-//
-// 1º) Login + Start do Discord → ABRE o gateway e começa a receber eventos
-// 2º) host.StartAsync() → Lavalink começa a ouvir os eventos do Discord
-//     (IDiscordClientWrapper precisa dos eventos JÁ estarem acontecendo
-//      pra conseguir capturar os VoiceServerUpdate/VoiceStateUpdate)
-// 3º) host.WaitForShutdownAsync() → Mantém o processo vivo (substitui o
-//     Task.Delay(Infinite), que NÃO rodava os IHostedService do Lavalink)
+// LOGIN & START
 // ==============================================================
-
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new Exception("TOKEN MISSING");
 
@@ -157,14 +150,10 @@ await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
 // IMPORTANTE: start o host APÓS o Discord estar iniciado.
-// Assim o Lavalink já pega o wrapper funcionando.
 await host.StartAsync();
 
 Console.WriteLine("[Boot] Host iniciado. Lavalink deve estar conectando...");
-
-// Mantém o processo vivo executando os IHostedService do Lavalink
 await host.WaitForShutdownAsync();
-
 
 // ==============================================================
 // CLASSES DE COMANDOS SLASH
