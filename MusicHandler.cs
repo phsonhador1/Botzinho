@@ -405,7 +405,7 @@ namespace Botzinho.Music
                 {
                     InitialVolume = 1.0f,
                     DisconnectOnStop = false,
-                    SelfDeaf = false
+                    SelfDeaf = true
                 };
 
                 var result = await _audioService.Players.RetrieveAsync<QueuedLavalinkPlayer, QueuedLavalinkPlayerOptions>(
