@@ -114,9 +114,6 @@ namespace Botzinho.Music
             return Task.CompletedTask;
         }
 
-        // =========================================================
-        //                    COMANDO ZPLAY
-        // =========================================================
         private async Task ExecutarPlay(SocketMessage msg, SocketGuildUser user, string content)
         {
             var partes = content.Split(' ', 2);
@@ -151,13 +148,17 @@ namespace Botzinho.Music
                 return;
             }
 
-            // --- CORREÇÃO: FORÇAR DESMUTE ASSIM QUE ELA ENTRA ---
-            try
+            // --- CORREÇÃO: FORÇAR DESMUTE NA FORÇA BRUTA ---
+            _ = Task.Run(async () =>
             {
-                await user.Guild.CurrentUser.ModifyAsync(x => x.Mute = false);
-            }
-            catch { /* Ignora se o bot não tiver permissão de tirar o próprio mute */ }
-            // ----------------------------------------------------
+                await Task.Delay(1000); // Aguarda a Zoe estabilizar na call
+                try
+                {
+                    await user.Guild.CurrentUser.ModifyAsync(x => x.Mute = false);
+                }
+                catch { /* Ignora se o bot não tiver permissão no Discord */ }
+            });
+            // ------------------------------------------------
 
             TrackLoadResult result;
             bool isUrl = Uri.TryCreate(query, UriKind.Absolute, out var uri)
@@ -378,7 +379,7 @@ namespace Botzinho.Music
                 {
                     InitialVolume = 1.0f,
                     DisconnectOnStop = false,
-                    SelfDeaf = false
+                    SelfDeaf = true // <-- CORREÇÃO: O bot entra surdo para não bugar o envio do áudio
                 };
 
                 var result = await _audioService.Players.RetrieveAsync<QueuedLavalinkPlayer, QueuedLavalinkPlayerOptions>(
