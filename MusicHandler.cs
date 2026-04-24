@@ -18,7 +18,6 @@ namespace Botzinho.Music
 {
     // =====================================================================
     // MÓDULO DE MÚSICA - LAVALINK4NET v4 (CORRIGIDO)
-    // Comandos: zplay, zskip, zqueue, zpause, zresume, zstop, znp
     // =====================================================================
 
     public class MusicHandler
@@ -38,9 +37,6 @@ namespace Botzinho.Music
             _ = Task.Run(() => VigilanteCallVazia());
         }
 
-        // ==============================================================
-        // Auto-desconecta quando o bot fica sozinho numa call
-        // ==============================================================
         private async Task VigilanteCallVazia()
         {
             while (true)
@@ -139,7 +135,6 @@ namespace Botzinho.Music
                 return;
             }
 
-            // Verifica permissões
             var botGuildPerms = user.Guild.CurrentUser.GetPermissions(voiceChannel);
             if (!botGuildPerms.Connect || !botGuildPerms.Speak)
             {
@@ -147,14 +142,22 @@ namespace Botzinho.Music
                 return;
             }
 
-            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando esta musica**{query}**...");
+            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando esta musica **{query}**...");
 
             var player = await ObterPlayerAsync(user.Guild.Id, voiceChannel.Id, conectar: true);
             if (player == null)
             {
-                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Verifica se o Lavalink está online e se `LAVALINK_HOST`/`LAVALINK_PASSWORD` estão certos.");
+                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Verifica se o Lavalink está online.");
                 return;
             }
+
+            // --- CORREÇÃO: FORÇAR DESMUTE ASSIM QUE ELA ENTRA ---
+            try
+            {
+                await user.Guild.CurrentUser.ModifyAsync(x => x.Mute = false);
+            }
+            catch { /* Ignora se o bot não tiver permissão de tirar o próprio mute */ }
+            // ----------------------------------------------------
 
             TrackLoadResult result;
             bool isUrl = Uri.TryCreate(query, UriKind.Absolute, out var uri)
@@ -168,11 +171,9 @@ namespace Botzinho.Music
                 }
                 else
                 {
-                    // SoundCloud primeiro (mais estável que YouTube quebrado)
                     Console.WriteLine($"[Music] Buscando no SoundCloud: {query}");
                     result = await _audioService.Tracks.LoadTracksAsync(query, TrackSearchMode.SoundCloud);
 
-                    // Se SoundCloud não achar, tenta YouTube como último recurso
                     if (!result.HasMatches)
                     {
                         Console.WriteLine("[Music] SoundCloud sem resultado, tentando YouTube...");
@@ -193,7 +194,6 @@ namespace Botzinho.Music
                 return;
             }
 
-            // Playlist
             if (result.IsPlaylist && result.Playlist != null && result.Tracks.Length > 1)
             {
                 int qtd = result.Tracks.Length;
@@ -210,7 +210,6 @@ namespace Botzinho.Music
                 return;
             }
 
-            // Música única
             var track = result.Track;
             if (track == null)
             {
@@ -220,7 +219,6 @@ namespace Botzinho.Music
 
             int position = await player.PlayAsync(track);
 
-            // ★ Embed limpo — título sem link, mas mantém a capa (thumbnail)
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
                 .WithAuthor(position == 0 ? "Tocando agora" : $"<:maiszoe:1494070196871364689> Adicionado à fila (posição #{position})")
@@ -232,9 +230,6 @@ namespace Botzinho.Music
             await loading.ModifyAsync(m => { m.Content = ""; m.Embed = embed.Build(); });
         }
 
-        // =========================================================
-        //                    COMANDO ZSKIP
-        // =========================================================
         private async Task ExecutarSkip(SocketMessage msg, SocketGuildUser user)
         {
             if (user.VoiceChannel == null)
@@ -256,9 +251,6 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention} pulou **{pulada}**.");
         }
 
-        // =========================================================
-        //                    COMANDO ZQUEUE
-        // =========================================================
         private async Task ExecutarQueue(SocketMessage msg, SocketGuildUser user)
         {
             var player = await ObterPlayerAsync(user.Guild.Id, 0, conectar: false);
@@ -274,7 +266,6 @@ namespace Botzinho.Music
 
             string descricao = "";
 
-            // ★ Sem link clicável — apenas título em negrito
             if (player.CurrentTrack != null)
                 descricao += $"**🎶 Tocando agora:**\n**{player.CurrentTrack.Title}** — `{FormatarDuracao(player.CurrentTrack.Duration)}`\n\n";
 
@@ -286,7 +277,6 @@ namespace Botzinho.Music
                 {
                     var tr = item.Track;
                     if (tr == null) continue;
-                    // ★ Sem link clicável — apenas título em negrito
                     descricao += $"`{i}.` **{Truncar(tr.Title, 60)}** — `{FormatarDuracao(tr.Duration)}`\n";
                     i++;
                 }
@@ -305,9 +295,6 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync(embed: eb.Build());
         }
 
-        // =========================================================
-        //                    COMANDO ZPAUSE
-        // =========================================================
         private async Task ExecutarPause(SocketMessage msg, SocketGuildUser user)
         {
             if (user.VoiceChannel == null) { await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, entra numa call."); return; }
@@ -321,9 +308,6 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync($"⏸️ {user.Mention} pausou a música.");
         }
 
-        // =========================================================
-        //                    COMANDO ZRESUME
-        // =========================================================
         private async Task ExecutarResume(SocketMessage msg, SocketGuildUser user)
         {
             if (user.VoiceChannel == null) { await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, entra numa call."); return; }
@@ -337,9 +321,6 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync($"<:online:1497028511112888383> {user.Mention} retomou a música.");
         }
 
-        // =========================================================
-        //                    COMANDO ZSTOP
-        // =========================================================
         private async Task ExecutarStop(SocketMessage msg, SocketGuildUser user)
         {
             if (user.VoiceChannel == null) { await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, entra numa call."); return; }
@@ -354,9 +335,6 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} parou a música e saí da call.");
         }
 
-        // =========================================================
-        //                    COMANDO ZNP
-        // =========================================================
         private async Task ExecutarNowPlaying(SocketMessage msg, SocketGuildUser user)
         {
             var player = await ObterPlayerAsync(user.Guild.Id, 0, conectar: false);
@@ -372,7 +350,6 @@ namespace Botzinho.Music
 
             string barra = GerarBarraProgresso(pos, dur);
 
-            // ★ Sem link clicável, capa mantida
             var eb = new EmbedBuilder()
                 .WithColor(PurpleTheme)
                 .WithAuthor(" Tocando agora")
@@ -383,14 +360,10 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync(embed: eb.Build());
         }
 
-        // =========================================================
-        // ★★★ MÉTODO CORRIGIDO - API CORRETA DO LAVALINK4NET v4 ★★★
-        // =========================================================
         private async Task<QueuedLavalinkPlayer> ObterPlayerAsync(ulong guildId, ulong voiceChannelId, bool conectar)
         {
             try
             {
-                // Só pega player existente, sem conectar
                 if (!conectar)
                 {
                     return await _audioService.Players.GetPlayerAsync<QueuedLavalinkPlayer>(guildId);
@@ -431,9 +404,6 @@ namespace Botzinho.Music
             }
         }
 
-        // =========================================================
-        //                    AUXILIARES
-        // =========================================================
         private string FormatarDuracao(TimeSpan t)
         {
             if (t.TotalHours >= 1)
