@@ -126,7 +126,7 @@ namespace Botzinho.Music
             var partes = content.Split(' ', 2);
             if (partes.Length < 2 || string.IsNullOrWhiteSpace(partes[1]))
             {
-                await msg.Channel.SendMessageAsync("❓ **Uso:** `zplay <nome da música ou link>`\n*Exemplo: `zplay lofi hip hop radio`*");
+                await msg.Channel.SendMessageAsync("❓ **Uso:** `zplay <nome da música ou link>`\n*Exemplo: `zplay 300 no 7`*");
                 return;
             }
 
@@ -135,7 +135,7 @@ namespace Botzinho.Music
             var voiceChannel = user.VoiceChannel;
             if (voiceChannel == null)
             {
-                await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, entra numa call de voz primeiro!");
+                await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Deixa de ser burro {user.Mention}, entra numa call de voz primeiro!");
                 return;
             }
 
@@ -147,7 +147,7 @@ namespace Botzinho.Music
                 return;
             }
 
-            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando **{query}**...");
+            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando esta musica**{query}**...");
 
             var player = await ObterPlayerAsync(user.Guild.Id, voiceChannel.Id, conectar: true);
             if (player == null)
@@ -220,12 +220,12 @@ namespace Botzinho.Music
 
             int position = await player.PlayAsync(track);
 
+            // ★ Embed limpo — título sem link, mas mantém a capa (thumbnail)
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
                 .WithAuthor(position == 0 ? "🎵 Tocando agora" : $"➕ Adicionado à fila (posição #{position})")
                 .WithTitle(track.Title)
-                .WithUrl(track.Uri?.ToString() ?? "")
-                .WithDescription($"**Canal:** {track.Author}\n**Duração:** `{FormatarDuracao(track.Duration)}`")
+                .WithDescription($"**Artista:** {track.Author}\n**Duração:** `{FormatarDuracao(track.Duration)}`")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "")
                 .WithFooter($"Pedido por {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
 
@@ -274,8 +274,9 @@ namespace Botzinho.Music
 
             string descricao = "";
 
+            // ★ Sem link clicável — apenas título em negrito
             if (player.CurrentTrack != null)
-                descricao += $"**🎶 Tocando agora:**\n[{player.CurrentTrack.Title}]({player.CurrentTrack.Uri}) — `{FormatarDuracao(player.CurrentTrack.Duration)}`\n\n";
+                descricao += $"**🎶 Tocando agora:**\n**{player.CurrentTrack.Title}** — `{FormatarDuracao(player.CurrentTrack.Duration)}`\n\n";
 
             if (player.Queue.Count > 0)
             {
@@ -285,7 +286,8 @@ namespace Botzinho.Music
                 {
                     var tr = item.Track;
                     if (tr == null) continue;
-                    descricao += $"`{i}.` [{Truncar(tr.Title, 60)}]({tr.Uri}) — `{FormatarDuracao(tr.Duration)}`\n";
+                    // ★ Sem link clicável — apenas título em negrito
+                    descricao += $"`{i}.` **{Truncar(tr.Title, 60)}** — `{FormatarDuracao(tr.Duration)}`\n";
                     i++;
                 }
 
@@ -370,12 +372,12 @@ namespace Botzinho.Music
 
             string barra = GerarBarraProgresso(pos, dur);
 
+            // ★ Sem link clicável, capa mantida
             var eb = new EmbedBuilder()
                 .WithColor(PurpleTheme)
                 .WithAuthor("🎵 Tocando agora")
                 .WithTitle(track.Title)
-                .WithUrl(track.Uri?.ToString() ?? "")
-                .WithDescription($"**Canal:** {track.Author}\n\n{barra}\n`{FormatarDuracao(pos)} / {FormatarDuracao(dur)}`")
+                .WithDescription($"**Artista:** {track.Author}\n\n{barra}\n`{FormatarDuracao(pos)} / {FormatarDuracao(dur)}`")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "");
 
             await msg.Channel.SendMessageAsync(embed: eb.Build());
