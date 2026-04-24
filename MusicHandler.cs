@@ -379,7 +379,7 @@ namespace Botzinho.Music
                 {
                     InitialVolume = 1.0f,
                     DisconnectOnStop = false,
-                    SelfDeaf = true // <-- CORREÇÃO: O bot entra surdo para não bugar o envio do áudio
+                    SelfDeaf = false // <-- CORREÇÃO: O bot entra surdo para não bugar o envio do áudio
                 };
 
                 var result = await _audioService.Players.RetrieveAsync<QueuedLavalinkPlayer, QueuedLavalinkPlayerOptions>(
