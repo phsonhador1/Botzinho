@@ -23,7 +23,6 @@ namespace Botzinho.Music
         private readonly IAudioService _audioService;
         private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
 
-        // Tema dark estilo Spotify
         private static readonly Color SpotifyDark = new Color(24, 24, 24);
 
         // Estado de loop por servidor: 0=off, 1=música, 2=fila
@@ -31,6 +30,12 @@ namespace Botzinho.Music
 
         // Mensagens com player ativo: guildId → (msgId, channelId)
         private static readonly ConcurrentDictionary<ulong, (ulong MsgId, ulong ChId)> _playerMessages = new();
+
+        // Lista de queries que sabidamente bugam (track.encoded gigante)
+        private static readonly string[] _palavrasProblematicas = {
+            "slowed", "sped up", "nightcore", "reverb", "8d", "remix", "mashup",
+            "extended", "hour", "1 hora", "loop", "perfect loop"
+        };
 
         public MusicHandler(DiscordSocketClient client, IAudioService audioService)
         {
@@ -61,17 +66,21 @@ namespace Botzinho.Music
 
                         if (humanos == 0)
                         {
-                            var player = await _audioService.Players
-                                .GetPlayerAsync<QueuedLavalinkPlayer>(guild.Id);
-
-                            if (player != null)
+                            try
                             {
-                                _playerMessages.TryRemove(guild.Id, out _);
-                                _loopMode.TryRemove(guild.Id, out _);
-                                await player.DisconnectAsync();
-                                await player.DisposeAsync();
-                                Console.WriteLine($"[Music] Saí da call vazia em {guild.Name}");
+                                var player = await _audioService.Players
+                                    .GetPlayerAsync<QueuedLavalinkPlayer>(guild.Id);
+
+                                if (player != null)
+                                {
+                                    _playerMessages.TryRemove(guild.Id, out _);
+                                    _loopMode.TryRemove(guild.Id, out _);
+                                    await player.DisconnectAsync();
+                                    await player.DisposeAsync();
+                                    Console.WriteLine($"[Music] Saí da call vazia em {guild.Name}");
+                                }
                             }
+                            catch { }
                         }
                     }
                 }
@@ -123,7 +132,7 @@ namespace Botzinho.Music
         }
 
         // =====================================================================
-        // ★★★ HANDLER DOS BOTÕES INTERATIVOS ★★★
+        // HANDLER DOS BOTÕES
         // =====================================================================
         private Task HandleButton(SocketMessageComponent component)
         {
@@ -138,7 +147,6 @@ namespace Botzinho.Music
 
                     ulong guildId = component.GuildId.Value;
 
-                    // Segurança: só quem está na call pode controlar
                     var botCall = user.Guild.CurrentUser.VoiceChannel;
                     if (botCall == null || user.VoiceChannel?.Id != botCall.Id)
                     {
@@ -148,7 +156,7 @@ namespace Botzinho.Music
                         return;
                     }
 
-                    var player = await _audioService.Players.GetPlayerAsync<QueuedLavalinkPlayer>(guildId);
+                    var player = await ObterPlayerSeguro(guildId);
                     if (player == null)
                     {
                         await component.RespondAsync(
@@ -163,15 +171,10 @@ namespace Botzinho.Music
                     {
                         case "zoe_music_pause":
                             if (player.State == PlayerState.Paused)
-                            {
                                 await player.ResumeAsync();
-                                await component.DeferAsync();
-                            }
                             else
-                            {
                                 await player.PauseAsync();
-                                await component.DeferAsync();
-                            }
+                            await component.DeferAsync();
                             await AtualizarPlayerEmbed(guildId, user);
                             break;
 
@@ -183,18 +186,18 @@ namespace Botzinho.Music
                             }
                             await player.SkipAsync();
                             await component.DeferAsync();
-                            await Task.Delay(500); // pequena espera pra trocar a track
+                            await Task.Delay(500);
                             await AtualizarPlayerEmbed(guildId, user);
                             break;
 
                         case "zoe_music_stop":
                             _playerMessages.TryRemove(guildId, out _);
                             _loopMode.TryRemove(guildId, out _);
-                            await player.StopAsync();
-                            await player.DisconnectAsync();
-                            await player.DisposeAsync();
 
-                            // Edita o embed pra mostrar "encerrado"
+                            try { await player.StopAsync(); } catch { }
+                            try { await player.DisconnectAsync(); } catch { }
+                            try { await player.DisposeAsync(); } catch { }
+
                             try
                             {
                                 var ebFim = new EmbedBuilder()
@@ -239,16 +242,13 @@ namespace Botzinho.Music
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[HandleButton Error]: {ex.Message}\n{ex.StackTrace}");
-                    try { await component.RespondAsync($"<:erro:1493078898462949526> Erro: {ex.Message}", ephemeral: true); } catch { }
+                    Console.WriteLine($"[HandleButton Error]: {ex.Message}");
+                    try { await component.RespondAsync($"<:erro:1493078898462949526> Erro ao processar.", ephemeral: true); } catch { }
                 }
             });
             return Task.CompletedTask;
         }
 
-        // =====================================================================
-        // ★ HANDLER DO SELECT MENU (remover música)
-        // =====================================================================
         private Task HandleSelectMenu(SocketMessageComponent component)
         {
             _ = Task.Run(async () => {
@@ -271,7 +271,7 @@ namespace Botzinho.Music
                         return;
                     }
 
-                    var player = await _audioService.Players.GetPlayerAsync<QueuedLavalinkPlayer>(guildId);
+                    var player = await ObterPlayerSeguro(guildId);
                     if (player == null)
                     {
                         await component.RespondAsync("<:erro:1493078898462949526> Nenhuma música tocando.", ephemeral: true);
@@ -304,28 +304,36 @@ namespace Botzinho.Music
                         m.Components = new ComponentBuilder().Build();
                     });
 
-                    // Atualiza o player principal pra refletir a nova fila
                     await AtualizarPlayerEmbed(guildId, user);
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[SelectMenu Error]: {ex.Message}");
-                    try { await component.RespondAsync($"<:erro:1493078898462949526> Erro: {ex.Message}", ephemeral: true); } catch { }
-                }
+                catch (Exception ex) { Console.WriteLine($"[SelectMenu Error]: {ex.Message}"); }
             });
             return Task.CompletedTask;
         }
 
         // =====================================================================
-        // ★ Atualiza o embed do player principal
+        // ★ Obtém player com TRY/CATCH (não trava se Lavalink bugou)
         // =====================================================================
+        private async Task<QueuedLavalinkPlayer> ObterPlayerSeguro(ulong guildId)
+        {
+            try
+            {
+                return await _audioService.Players.GetPlayerAsync<QueuedLavalinkPlayer>(guildId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ObterPlayerSeguro Falha]: {ex.Message}");
+                return null;
+            }
+        }
+
         private async Task AtualizarPlayerEmbed(ulong guildId, SocketGuildUser user)
         {
             try
             {
                 if (!_playerMessages.TryGetValue(guildId, out var info)) return;
 
-                var player = await _audioService.Players.GetPlayerAsync<QueuedLavalinkPlayer>(guildId);
+                var player = await ObterPlayerSeguro(guildId);
                 if (player == null || player.CurrentTrack == null) return;
 
                 var channel = _client.GetChannel(info.ChId) as ISocketMessageChannel;
@@ -342,15 +350,9 @@ namespace Botzinho.Music
                     m.Components = components;
                 });
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[AtualizarPlayer Error]: {ex.Message}");
-            }
+            catch (Exception ex) { Console.WriteLine($"[AtualizarPlayer Error]: {ex.Message}"); }
         }
 
-        // =====================================================================
-        // ★ Mostra a fila em mensagem ephemeral
-        // =====================================================================
         private async Task MostrarFilaEphemeral(SocketMessageComponent component, QueuedLavalinkPlayer player)
         {
             var eb = new EmbedBuilder()
@@ -393,17 +395,12 @@ namespace Botzinho.Music
                 if (item.Track != null) totalDuration += item.Track.Duration;
 
             eb.WithDescription(descricao);
-            eb.WithFooter(
-                $"{player.Queue.Count} música(s) na fila  •  Tempo total: {FormatarDuracao(totalDuration)}"
-            );
+            eb.WithFooter($"{player.Queue.Count} música(s) na fila  •  Tempo total: {FormatarDuracao(totalDuration)}");
             eb.WithCurrentTimestamp();
 
             await component.RespondAsync(embed: eb.Build(), ephemeral: true);
         }
 
-        // =====================================================================
-        // ★ Mostra dropdown pra remover música da fila
-        // =====================================================================
         private async Task MostrarMenuRemover(SocketMessageComponent component, QueuedLavalinkPlayer player)
         {
             if (player.Queue.Count == 0)
@@ -435,9 +432,7 @@ namespace Botzinho.Music
                 i++;
             }
 
-            var components = new ComponentBuilder()
-                .WithSelectMenu(menu)
-                .Build();
+            var components = new ComponentBuilder().WithSelectMenu(menu).Build();
 
             var eb = new EmbedBuilder()
                 .WithColor(SpotifyDark)
@@ -448,7 +443,7 @@ namespace Botzinho.Music
         }
 
         // =====================================================================
-        // ★★★ COMANDO ZPLAY ★★★
+        // COMANDO ZPLAY (com proteção contra músicas problemáticas)
         // =====================================================================
         private async Task ExecutarPlay(SocketMessage msg, SocketGuildUser user, string content)
         {
@@ -460,6 +455,10 @@ namespace Botzinho.Music
             }
 
             string query = partes[1].Trim();
+
+            // ★ Avisa quando query parece problemática (mas não bloqueia)
+            string queryLower = query.ToLower();
+            bool problematica = _palavrasProblematicas.Any(p => queryLower.Contains(p));
 
             var voiceChannel = user.VoiceChannel;
             if (voiceChannel == null)
@@ -480,7 +479,7 @@ namespace Botzinho.Music
             var player = await ObterPlayerAsync(user.Guild.Id, voiceChannel.Id, conectar: true);
             if (player == null)
             {
-                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Verifica se o Lavalink está online.");
+                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Tenta de novo em alguns segundos.");
                 return;
             }
 
@@ -545,14 +544,35 @@ namespace Botzinho.Music
                 return;
             }
 
+            // ★ AVISO: bloqueia tracks com encoded gigante (>1500 chars) que causam partial payload
+            string encoded = track.ToString() ?? "";
+            if (encoded.Length > 1800)
+            {
+                Console.WriteLine($"[Music] Track muito grande ({encoded.Length} chars), pulando: {track.Title}");
+                await loading.ModifyAsync(m => m.Content =
+                    $"<:erro:1493078898462949526> Esta música tem dados muito grandes e pode causar travamento. Tenta uma versão diferente.\n*Dica: evita músicas com 'slowed', 'remix' ou '1 hora'.*");
+                return;
+            }
+
             try { await player.SetVolumeAsync(1.0f); } catch { }
-            int position = await player.PlayAsync(track);
+
+            int position;
+            try
+            {
+                position = await player.PlayAsync(track);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PlayAsync Error]: {ex.Message}");
+                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Erro ao tocar a música. Tenta outra.");
+                return;
+            }
+
             await Task.Delay(500);
             try { await player.SetVolumeAsync(1.0f); } catch { }
 
             if (position == 0)
             {
-                // Tocando agora → manda player completo com botões
                 var embed = CriarEmbedPlayer(user, player, track, user.Guild.Id);
                 var components = CriarBotoesPlayer(player, user.Guild.Id);
 
@@ -563,18 +583,13 @@ namespace Botzinho.Music
             }
             else
             {
-                // Adicionado à fila → embed simples sem botões
                 var ebFila = CriarEmbedFila(user, track, position);
                 await loading.ModifyAsync(m => { m.Content = ""; m.Embed = ebFila; });
 
-                // Atualiza o player principal pra mostrar a fila aumentada
                 await AtualizarPlayerEmbed(user.Guild.Id, user);
             }
         }
 
-        // =====================================================================
-        // ★ EMBED PLAYER PRINCIPAL (Spotify dark, capa grande)
-        // =====================================================================
         private Embed CriarEmbedPlayer(SocketGuildUser user, QueuedLavalinkPlayer player, LavalinkTrack track, ulong guildId)
         {
             var dur = track.Duration;
@@ -627,59 +642,30 @@ namespace Botzinho.Music
             return eb.Build();
         }
 
-        // =====================================================================
-        // ★ BOTÕES DO PLAYER (estilo Spotify)
-        // =====================================================================
         private MessageComponent CriarBotoesPlayer(QueuedLavalinkPlayer player, ulong guildId)
         {
             bool pausado = player.State == PlayerState.Paused;
             int loopMode = _loopMode.GetValueOrDefault(guildId, 0);
 
-            // Estilo do botão de loop muda conforme estado
             ButtonStyle estiloLoop = loopMode == 0 ? ButtonStyle.Secondary : ButtonStyle.Success;
 
             var cb = new ComponentBuilder()
-                // Linha 1: controles principais
-                .WithButton(
-                    customId: "zoe_music_pause",
-                    style: ButtonStyle.Primary,
-                    emote: new Emoji(pausado ? "▶️" : "⏸️"),
-                    row: 0)
-                .WithButton(
-                    customId: "zoe_music_skip",
-                    style: ButtonStyle.Secondary,
-                    emote: new Emoji("⏭️"),
-                    row: 0)
-                .WithButton(
-                    customId: "zoe_music_stop",
-                    style: ButtonStyle.Danger,
-                    emote: new Emoji("⏹️"),
-                    row: 0)
-                .WithButton(
-                    customId: "zoe_music_loop",
-                    style: estiloLoop,
-                    emote: new Emoji(loopMode == 1 ? "🔂" : "🔁"),
-                    row: 0)
-                // Linha 2: fila
-                .WithButton(
-                    label: "Ver fila",
-                    customId: "zoe_music_queue",
-                    style: ButtonStyle.Secondary,
-                    emote: new Emoji("📋"),
-                    row: 1)
-                .WithButton(
-                    label: "Remover música",
-                    customId: "zoe_music_remove",
-                    style: ButtonStyle.Secondary,
-                    emote: new Emoji("🗑️"),
-                    row: 1);
+                .WithButton(customId: "zoe_music_pause", style: ButtonStyle.Primary,
+                    emote: new Emoji(pausado ? "▶️" : "⏸️"), row: 0)
+                .WithButton(customId: "zoe_music_skip", style: ButtonStyle.Secondary,
+                    emote: new Emoji("⏭️"), row: 0)
+                .WithButton(customId: "zoe_music_stop", style: ButtonStyle.Danger,
+                    emote: new Emoji("⏹️"), row: 0)
+                .WithButton(customId: "zoe_music_loop", style: estiloLoop,
+                    emote: new Emoji(loopMode == 1 ? "🔂" : "🔁"), row: 0)
+                .WithButton(label: "Ver fila", customId: "zoe_music_queue", style: ButtonStyle.Secondary,
+                    emote: new Emoji("📋"), row: 1)
+                .WithButton(label: "Remover música", customId: "zoe_music_remove", style: ButtonStyle.Secondary,
+                    emote: new Emoji("🗑️"), row: 1);
 
             return cb.Build();
         }
 
-        // =====================================================================
-        // ★ EMBED "ADICIONADO À FILA" (sem botões, é só notificação)
-        // =====================================================================
         private Embed CriarEmbedFila(SocketGuildUser user, LavalinkTrack track, int position)
         {
             var cargoAlto = user.Roles
@@ -700,18 +686,13 @@ namespace Botzinho.Music
                     $"```"
                 )
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "")
-                .WithFooter(
-                    $"Pedido por {user.Username}  •  {cargoNome}",
-                    user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl()
-                )
+                .WithFooter($"Pedido por {user.Username}  •  {cargoNome}",
+                    user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithCurrentTimestamp();
 
             return eb.Build();
         }
 
-        // =====================================================================
-        // ★ BARRA DE PROGRESSO ESTILO SPOTIFY
-        // =====================================================================
         private string GerarBarraSpotify(TimeSpan atual, TimeSpan total)
         {
             if (total.TotalMilliseconds <= 0)
@@ -734,7 +715,7 @@ namespace Botzinho.Music
         }
 
         // =====================================================================
-        // COMANDOS DE TEXTO (zskip, zqueue, zpause, etc)
+        // Comandos de texto
         // =====================================================================
         private async Task ExecutarSkip(SocketMessage msg, SocketGuildUser user)
         {
@@ -815,10 +796,8 @@ namespace Botzinho.Music
                 if (item.Track != null) totalDuration += item.Track.Duration;
 
             eb.WithDescription(descricao);
-            eb.WithFooter(
-                $"{player.Queue.Count} música(s) na fila  •  Tempo total: {FormatarDuracao(totalDuration)}",
-                user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl()
-            );
+            eb.WithFooter($"{player.Queue.Count} música(s) na fila  •  Tempo total: {FormatarDuracao(totalDuration)}",
+                user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
             eb.WithCurrentTimestamp();
 
             await msg.Channel.SendMessageAsync(embed: eb.Build());
@@ -876,9 +855,9 @@ namespace Botzinho.Music
             _playerMessages.TryRemove(user.Guild.Id, out _);
             _loopMode.TryRemove(user.Guild.Id, out _);
 
-            await player.StopAsync();
-            await player.DisconnectAsync();
-            await player.DisposeAsync();
+            try { await player.StopAsync(); } catch { }
+            try { await player.DisconnectAsync(); } catch { }
+            try { await player.DisposeAsync(); } catch { }
 
             var eb = new EmbedBuilder()
                 .WithColor(SpotifyDark)
@@ -902,14 +881,9 @@ namespace Botzinho.Music
             var components = CriarBotoesPlayer(player, user.Guild.Id);
 
             var msgEnviada = await msg.Channel.SendMessageAsync(embed: embed, components: components);
-
-            // Atualiza o "player ativo" pra essa nova mensagem
             _playerMessages[user.Guild.Id] = (msgEnviada.Id, msg.Channel.Id);
         }
 
-        // =====================================================================
-        // OBTER PLAYER
-        // =====================================================================
         private async Task<QueuedLavalinkPlayer> ObterPlayerAsync(ulong guildId, ulong voiceChannelId, bool conectar)
         {
             try
@@ -949,14 +923,11 @@ namespace Botzinho.Music
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ObterPlayer Error]: {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"[ObterPlayer Error]: {ex.Message}");
                 return null;
             }
         }
 
-        // =====================================================================
-        // AUXILIARES
-        // =====================================================================
         private string FormatarDuracao(TimeSpan t)
         {
             if (t.TotalHours >= 1)
