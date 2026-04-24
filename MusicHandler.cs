@@ -334,7 +334,7 @@ namespace Botzinho.Music
             if (player.State != PlayerState.Paused) { await msg.Channel.SendMessageAsync("<:aviso:1493365148323152034> A música não está pausada."); return; }
 
             await player.ResumeAsync();
-            await msg.Channel.SendMessageAsync($"▶️ {user.Mention} retomou a música.");
+            await msg.Channel.SendMessageAsync($"<:online:1497028511112888383> {user.Mention} retomou a música.");
         }
 
         // =========================================================
@@ -351,7 +351,7 @@ namespace Botzinho.Music
             await player.DisconnectAsync();
             await player.DisposeAsync();
 
-            await msg.Channel.SendMessageAsync($"⏹️ {user.Mention} parou a música e saí da call.");
+            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} parou a música e saí da call.");
         }
 
         // =========================================================
