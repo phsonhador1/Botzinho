@@ -223,7 +223,7 @@ namespace Botzinho.Music
             // ★ Embed limpo — título sem link, mas mantém a capa (thumbnail)
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithAuthor(position == 0 ? "<:online:1497028511112888383> Tocando agora" : $"<:maiszoe:1494070196871364689> Adicionado à fila (posição #{position})")
+                .WithAuthor(position == 0 ? " Tocando agora" : $"<:maiszoe:1494070196871364689> Adicionado à fila (posição #{position})")
                 .WithTitle(track.Title)
                 .WithDescription($"**Artista:** {track.Author}\n**Duração:** **{FormatarDuracao(track.Duration)}**")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "")
@@ -375,7 +375,7 @@ namespace Botzinho.Music
             // ★ Sem link clicável, capa mantida
             var eb = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithAuthor("<:online:1497028511112888383> Tocando agora")
+                .WithAuthor("Tocando agora")
                 .WithTitle(track.Title)
                 .WithDescription($"**Artista:** {track.Author}\n\n{barra}\n`{FormatarDuracao(pos)} / {FormatarDuracao(dur)}`")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "");
