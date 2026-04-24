@@ -16,10 +16,6 @@ using System.Threading.Tasks;
 
 namespace Botzinho.Music
 {
-    // =====================================================================
-    // MÓDULO DE MÚSICA - LAVALINK4NET v4 (CORRIGIDO)
-    // =====================================================================
-
     public class MusicHandler
     {
         private readonly DiscordSocketClient _client;
@@ -139,26 +135,17 @@ namespace Botzinho.Music
                 return;
             }
 
-            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando esta musica **{query}**...");
+            var loading = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> Procurando esta musica**{query}**...");
 
             var player = await ObterPlayerAsync(user.Guild.Id, voiceChannel.Id, conectar: true);
             if (player == null)
             {
-                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Verifica se o Lavalink está online.");
+                await loading.ModifyAsync(m => m.Content = $"<:erro:1493078898462949526> Falha ao conectar. Verifica se o Lavalink está online e se `LAVALINK_HOST`/`LAVALINK_PASSWORD` estão certos.");
                 return;
             }
 
-            // --- CORREÇÃO: FORÇAR DESMUTE NA FORÇA BRUTA ---
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(1000); // Aguarda a Zoe estabilizar na call
-                try
-                {
-                    await user.Guild.CurrentUser.ModifyAsync(x => x.Mute = false);
-                }
-                catch { /* Ignora se o bot não tiver permissão no Discord */ }
-            });
-            // ------------------------------------------------
+            // ★ LOG DETALHADO: estado do player antes de tocar
+            Console.WriteLine($"[Music DEBUG] Player obtido. Volume={player.Volume}, State={player.State}, VoiceChannel={voiceChannel.Name}");
 
             TrackLoadResult result;
             bool isUrl = Uri.TryCreate(query, UriKind.Absolute, out var uri)
@@ -218,7 +205,25 @@ namespace Botzinho.Music
                 return;
             }
 
+            // ★ GARANTE que o volume está em 100% ANTES de tocar
+            try { await player.SetVolumeAsync(1.0f); } catch { }
+
             int position = await player.PlayAsync(track);
+
+            // ★ LOG DETALHADO depois de tocar
+            Console.WriteLine($"[Music DEBUG] PlayAsync concluído. Position={position}, Volume após={player.Volume}, State={player.State}");
+
+            // ★ GARANTE novamente o volume (às vezes PlayAsync reseta)
+            await Task.Delay(500);
+            try
+            {
+                await player.SetVolumeAsync(1.0f);
+                Console.WriteLine($"[Music DEBUG] Volume forçado para 1.0 após play. Volume atual={player.Volume}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Music DEBUG] Erro ao setar volume: {ex.Message}");
+            }
 
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
@@ -361,6 +366,9 @@ namespace Botzinho.Music
             await msg.Channel.SendMessageAsync(embed: eb.Build());
         }
 
+        // =========================================================
+        // ★★★ MÉTODO CORRIGIDO — SelfDeaf=FALSE e volume seguro ★★★
+        // =========================================================
         private async Task<QueuedLavalinkPlayer> ObterPlayerAsync(ulong guildId, ulong voiceChannelId, bool conectar)
         {
             try
@@ -375,11 +383,12 @@ namespace Botzinho.Music
                     VoiceStateBehavior: MemberVoiceStateBehavior.Ignore
                 );
 
+                // ★ InitialVolume em 1.0f = 100%. SelfDeaf=false é CRUCIAL.
                 var playerOptions = new QueuedLavalinkPlayerOptions
                 {
                     InitialVolume = 1.0f,
                     DisconnectOnStop = false,
-                    SelfDeaf = false // <-- CORREÇÃO: O bot entra surdo para não bugar o envio do áudio
+                    SelfDeaf = false
                 };
 
                 var result = await _audioService.Players.RetrieveAsync<QueuedLavalinkPlayer, QueuedLavalinkPlayerOptions>(
@@ -396,6 +405,7 @@ namespace Botzinho.Music
                     return null;
                 }
 
+                Console.WriteLine($"[ObterPlayer OK] Guild={guildId}, VoiceCh={voiceChannelId}, Volume={result.Player.Volume}, SelfDeaf=false");
                 return result.Player;
             }
             catch (Exception ex)
