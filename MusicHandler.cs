@@ -223,7 +223,7 @@ namespace Botzinho.Music
             // ★ Embed limpo — título sem link, mas mantém a capa (thumbnail)
             var embed = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithAuthor(position == 0 ? " Tocando agora" : $" Adicionado à fila (posição #{position})")
+                .WithAuthor(position == 0 ? "<:online:1497028511112888383> Tocando agora" : $"<:maiszoe:1494070196871364689> Adicionado à fila (posição #{position})")
                 .WithTitle(track.Title)
                 .WithDescription($"**Artista:** {track.Author}\n**Duração:** **{FormatarDuracao(track.Duration)}**")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "")
@@ -270,13 +270,13 @@ namespace Botzinho.Music
 
             var eb = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithTitle("<:online:1497028511112888383> Fila de Músicas");
+                .WithTitle("🎵 Fila de Músicas");
 
             string descricao = "";
 
             // ★ Sem link clicável — apenas título em negrito
             if (player.CurrentTrack != null)
-                descricao += $"**<a:teste:1490570407307378712> Tocando agora:**\n**{player.CurrentTrack.Title}** — `{FormatarDuracao(player.CurrentTrack.Duration)}`\n\n";
+                descricao += $"**🎶 Tocando agora:**\n**{player.CurrentTrack.Title}** — `{FormatarDuracao(player.CurrentTrack.Duration)}`\n\n";
 
             if (player.Queue.Count > 0)
             {
@@ -375,7 +375,7 @@ namespace Botzinho.Music
             // ★ Sem link clicável, capa mantida
             var eb = new EmbedBuilder()
                 .WithColor(PurpleTheme)
-                .WithAuthor("Tocando agora")
+                .WithAuthor("<:online:1497028511112888383> Tocando agora")
                 .WithTitle(track.Title)
                 .WithDescription($"**Artista:** {track.Author}\n\n{barra}\n`{FormatarDuracao(pos)} / {FormatarDuracao(dur)}`")
                 .WithThumbnailUrl(track.ArtworkUri?.ToString() ?? "");
