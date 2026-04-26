@@ -126,7 +126,7 @@ client.Ready += async () =>
             string[] statusAtual = { $"💜 {client.Guilds.Count} servidores", "🙂 Online!", "✨ zhelp", statusTop1 };
             foreach (var st in statusAtual)
             {
-                await client.SetStatusAsync(UserStatus.DoNotDisturb);
+                await client.SetStatusAsync(UserStatus.Invisible);
                 await client.SetCustomStatusAsync(st);
                 await Task.Delay(TimeSpan.FromSeconds(15));
             }
