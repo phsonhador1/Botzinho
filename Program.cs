@@ -57,6 +57,8 @@ var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
+var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
 // ==============================================================
