@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -14,9 +14,15 @@ namespace Botzinho.Roleplay
     {
         private readonly DiscordSocketClient _client;
         private static readonly HttpClient _http = new HttpClient();
-        private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
 
-        // Cor verde estilo "sucesso" do print
+        // ★ Cooldown POR comando (não global): cada comando tem seu próprio timer
+        // Chave: "userId:acao" → última vez usado
+        private static readonly Dictionary<string, DateTime> _cooldowns = new();
+
+        // Tempo de cooldown: 1 HORA por comando
+        private static readonly TimeSpan TempoEspera = TimeSpan.FromHours(1);
+
+        // Cor verde estilo "sucesso"
         private static readonly Color VerdeSucesso = new Color(67, 181, 129);
 
         public RoleplayHandler(DiscordSocketClient client)
@@ -47,38 +53,51 @@ namespace Botzinho.Roleplay
                     else
                         return;
 
-                    // Cooldown 5s
-                    if (_cooldowns.TryGetValue(user.Id, out var last) && (DateTime.UtcNow - last).TotalSeconds < 5)
+                    // ★ COOLDOWN POR USUÁRIO + AÇÃO (1 HORA)
+                    string chaveCd = $"{user.Id}:{acao}";
+                    if (_cooldowns.TryGetValue(chaveCd, out var lastUse))
                     {
-                        var aviso = await msg.Channel.SendMessageAsync($"<a:carregandoportal:1492944498605686844> {user.Mention}, calma! Aguarde **5 segundos** entre comandos.");
-                        _ = Task.Delay(2500).ContinueWith(_ => aviso.DeleteAsync());
-                        return;
+                        var passou = DateTime.UtcNow - lastUse;
+                        if (passou < TempoEspera)
+                        {
+                            var falta = TempoEspera - passou;
+                            string tempoFormatado = FormatarTempo(falta);
+
+                            var aviso = await msg.Channel.SendMessageAsync(
+                                $"<a:carregandoportal:1492944498605686844> {user.Mention}, você já usou **z{acao}** recentemente arrombado! " +
+                                $"Aguarde mais **{tempoFormatado}** pra usar de novo."
+                            );
+                            _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
+                            return;
+                        }
                     }
-                    _cooldowns[user.Id] = DateTime.UtcNow;
 
                     // Pega o mencionado
                     var mencionado = msg.MentionedUsers.FirstOrDefault() as SocketGuildUser;
                     if (mencionado == null)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: `z{acao} @fulano`");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} Deixa de ser burro e menciona alguém! Exemplo: `z{acao} @senzala`");
                         return;
                     }
 
                     if (mencionado.Id == user.Id)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você não pode fazer isso consigo mesmo!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} ta de brincadeira? você não pode fazer isso consigo mesmo!");
                         return;
                     }
 
                     if (mencionado.IsBot)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso, sou apenas um bot!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso burro, sou apenas um bot!");
                         return;
                     }
 
+                    // ★ AGORA SIM marca o cooldown (só depois de validar que vai executar)
+                    _cooldowns[chaveCd] = DateTime.UtcNow;
+
                     await ExecutarAcao(msg, user, mencionado, acao);
                 }
-                catch (Exception ex) { Console.WriteLine($"[Roleplay Error]: {ex.Message}"); }
+                catch (Exception ex) { Console.WriteLine($"[Roleplay Error]: {ex.Message}\n{ex.StackTrace}"); }
             });
             return Task.CompletedTask;
         }
@@ -100,10 +119,12 @@ namespace Botzinho.Roleplay
             var random = new Random();
             long recompensa = random.NextInt64(50_000, 500_001);
 
-            // Adiciona o saldo no mencionado (quem recebeu a ação)
+            // ★ ADICIONA O SALDO NA CARTEIRA do mencionado (alvo da ação)
             try
             {
                 EconomyHelper.AdicionarSaldo(user.Guild.Id, alvo.Id, recompensa);
+                EconomyHelper.RegistrarTransacao(user.Guild.Id, user.Id, alvo.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
+                Console.WriteLine($"[Roleplay OK] {user.Username} fez '{acao}' em {alvo.Username} → adicionou {recompensa} pra {alvo.Id}");
             }
             catch (Exception ex)
             {
@@ -113,13 +134,13 @@ namespace Botzinho.Roleplay
             // Monta a mensagem estilo casual
             string textoMsg = acao switch
             {
-                "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:cash:0000> **{EconomyHelper.FormatarSaldo(recompensa)}**",
-                "tapa" => $"<a:sucess:1494692628372132013> **Tapa amigável!** Ao dar um tapinha em {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:cash:0000> **{EconomyHelper.FormatarSaldo(recompensa)}**",
-                "abracar" => $"<a:sucess:1494692628372132013> **Abraço fortinho!** Ao abraçar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:cash:0000> **{EconomyHelper.FormatarSaldo(recompensa)}**",
+                "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
+                "tapa" => $"<a:sucess:1494692628372132013> **Tapa amigável!** Ao dar um tapinha em {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
+                "abracar" => $"<a:sucess:1494692628372132013> **Abraço fortinho!** Ao abraçar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
                 _ => ""
             };
 
-            // Embed bem clean: só o gif, sem título nem descrição
+            // Embed limpo: só o gif
             var embed = new EmbedBuilder()
                 .WithColor(VerdeSucesso)
                 .WithImageUrl(gifUrl ?? "")
@@ -142,6 +163,16 @@ namespace Botzinho.Roleplay
                 Console.WriteLine($"[BuscarGif Error]: {ex.Message}");
                 return null;
             }
+        }
+
+        // Formata tempo restante de forma amigável
+        private string FormatarTempo(TimeSpan t)
+        {
+            if (t.TotalMinutes < 1)
+                return $"{(int)t.TotalSeconds}s";
+            if (t.TotalHours < 1)
+                return $"{t.Minutes}min e {t.Seconds}s";
+            return $"{(int)t.TotalHours}h e {t.Minutes}min";
         }
     }
 }
