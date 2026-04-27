@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -14,23 +14,20 @@ namespace Botzinho.Commands
 
         public static async Task ExecutarZBinAsync(SocketUserMessage message, string bin)
         {
-            // Filtra apenas números
             string cleanBin = new string(bin.Where(char.IsDigit).ToArray());
 
             if (cleanBin.Length < 6)
             {
-                await message.ReplyAsync("<:erro:1493078898462949526> **Erro:** Digite ao menos os 6 primeiros dígitos da BIN.");
+                await message.ReplyAsync("<:erro:1493078898462949526> **Deixa de ser burro animal:** Insira pelo menos 6 dígitos.");
                 return;
             }
 
-            // Pega apenas os primeiros 8 dígitos (limite da API)
             if (cleanBin.Length > 8) cleanBin = cleanBin.Substring(0, 8);
 
             using (message.Channel.EnterTypingState())
             {
                 try
                 {
-                    // A API BinList exige essa configuração de Header em alguns casos
                     var request = new HttpRequestMessage(HttpMethod.Get, $"https://lookup.binlist.net/{cleanBin}");
                     request.Headers.Add("Accept-Version", "3");
 
@@ -38,44 +35,40 @@ namespace Botzinho.Commands
 
                     if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                     {
-                        await message.ReplyAsync("❌ **BIN não encontrada** na base de dados mundial.");
+                        await message.ReplyAsync("⚠️ **Alvo Inexistente:** BIN não localizada.");
                         return;
                     }
 
-                    if (response.StatusCode == (System.Net.HttpStatusCode)429)
+                    if ((int)response.StatusCode == 429)
                     {
-                        await message.ReplyAsync("⏳ **Limite atingido:** A API está recusando conexões por excesso de uso. Tente em 1 minuto.");
+                        await message.ReplyAsync("⏳ **Firewall Ativo:** Muitas consultas. Tente novamente em breve.");
                         return;
                     }
 
                     response.EnsureSuccessStatusCode();
-
                     string jsonResponse = await response.Content.ReadAsStringAsync();
                     var data = JsonSerializer.Deserialize<BinResponse>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    if (data == null) throw new Exception("Falha na desserialização dos dados.");
+                    if (data == null) return;
 
-                    // Formatação de strings para evitar nulos
+                    // Tratamento de Dados Premium
                     string scheme = Capitalize(data.Scheme) ?? "Desconhecido";
-                    string type = Capitalize(data.Type) ?? "Desconhecido";
-                    string brand = Capitalize(data.Brand) ?? "Comum";
-                    string prepaid = data.Prepaid.HasValue ? (data.Prepaid.Value ? "Sim" : "Não") : "N/A";
+                    string type = Capitalize(data.Type) ?? "N/A";
+                    string brand = Capitalize(data.Brand) ?? "Common";
+                    string bankName = data.Bank?.Name?.ToUpper() ?? "DESCONHECIDO";
+                    string countryName = data.Country?.Name ?? "Global";
+                    string countryCode = data.Country?.Alpha2 ?? "??";
 
-                    string bankInfo = data.Bank != null
-                        ? $"**Nome:** {data.Bank.Name ?? "?"}\n**Site:** {data.Bank.Url ?? "-"}\n**Fone:** {data.Bank.Phone ?? "-"}"
-                        : "Informações indisponíveis";
-
-                    string countryInfo = data.Country != null
-                        ? $"{data.Country.Alpha2} {data.Country.Name} (Lat: {data.Country.Latitude}, Long: {data.Country.Longitude})"
-                        : "Desconhecido";
-
+                    // Montagem do Embed Estilo Cyberpunk/Minimalista
                     var embed = new EmbedBuilder()
-                        .WithTitle($"🔍 Resultado da BIN: {cleanBin.Substring(0, 6)}")
-                        .WithColor(new Color(114, 137, 218)) // Azul Discord
-                        .AddField("💳 Cartão", $"**Bandeira:** {scheme}\n**Tipo:** {type}\n**Nível:** {brand}\n**Pré-pago:** {prepaid}", true)
-                        .AddField("🌍 País", countryInfo, true)
-                        .AddField("🏦 Banco", bankInfo, false)
-                        .WithFooter("Dados providos por BinList API")
+                        .WithTitle($"🔍 Consulta: {cleanBin.Substring(0, 6)}")
+                        .WithColor(new Color(138, 43, 226)) // Roxo Neon (Violeta)
+                        .AddField("💳 BANDEIRA", $"`{scheme}`", true)
+                        .AddField("📂 TIPO", $"`{type}`", true)
+                        .AddField("✨ NÍVEL", $"`{brand}`", true)
+                        .AddField("🏢 BANCO", $"```fix\n{bankName}```", false) // Bloco em destaque para o banco
+                        .AddField("📍 PAÍS", $"{countryName} ({countryCode})", true)
+                        .AddField("🛡️ STATUS", "Verificado", true)
                         .WithCurrentTimestamp()
                         .Build();
 
@@ -83,8 +76,8 @@ namespace Botzinho.Commands
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Erro BinService: {ex.Message}");
-                    await message.ReplyAsync($"⚠️ **Erro Interno:** Ocorreu um problema ao processar sua consulta.");
+                    Console.WriteLine($"Erro Bin: {ex.Message}");
+                    await message.ReplyAsync($"<:erro:1493078898462949526> **Falha na Matrix:** Tente novamente.");
                 }
             }
         }
