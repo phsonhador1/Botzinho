@@ -15,7 +15,7 @@ namespace Botzinho.Roleplay
         private readonly DiscordSocketClient _client;
         private static readonly HttpClient _http = new HttpClient();
 
-        // ★ Cooldown POR comando (não global): cada comando tem seu próprio timer
+        // Cooldown POR comando (não global): cada comando tem seu próprio timer
         // Chave: "userId:acao" → última vez usado
         private static readonly Dictionary<string, DateTime> _cooldowns = new();
 
@@ -53,7 +53,7 @@ namespace Botzinho.Roleplay
                     else
                         return;
 
-                    // ★ COOLDOWN POR USUÁRIO + AÇÃO (1 HORA)
+                    // COOLDOWN POR USUÁRIO + AÇÃO (1 HORA)
                     string chaveCd = $"{user.Id}:{acao}";
                     if (_cooldowns.TryGetValue(chaveCd, out var lastUse))
                     {
@@ -64,7 +64,7 @@ namespace Botzinho.Roleplay
                             string tempoFormatado = FormatarTempo(falta);
 
                             var aviso = await msg.Channel.SendMessageAsync(
-                                $"<a:carregandoportal:1492944498605686844> {user.Mention}, você já usou **z{acao}** recentemente arrombado! " +
+                                $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
                                 $"Aguarde mais **{tempoFormatado}** pra usar de novo."
                             );
                             _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
@@ -76,23 +76,23 @@ namespace Botzinho.Roleplay
                     var mencionado = msg.MentionedUsers.FirstOrDefault() as SocketGuildUser;
                     if (mencionado == null)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} Deixa de ser burro e menciona alguém! Exemplo: `z{acao} @senzala`");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: `z{acao} @fulano`");
                         return;
                     }
 
                     if (mencionado.Id == user.Id)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} ta de brincadeira? você não pode fazer isso consigo mesmo!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você não pode fazer isso consigo mesmo!");
                         return;
                     }
 
                     if (mencionado.IsBot)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso burro, sou apenas um bot!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso, sou apenas um bot!");
                         return;
                     }
 
-                    // ★ AGORA SIM marca o cooldown (só depois de validar que vai executar)
+                    // Marca o cooldown só depois de validar tudo
                     _cooldowns[chaveCd] = DateTime.UtcNow;
 
                     await ExecutarAcao(msg, user, mencionado, acao);
@@ -119,19 +119,34 @@ namespace Botzinho.Roleplay
             var random = new Random();
             long recompensa = random.NextInt64(50_000, 500_001);
 
-            // ★ ADICIONA O SALDO NA CARTEIRA do mencionado (alvo da ação)
+            // ★★★ CORRIGIDO: AGORA QUEM GANHA É QUEM USOU O COMANDO ★★★
+            // Pega o saldo ANTES pra confirmar que adicionou
+            long saldoAntes = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
+
             try
             {
-                EconomyHelper.AdicionarSaldo(user.Guild.Id, alvo.Id, recompensa);
-                EconomyHelper.RegistrarTransacao(user.Guild.Id, user.Id, alvo.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
-                Console.WriteLine($"[Roleplay OK] {user.Username} fez '{acao}' em {alvo.Username} → adicionou {recompensa} pra {alvo.Id}");
+                EconomyHelper.AdicionarSaldo(user.Guild.Id, user.Id, recompensa);
+                EconomyHelper.RegistrarTransacao(user.Guild.Id, _client.CurrentUser.Id, user.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
+
+                // Verifica se realmente foi adicionado
+                long saldoDepois = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
+                long diff = saldoDepois - saldoAntes;
+
+                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{diff}) | Esperado: +{recompensa}");
+
+                if (diff != recompensa)
+                {
+                    Console.WriteLine($"[Roleplay AVISO] Diferença esperada não bate! Banco pode ter problema.");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Roleplay AdicionarSaldo Error]: {ex.Message}");
+                Console.WriteLine($"[Roleplay AdicionarSaldo Error]: {ex.Message}\n{ex.StackTrace}");
+                await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Erro ao adicionar saldo: `{ex.Message}`");
+                return;
             }
 
-            // Monta a mensagem estilo casual
+            // Monta a mensagem (quem fez ganha o dinheiro)
             string textoMsg = acao switch
             {
                 "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
