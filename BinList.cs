@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -12,62 +13,71 @@ namespace Botzinho.Commands
     {
         private static readonly HttpClient _httpClient = new HttpClient();
 
+        // Cache simples para evitar consultas repetidas e economizar API
+        private static readonly Dictionary<string, HandyBinResponse> _cache = new Dictionary<string, HandyBinResponse>();
+
+        // COLOQUE SUA CHAVE AQUI
+        private static readonly string _apiKey = "SUA_KEY_AQUI";
+
         public static async Task ExecutarZBinAsync(SocketUserMessage message, string bin)
         {
             string cleanBin = new string(bin.Where(char.IsDigit).ToArray());
 
             if (cleanBin.Length < 6)
             {
-                await message.ReplyAsync("<:erro:1493078898462949526> **Deixa de ser burro animal:** Insira pelo menos 6 dígitos.");
+                await message.ReplyAsync("<:erro:1493078898462949526> **Carga falhou:** Insira pelo menos 6 dígitos.");
                 return;
             }
 
-            if (cleanBin.Length > 8) cleanBin = cleanBin.Substring(0, 8);
+            string binParaBusca = cleanBin.Substring(0, 6);
 
             using (message.Channel.EnterTypingState())
             {
                 try
                 {
-                    var request = new HttpRequestMessage(HttpMethod.Get, $"https://lookup.binlist.net/{cleanBin}");
-                    request.Headers.Add("Accept-Version", "3");
+                    HandyBinResponse data;
 
-                    var response = await _httpClient.SendAsync(request);
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    // 1. Verifica se já temos no Cache
+                    if (_cache.ContainsKey(binParaBusca))
                     {
-                        await message.ReplyAsync("⚠️ **Alvo Inexistente:** BIN não localizada.");
-                        return;
+                        data = _cache[binParaBusca];
+                    }
+                    else
+                    {
+                        // 2. Se não tiver, busca na HandyAPI
+                        var request = new HttpRequestMessage(HttpMethod.Get, $"https://data.handyapi.com/bin/{binParaBusca}");
+                        request.Headers.Add("x-api-key", _apiKey);
+
+                        var response = await _httpClient.SendAsync(request);
+
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            await message.ReplyAsync("⏳ **Sistema Indisponível:** Limite atingido ou chave inválida.");
+                            return;
+                        }
+
+                        string jsonResponse = await response.Content.ReadAsStringAsync();
+                        data = JsonSerializer.Deserialize<HandyBinResponse>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (data == null || data.Status != "SUCCESS")
+                        {
+                            await message.ReplyAsync("⚠️ **Alvo Inexistente:** BIN não encontrada na base de dados.");
+                            return;
+                        }
+
+                        // Salva no cache para a próxima vez
+                        _cache[binParaBusca] = data;
                     }
 
-                    if ((int)response.StatusCode == 429)
-                    {
-                        await message.ReplyAsync("⏳ **Firewall Ativo:** Muitas consultas. Tente novamente em breve.");
-                        return;
-                    }
-
-                    response.EnsureSuccessStatusCode();
-                    string jsonResponse = await response.Content.ReadAsStringAsync();
-                    var data = JsonSerializer.Deserialize<BinResponse>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                    if (data == null) return;
-
-                    // Tratamento de Dados Premium
-                    string scheme = Capitalize(data.Scheme) ?? "Desconhecido";
-                    string type = Capitalize(data.Type) ?? "N/A";
-                    string brand = Capitalize(data.Brand) ?? "Common";
-                    string bankName = data.Bank?.Name?.ToUpper() ?? "DESCONHECIDO";
-                    string countryName = data.Country?.Name ?? "Global";
-                    string countryCode = data.Country?.Alpha2 ?? "??";
-
-                    // Montagem do Embed Estilo Cyberpunk/Minimalista
+                    // 3. Montagem do Embed Premium
                     var embed = new EmbedBuilder()
-                        .WithTitle($"🔍 Consulta: {cleanBin.Substring(0, 6)}")
-                        .WithColor(new Color(138, 43, 226)) // Roxo Neon (Violeta)
-                        .AddField("💳 BANDEIRA", $"`{scheme}`", true)
-                        .AddField("📂 TIPO", $"`{type}`", true)
-                        .AddField("✨ NÍVEL", $"`{brand}`", true)
-                        .AddField("🏢 BANCO", $"```fix\n{bankName}```", false) // Bloco em destaque para o banco
-                        .AddField("📍 PAÍS", $"{countryName} ({countryCode})", true)
+                        .WithTitle($"🔍 CONSULTA: {binParaBusca}")
+                        .WithColor(new Color(138, 43, 226)) // Roxo Neon
+                        .AddField("💳 BANDEIRA", $"`{data.Scheme ?? "N/A"}`", true)
+                        .AddField("📂 TIPO", $"`{data.Type ?? "N/A"}`", true)
+                        .AddField("✨ NÍVEL", $"`{data.CardTier ?? "N/A"}`", true)
+                        .AddField("🏢 BANCO", $"```fix\n{(data.Issuer ?? "DESCONHECIDO")}\n```", false)
+                        .AddField("📍 PAÍS", $"{data.Country?.Name} ({data.Country?.A2})", true)
                         .AddField("🛡️ STATUS", "Verificado", true)
                         .WithCurrentTimestamp()
                         .Build();
@@ -76,32 +86,27 @@ namespace Botzinho.Commands
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Erro Bin: {ex.Message}");
-                    await message.ReplyAsync($"<:erro:1493078898462949526> **Falha na Matrix:** Tente novamente.");
+                    Console.WriteLine($"Erro HandyAPI: {ex.Message}");
+                    await message.ReplyAsync($"<:erro:1493078898462949526> **Falha na Matrix:** Conexão recusada.");
                 }
             }
         }
-
-        private static string Capitalize(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return null;
-            return char.ToUpper(text[0]) + text.Substring(1).ToLower();
-        }
     }
 
-    // Classes de mapeamento JSON
-    public class BinResponse
+    // Classes de Mapeamento para HandyAPI
+    public class HandyBinResponse
     {
-        public BinNumber Number { get; set; }
+        public string Status { get; set; }
         public string Scheme { get; set; }
         public string Type { get; set; }
-        public string Brand { get; set; }
-        public bool? Prepaid { get; set; }
-        public BinCountry Country { get; set; }
-        public BinBank Bank { get; set; }
+        public string Issuer { get; set; }
+        public string CardTier { get; set; }
+        public HandyCountry Country { get; set; }
     }
 
-    public class BinNumber { public int? Length { get; set; } public bool? Luhn { get; set; } }
-    public class BinCountry { public string Name { get; set; } public string Alpha2 { get; set; } public double? Latitude { get; set; } public double? Longitude { get; set; } }
-    public class BinBank { public string Name { get; set; } public string Url { get; set; } public string Phone { get; set; } }
+    public class HandyCountry
+    {
+        public string A2 { get; set; }
+        public string Name { get; set; }
+    }
 }
