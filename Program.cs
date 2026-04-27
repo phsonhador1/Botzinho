@@ -4,9 +4,6 @@ using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Lavalink4NET;
-using Lavalink4NET.Extensions;
-using Lavalink4NET.DiscordNet;
 using System;
 using System.Linq;
 using System.Threading;
@@ -15,7 +12,6 @@ using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
-using Botzinho.Music;
 
 // ==============================================================
 // CLIENTE DISCORD
@@ -24,14 +20,13 @@ var client = new DiscordSocketClient(new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.AllUnprivileged |
                      GatewayIntents.MessageContent |
-                     GatewayIntents.GuildMembers |
-                     GatewayIntents.GuildVoiceStates,
+                     GatewayIntents.GuildMembers,
     AlwaysDownloadUsers = true,
     MessageCacheSize = 100
 });
 
 // ==============================================================
-// HOST (DI + Lavalink)
+// HOST (DI simples, sem Lavalink)
 // ==============================================================
 var hostBuilder = Host.CreateDefaultBuilder()
     .ConfigureServices(services =>
@@ -39,24 +34,6 @@ var hostBuilder = Host.CreateDefaultBuilder()
         services.AddSingleton(client);
         services.AddSingleton<DiscordSocketClient>(client);
         services.AddSingleton<BaseSocketClient>(client);
-
-        // CORREÇÃO: Método oficial do Lavalink4NET v4 para conectar com o Discord.Net
-        // CORREÇÃO: Registra manualmente a ponte do Discord.Net para o Lavalink
-        services.AddSingleton<Lavalink4NET.Clients.IDiscordClientWrapper, Lavalink4NET.DiscordNet.DiscordClientWrapper>();
-
-        services.AddLavalink();
-
-        services.ConfigureLavalink(options =>
-        {
-            options.BaseAddress = new Uri(
-                Environment.GetEnvironmentVariable("LAVALINK_HOST")
-                ?? "https://lavalink-production-98e2.up.railway.app"
-            );
-            options.Passphrase =
-                Environment.GetEnvironmentVariable("LAVALINK_PASSWORD")
-                ?? "jacb2018";
-            options.ReadyTimeout = TimeSpan.FromSeconds(15);
-        });
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
@@ -80,16 +57,10 @@ var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
-// ==============================================================
-// MÚSICA (Lavalink)
-// ==============================================================
-var audioService = services.GetRequiredService<IAudioService>();
-var musicHandler = new Botzinho.Music.MusicHandler(client, audioService);
-
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
 // ==============================================================
-// EVENTO READY (depois que o Discord conecta)
+// EVENTO READY
 // ==============================================================
 client.Ready += async () =>
 {
@@ -123,10 +94,10 @@ client.Ready += async () =>
             }
             catch (Exception ex) { Console.WriteLine($"Erro status: {ex.Message}"); }
 
-            string[] statusAtual = { $"💜 {client.Guilds.Count} servidores", "🙂 Online!", "✨ zhelp", statusTop1 };
+            string[] statusAtual = { $"💜 Atualmente em {client.Guilds.Count} servidores", "🙂 Online | Pronta para Ajudar!", "✨ zhelp para ver os comandos", statusTop1 };
             foreach (var st in statusAtual)
             {
-                await client.SetStatusAsync(UserStatus.Invisible);
+                await client.SetStatusAsync(UserStatus.Online);
                 await client.SetCustomStatusAsync(st);
                 await Task.Delay(TimeSpan.FromSeconds(15));
             }
@@ -149,11 +120,10 @@ var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
-// IMPORTANTE: start o host APÓS o Discord estar iniciado.
 await host.StartAsync();
-
-Console.WriteLine("[Boot] Host iniciado. Lavalink deve estar conectando...");
+Console.WriteLine("[Boot] Host iniciado.");
 await host.WaitForShutdownAsync();
+
 
 // ==============================================================
 // CLASSES DE COMANDOS SLASH
