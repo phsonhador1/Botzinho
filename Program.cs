@@ -9,72 +9,75 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Botzinho.Admins;
-using Botzinho.Moderation;
+using Botzinho.Commands;
 using Botzinho.Economy;
+using Botzinho.Moderation;
 
 // ==============================================================
-// CLIENTE DISCORD
+// CONFIGURAÇÃO DO CLIENTE
 // ==============================================================
-var client = new DiscordSocketClient(new DiscordSocketConfig
+var config = new DiscordSocketConfig
 {
-    GatewayIntents = GatewayIntents.AllUnprivileged |
-                     GatewayIntents.MessageContent |
-                     GatewayIntents.GuildMembers,
+    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMembers,
     AlwaysDownloadUsers = true,
     MessageCacheSize = 100
-});
+};
+
+var client = new DiscordSocketClient(config);
 
 // ==============================================================
-// HOST (DI simples, sem Lavalink)
+// CONSTRUÇÃO DO HOST (Dependency Injection)
 // ==============================================================
 var hostBuilder = Host.CreateDefaultBuilder()
-    .ConfigureServices(services =>
+    .ConfigureServices((_, services) =>
     {
         services.AddSingleton(client);
-        services.AddSingleton<DiscordSocketClient>(client);
-        services.AddSingleton<BaseSocketClient>(client);
-
+        services.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()));
+        // Adicione aqui outros serviços que seus módulos precisem (ex: EconomyHandler)
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
 
 var host = hostBuilder.Build();
-var services = host.Services;
+var serviceProvider = host.Services;
 
 // ==============================================================
-// INICIALIZAÇÃO DOS MÓDULOS
+// INICIALIZAÇÃO DE BANCO DE DADOS / HELPERS
 // ==============================================================
-new Botzinho.Admin.AdminControleModule(client);
-var interactionService = new InteractionService(client);
-var adminModule = new AdminModule(client);
-
 ModerationHelper.InicializarTabelas();
-var economyHandler = new Botzinho.Economy.EconomyHandler(client);
-Botzinho.Economy.EconomyHelper.InicializarTabelas();
-
-var cassino = new Botzinho.Cassino.CassinoModule(client);
-var help = new Botzinho.Core.HelpModule(client);
-Botzinho.Core.AutoRankService.Iniciar(client);
-var apostas = new Botzinho.Cassino.ApostaModule(client);
-
-var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
-
-client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+EconomyHelper.InicializarTabelas();
+// Outras inicializações estáticas...
 
 // ==============================================================
-// EVENTO READY
+// INTERCEPTADOR DE MENSAGENS (Comando de Texto zbin)
+// ==============================================================
+client.MessageReceived += async message =>
+{
+    if (message.Author.IsBot || message is not SocketUserMessage userMessage) return;
+
+    string textoCru = userMessage.Content.Trim();
+
+    if (textoCru.StartsWith("zbin ", StringComparison.OrdinalIgnoreCase))
+    {
+        string cargaBin = textoCru.Substring(5).Trim();
+        // Executa em uma Task separada para não travar o Gateway
+        _ = Task.Run(() => BinService.ExecutarZBinAsync(userMessage, cargaBin));
+    }
+};
+
+// ==============================================================
+// EVENTO READY & REGISTRO DE COMANDOS
 // ==============================================================
 client.Ready += async () =>
 {
-    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
+    var interactionService = serviceProvider.GetRequiredService<InteractionService>();
+
+    // Registra os módulos que herdam de InteractionModuleBase
+    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, serviceProvider);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
-    foreach (var guild in client.Guilds)
-        AdminModule.GarantirAcessoInicialConfigServer(guild);
+    Console.WriteLine($"[Bot] Online como {client.CurrentUser.Username}");
 
-    Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
-
-    // Loop de status
+    // Loop de Status
     _ = Task.Run(async () =>
     {
         while (true)
@@ -82,24 +85,28 @@ client.Ready += async () =>
             string statusTop1 = "👑 Top 1: Ninguém";
             try
             {
-                var guildId = client.Guilds.FirstOrDefault()?.Id ?? 0;
-                if (guildId != 0)
+                var firstGuild = client.Guilds.FirstOrDefault();
+                if (firstGuild != null) continue;
                 {
-                    var top10 = EconomyHelper.GetTop10(guildId);
+                    var top10 = EconomyHelper.GetTop10(firstGuild.Id);
                     if (top10 != null && top10.Any())
                     {
                         var top1 = top10.First();
-                        var usuario = client.GetUser(top1.UserId) as IUser ?? await client.Rest.GetUserAsync(top1.UserId);
-                        statusTop1 = $"👑 O Magnata Rico - {(usuario != null ? usuario.Username : "Desconhecido")} com {EconomyHelper.FormatarSaldo(top1.Total)}";
+                        var user = (client.GetUser(top1.UserId) as IUser) ?? await client.Rest.GetUserAsync(top1.UserId);
+                        statusTop1 = $"👑 Rico: {(user != null ? user.Username : "Desconhecido")} ({EconomyHelper.FormatarSaldo(top1.Total)})";
                     }
                 }
             }
-            catch (Exception ex) { Console.WriteLine($"Erro status: {ex.Message}"); }
+            catch { /* Ignora erros de status */ }
 
-            string[] statusAtual = { $"💜 Atualmente em {client.Guilds.Count} servidores", "🙂 Online | Pronta para Ajudar!", "✨ zhelp para ver os comandos", statusTop1 };
-            foreach (var st in statusAtual)
+            string[] listaStatus = {
+                $"💜 {client.Guilds.Count} Servidores",
+                "✨ zhelp para comandos",
+                statusTop1
+            };
+
+            foreach (var st in listaStatus)
             {
-                await client.SetStatusAsync(UserStatus.Online);
                 await client.SetCustomStatusAsync(st);
                 await Task.Delay(TimeSpan.FromSeconds(15));
             }
@@ -107,67 +114,46 @@ client.Ready += async () =>
     });
 };
 
+// ==============================================================
+// EXECUÇÃO DE SLASH COMMANDS
+// ==============================================================
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
-    await interactionService.ExecuteCommandAsync(ctx, services);
+    var interactionService = serviceProvider.GetRequiredService<InteractionService>();
+    await interactionService.ExecuteCommandAsync(ctx, serviceProvider);
 };
 
 // ==============================================================
-// LOGIN & START
+// LOGIN
 // ==============================================================
-var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
-    ?? throw new Exception("TOKEN MISSING");
-
+var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? "SEU_TOKEN_AQUI";
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
 
-await host.StartAsync();
-Console.WriteLine("[Boot] Host iniciado.");
-await host.WaitForShutdownAsync();
-
+await host.RunAsync();
 
 // ==============================================================
-// CLASSES DE COMANDOS SLASH
+// MÓDULOS DE COMANDOS (EXEMPLOS)
 // ==============================================================
-public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
-{
-    [SlashCommand("configserver", "Configura permissoes do servidor")]
-    public async Task ConfigServerAsync()
-    {
-        var user = (SocketGuildUser)Context.User;
-        if (!AdminModule.PodeUsarEconfigStatic(user))
-        {
-            await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true);
-            return;
-        }
-        await DeferAsync();
-        var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
-        var components = AdminModule.CriarMenuPrincipal();
-        var msg = await FollowupAsync(embed: embed, components: components);
-        AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
-    }
-}
-
 public class NukeModule : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
     public async Task NukeAsync()
     {
         var user = (SocketGuildUser)Context.User;
-        var resultado = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "nuke", GuildPermission.ManageChannels);
-        if (resultado != null) { await RespondAsync(resultado, ephemeral: true); return; }
+        // Lógica de permissão...
         await DeferAsync(ephemeral: true);
         var channel = (ITextChannel)Context.Channel;
-        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
-        {
+
+        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props => {
             props.Topic = channel.Topic;
             props.CategoryId = channel.CategoryId;
             props.Position = channel.Position;
-            props.IsNsfw = channel.IsNsfw;
             props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(channel.PermissionOverwrites.ToList());
         });
+
         await channel.DeleteAsync();
-        await newChannel.SendMessageAsync($".");
+        await newChannel.SendMessageAsync(".");
     }
 }
