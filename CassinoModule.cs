@@ -653,7 +653,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                     RoletaAtiva.Remove(userId);
                     await component.ModifyOriginalResponseAsync(x => {
-                        x.Embed = new EmbedBuilder().WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithDescription("<a:carregandoportal:1492944498605686844> **Girando roleta...**").WithImageUrl(GIF_ROLETA).WithColor(new Color(43, 45, 49)).Build();
+                        x.Embed = new EmbedBuilder().WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithDescription("<a:aaaa:1496244444922642493> **Aguarde** **Girando roleta...**").WithImageUrl(GIF_ROLETA).WithColor(new Color(43, 45, 49)).Build();
                         x.Components = null;
                     });
 
