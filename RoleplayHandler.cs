@@ -168,7 +168,9 @@ namespace Botzinho.Roleplay
                         acao = "beijar";
                     else if (contentLower.StartsWith("ztapa") || contentLower.StartsWith("zslap"))
                         acao = "tapa";
-                    else if (contentLower.StartsWith("zabracar") || contentLower.StartsWith("zabraco") || contentLower.StartsWith("zhug"))
+                    else if (contentLower.StartsWith("zabracar") || contentLower.StartsWith("zabraçar") ||
+                             contentLower.StartsWith("zabraco") || contentLower.StartsWith("zabraço") ||
+                             contentLower.StartsWith("zhug"))
                         acao = "abracar";
                     else
                         return;
@@ -186,7 +188,7 @@ namespace Botzinho.Roleplay
                             string tempoFormatado = FormatarTempo(falta);
 
                             var aviso = await msg.Channel.SendMessageAsync(
-                                $"<:erro:1493078898462949526> {user.Mention}, Ihhhhh calma ae Puta! você já usou **z{acao}** recentemente! " +
+                                $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
                                 $"Aguarde mais **{tempoFormatado}** pra usar de novo."
                             );
                             _ = Task.Delay(8000).ContinueWith(_ => aviso.DeleteAsync());
@@ -197,19 +199,19 @@ namespace Botzinho.Roleplay
                     var mencionado = msg.MentionedUsers.FirstOrDefault() as SocketGuildUser;
                     if (mencionado == null)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: **z{acao} @putinhadoserver**");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: `z{acao} @fulano`");
                         return;
                     }
 
                     if (mencionado.Id == user.Id)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Hahaha ta de brincadeira ne viadinho?{user.Mention}, você não pode fazer isso consigo mesmo!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você não pode fazer isso consigo mesmo!");
                         return;
                     }
 
                     if (mencionado.IsBot)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} Deixa de ser animal Filho da Puta! Bots não podem participar disso.");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso, sou apenas um bot!");
                         return;
                     }
 
@@ -227,9 +229,10 @@ namespace Botzinho.Roleplay
         // ============================================================
         private async Task ExecutarZTempo(SocketMessage msg, SocketGuildUser user)
         {
-            string descricao = $"<a:carregandoportal:1492944498605686844> **Segue o Tempo restante dos **comandos** de roleplay** \n\n";
+            string descricao = $"<a:carregandoportal:1492944498605686844> **Tempo restante dos comandos de roleplay** {user.Mention}\n\n";
 
             string[] acoes = { "beijar", "tapa", "abracar" };
+            string[] emojis = { "💋", "✋", "🤗" };
             string[] nomesComando = { "zbeijar", "ztapa", "zabracar" };
 
             for (int i = 0; i < acoes.Length; i++)
@@ -238,19 +241,19 @@ namespace Botzinho.Roleplay
 
                 if (!ultimoUso.HasValue)
                 {
-                    descricao += $" **{nomesComando[i]}** →  <a:sucess:1494692628372132013>  **Disponível para uso!**\n";
+                    descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível!**\n";
                 }
                 else
                 {
                     var passou = DateTime.UtcNow - ultimoUso.Value;
                     if (passou >= TempoEspera)
                     {
-                        descricao += $" **{nomesComando[i]}** →  <a:sucess:1494692628372132013>  **Disponível para uso!** \n";
+                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível!**\n";
                     }
                     else
                     {
                         var falta = TempoEspera - passou;
-                        descricao += $" **{nomesComando[i]}** →  <:erro:1493078898462949526>  **{FormatarTempo(falta)}**\n";
+                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <:erro:1493078898462949526> **{FormatarTempo(falta)}**\n";
                     }
                 }
             }
@@ -270,8 +273,7 @@ namespace Botzinho.Roleplay
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
             string gifUrl = SortearGif(acao);
-            long recompensa = _random.NextInt64(50_000, 250_999);
-            //                                  
+            long recompensa = _random.NextInt64(50_000, 250_001);
 
             try
             {
