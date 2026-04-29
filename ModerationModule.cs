@@ -65,7 +65,7 @@ namespace Botzinho.Moderation
             if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário, não consigo bani-lo.", guild)); return; }
 
             try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **banido** de **{Context.Guild.Name}**.\n**Motivo:** {motivo}"); } catch { }
-            
+
             await Context.Guild.AddBanAsync(alvo, pruneDays: 0, reason: motivo);
 
             var embed = new EmbedBuilder()
