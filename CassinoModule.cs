@@ -309,9 +309,9 @@ namespace Botzinho.Cassino
                 var embed = new EmbedBuilder()
                     .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
                     .WithThumbnailUrl("https://media.discordapp.net/attachments/1168256801981079632/1168536905399406592/gambling_5458667.png?ex=69e8c84c&is=69e776cc&hm=acd4a36afc7040e01b3a7d5716b60e2c96e2938bf9e7db0fcdd111661a661508&")
-                    .WithDescription($@"<a:teste:1490570407307378712> **Olá, {user.Mention}! Bem-vindo(a) à Roleta da {_client.CurrentUser.Username}.**
+                    .WithDescription($@" **Olá, {user.Mention}! Bem-vindo(a) à Roleta do {_client.CurrentUser.Username}.**
 
-<:moedazoe:1493359715420340364> | **Valor em aposta:** `{EconomyHelper.FormatarSaldo(valorAposta)}`
+ | **Valor em aposta:** **{EconomyHelper.FormatarSaldo(valorAposta)}**
 
 <:seta:1493089125979656385> | **Como funciona:** Ao escolher uma cor abaixo, representada pelos botões, você terá a chance de 
 ganhar com base nos multiplicadores. Cada cor tem 
@@ -320,7 +320,7 @@ receberá uma recompensa de acordo com o multiplicador
 correspondente.
 
 
-<:erro:1493078898462949526> | **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
+| **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49)).Build();
 
