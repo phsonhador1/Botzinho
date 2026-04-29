@@ -270,7 +270,8 @@ namespace Botzinho.Roleplay
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
             string gifUrl = SortearGif(acao);
-            long recompensa = _random.NextInt64(50_000, 500_001);
+            long recompensa = _random.NextInt64(50_000, 250_999);
+            //                                  
 
             try
             {
