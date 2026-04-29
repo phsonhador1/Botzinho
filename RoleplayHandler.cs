@@ -3,8 +3,6 @@ using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Botzinho.Economy;
 
@@ -13,9 +11,8 @@ namespace Botzinho.Roleplay
     public class RoleplayHandler
     {
         private readonly DiscordSocketClient _client;
-        private static readonly HttpClient _http = new HttpClient();
 
-        // Cooldown POR comando (não global): cada comando tem seu próprio timer
+        // Cooldown POR comando: cada comando tem seu próprio timer
         private static readonly Dictionary<string, DateTime> _cooldowns = new();
 
         // Tempo de cooldown: 1 HORA por comando
@@ -24,24 +21,51 @@ namespace Botzinho.Roleplay
         // Cor verde estilo "sucesso"
         private static readonly Color VerdeSucesso = new Color(67, 181, 129);
 
-        // ★ GIFs FALLBACK: se a waifu.pics falhar, usa um desses
-        private static readonly Dictionary<string, string[]> _gifsFallback = new()
+        // Random global pro sorteio dos gifs
+        private static readonly Random _random = new Random();
+
+        // ★★★ BIBLIOTECA DE GIFS PERMANENTES - SEM API ★★★
+        // URLs do Tenor que são CDN público e estáveis
+        private static readonly string[] _gifsBeijo = new[]
         {
-            ["kiss"] = new[] {
-                "https://media.tenor.com/Q5pFI8KSlNgAAAAC/anime-kiss.gif",
-                "https://media.tenor.com/q3CkWmTHbFAAAAAC/kiss-anime.gif",
-                "https://i.waifu.pics/zKsfsRJ.gif"
-            },
-            ["slap"] = new[] {
-                "https://media.tenor.com/aPdRoavHd5oAAAAC/anime-slap.gif",
-                "https://media.tenor.com/Pp2k9NNB5_8AAAAC/slap-anime.gif",
-                "https://i.waifu.pics/J6sUWBz.gif"
-            },
-            ["hug"] = new[] {
-                "https://media.tenor.com/kBtdh11_HHwAAAAC/hug-anime.gif",
-                "https://media.tenor.com/QbWAm1uW3HQAAAAC/anime-hug.gif",
-                "https://i.waifu.pics/F7fNJzj.gif"
-            }
+            "https://media1.tenor.com/m/JZcfg2Ahg-IAAAAd/anime-kiss.gif",
+            "https://media1.tenor.com/m/4UCCuZ2QFXkAAAAd/anime-kiss.gif",
+            "https://media1.tenor.com/m/I8mzJzPABMcAAAAC/anime-kiss.gif",
+            "https://media1.tenor.com/m/6sPXIKDk6wgAAAAd/kiss-anime.gif",
+            "https://media1.tenor.com/m/V2mfOPjNK8MAAAAC/kiss-couple.gif",
+            "https://media1.tenor.com/m/HCbtRgZxEqsAAAAC/anime-kiss.gif",
+            "https://media1.tenor.com/m/KUmzPAt9aYsAAAAC/anime-kiss.gif",
+            "https://media1.tenor.com/m/zVK1IKlOj7IAAAAC/anime-kiss.gif",
+            "https://media1.tenor.com/m/Ds0wuKyz8rYAAAAC/anime-kiss.gif",
+            "https://media1.tenor.com/m/AbCxHvjk5J0AAAAC/anime-kiss.gif"
+        };
+
+        private static readonly string[] _gifsTapa = new[]
+        {
+            "https://media1.tenor.com/m/aPdRoavHd5oAAAAC/anime-slap.gif",
+            "https://media1.tenor.com/m/Pp2k9NNB5_8AAAAC/slap-anime.gif",
+            "https://media1.tenor.com/m/yC_OCIVTndsAAAAd/anime-slap.gif",
+            "https://media1.tenor.com/m/Gp8wMsiWZRgAAAAC/anime-slap.gif",
+            "https://media1.tenor.com/m/zIRjHpHnFVoAAAAC/anime-slap.gif",
+            "https://media1.tenor.com/m/UfF0ssMTyOcAAAAC/slap-anime.gif",
+            "https://media1.tenor.com/m/3qUbbgBwTQ4AAAAC/slap-anime.gif",
+            "https://media1.tenor.com/m/8s_3qbfcfO0AAAAC/anime-slap.gif",
+            "https://media1.tenor.com/m/RNOWOe6N4uIAAAAC/slap-anime.gif",
+            "https://media1.tenor.com/m/LEZTyiAZGPsAAAAC/anime-slap.gif"
+        };
+
+        private static readonly string[] _gifsAbraco = new[]
+        {
+            "https://media1.tenor.com/m/kBtdh11_HHwAAAAC/hug-anime.gif",
+            "https://media1.tenor.com/m/QbWAm1uW3HQAAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/BPUiVnp9jkkAAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/AzHfbGiV7rIAAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/lXFPVZAhHN0AAAAd/anime-hug.gif",
+            "https://media1.tenor.com/m/1MwPBLKnX5UAAAAC/hug-anime.gif",
+            "https://media1.tenor.com/m/CHVDYmIkrukAAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/srpcMWLhSKwAAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/yFMgLibfMr8AAAAC/anime-hug.gif",
+            "https://media1.tenor.com/m/4_NvjYiBEbsAAAAC/anime-hug.gif"
         };
 
         public RoleplayHandler(DiscordSocketClient client)
@@ -49,7 +73,7 @@ namespace Botzinho.Roleplay
             _client = client;
             _client.MessageReceived += HandleMessage;
 
-            Console.WriteLine("[Roleplay] Handler INICIALIZADO! Comandos: zbeijar, ztapa, zabracar");
+            Console.WriteLine($"[Roleplay] Handler INICIALIZADO! {_gifsBeijo.Length} gifs de beijo, {_gifsTapa.Length} de tapa, {_gifsAbraco.Length} de abraço");
         }
 
         private Task HandleMessage(SocketMessage msg)
@@ -86,7 +110,7 @@ namespace Botzinho.Roleplay
                             var falta = TempoEspera - passou;
                             string tempoFormatado = FormatarTempo(falta);
 
-                            Console.WriteLine($"[Roleplay] {user.Username} tentou usar 'z{acao}' mas tá em cooldown ({tempoFormatado} restantes)");
+                            Console.WriteLine($"[Roleplay] {user.Username} em cooldown ({tempoFormatado} restantes)");
 
                             var aviso = await msg.Channel.SendMessageAsync(
                                 $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
@@ -129,38 +153,25 @@ namespace Botzinho.Roleplay
 
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
-            // Pega gif
-            string endpoint = acao switch
-            {
-                "beijar" => "kiss",
-                "tapa" => "slap",
-                "abracar" => "hug",
-                _ => "hug"
-            };
-
-            // ★ Busca gif com retry e fallback (NUNCA retorna vazio agora!)
-            string gifUrl = await BuscarGifComFallbackAsync(endpoint);
+            // ★ Sorteia gif local (SEM API!)
+            string gifUrl = SortearGif(acao);
 
             // Recompensa aleatória entre 50K e 500K
-            var random = new Random();
-            long recompensa = random.NextInt64(50_000, 500_001);
+            long recompensa = _random.NextInt64(50_000, 500_001);
 
-            // Pega o saldo ANTES pra confirmar que adicionou
-            long saldoAntes = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
-
+            // Adiciona o saldo
             try
             {
+                long saldoAntes = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
                 EconomyHelper.AdicionarSaldo(user.Guild.Id, user.Id, recompensa);
                 EconomyHelper.RegistrarTransacao(user.Guild.Id, _client.CurrentUser.Id, user.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
-
                 long saldoDepois = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
-                long diff = saldoDepois - saldoAntes;
 
-                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{diff})");
+                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{saldoDepois - saldoAntes})");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Roleplay AdicionarSaldo Error]: {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"[Roleplay AdicionarSaldo Error]: {ex.Message}");
                 await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Erro ao adicionar saldo: `{ex.Message}`");
                 return;
             }
@@ -174,71 +185,35 @@ namespace Botzinho.Roleplay
                 _ => ""
             };
 
-            // ★ CORRIGIDO: só monta o embed se tiver gif válido
             try
             {
-                if (!string.IsNullOrWhiteSpace(gifUrl))
-                {
-                    var embed = new EmbedBuilder()
-                        .WithColor(VerdeSucesso)
-                        .WithImageUrl(gifUrl)
-                        .Build();
+                var embed = new EmbedBuilder()
+                    .WithColor(VerdeSucesso)
+                    .WithImageUrl(gifUrl)
+                    .Build();
 
-                    await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
-                }
-                else
-                {
-                    // Sem gif, manda só a mensagem
-                    Console.WriteLine($"[Roleplay] Aviso: nenhum gif disponível, mandando só texto");
-                    await msg.Channel.SendMessageAsync(text: textoMsg);
-                }
+                await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Roleplay SendMessage Error]: {ex.Message}");
                 // Última tentativa: manda só o texto
-                try
-                {
-                    await msg.Channel.SendMessageAsync(text: textoMsg);
-                }
-                catch { }
+                try { await msg.Channel.SendMessageAsync(text: textoMsg); } catch { }
             }
         }
 
-        // ★ Busca gif com retry: tenta API 3 vezes, depois usa fallback
-        private async Task<string> BuscarGifComFallbackAsync(string endpoint)
+        // Sorteia gif aleatório da lista local
+        private string SortearGif(string acao)
         {
-            // Tenta a API 3 vezes
-            for (int tentativa = 1; tentativa <= 3; tentativa++)
+            string[] lista = acao switch
             {
-                try
-                {
-                    string url = $"https://api.waifu.pics/sfw/{endpoint}";
-                    var response = await _http.GetStringAsync(url);
-                    using var doc = JsonDocument.Parse(response);
-                    string gifUrl = doc.RootElement.GetProperty("url").GetString();
+                "beijar" => _gifsBeijo,
+                "tapa" => _gifsTapa,
+                "abracar" => _gifsAbraco,
+                _ => _gifsAbraco
+            };
 
-                    if (!string.IsNullOrWhiteSpace(gifUrl))
-                    {
-                        return gifUrl;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[BuscarGif] Tentativa {tentativa}/3 falhou: {ex.Message}");
-                    if (tentativa < 3) await Task.Delay(500);
-                }
-            }
-
-            // Se todas as tentativas falharam, usa fallback
-            Console.WriteLine($"[BuscarGif] API falhou 3x, usando fallback para '{endpoint}'");
-            if (_gifsFallback.TryGetValue(endpoint, out var fallbacks) && fallbacks.Length > 0)
-            {
-                var random = new Random();
-                return fallbacks[random.Next(fallbacks.Length)];
-            }
-
-            return null;
+            return lista[_random.Next(lista.Length)];
         }
 
         // Formata tempo restante de forma amigável
