@@ -16,21 +16,39 @@ namespace Botzinho.Roleplay
         private static readonly HttpClient _http = new HttpClient();
 
         // Cooldown POR comando (não global): cada comando tem seu próprio timer
-        // Chave: "userId:acao" → última vez usado
         private static readonly Dictionary<string, DateTime> _cooldowns = new();
 
-        // Tempo de cooldown: 5 MINUTOS por comando (pra testar fácil)
-        private static readonly TimeSpan TempoEspera = TimeSpan.FromMinutes(5);
+        // Tempo de cooldown: 1 HORA por comando
+        private static readonly TimeSpan TempoEspera = TimeSpan.FromHours(1);
 
         // Cor verde estilo "sucesso"
         private static readonly Color VerdeSucesso = new Color(67, 181, 129);
+
+        // ★ GIFs FALLBACK: se a waifu.pics falhar, usa um desses
+        private static readonly Dictionary<string, string[]> _gifsFallback = new()
+        {
+            ["kiss"] = new[] {
+                "https://media.tenor.com/Q5pFI8KSlNgAAAAC/anime-kiss.gif",
+                "https://media.tenor.com/q3CkWmTHbFAAAAAC/kiss-anime.gif",
+                "https://i.waifu.pics/zKsfsRJ.gif"
+            },
+            ["slap"] = new[] {
+                "https://media.tenor.com/aPdRoavHd5oAAAAC/anime-slap.gif",
+                "https://media.tenor.com/Pp2k9NNB5_8AAAAC/slap-anime.gif",
+                "https://i.waifu.pics/J6sUWBz.gif"
+            },
+            ["hug"] = new[] {
+                "https://media.tenor.com/kBtdh11_HHwAAAAC/hug-anime.gif",
+                "https://media.tenor.com/QbWAm1uW3HQAAAAC/anime-hug.gif",
+                "https://i.waifu.pics/F7fNJzj.gif"
+            }
+        };
 
         public RoleplayHandler(DiscordSocketClient client)
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
 
-            // ★ Log de inicialização — pra confirmar nos logs do Railway
             Console.WriteLine("[Roleplay] Handler INICIALIZADO! Comandos: zbeijar, ztapa, zabracar");
         }
 
@@ -56,7 +74,6 @@ namespace Botzinho.Roleplay
                     else
                         return;
 
-                    // ★ Log de detecção do comando — pra confirmar que o handler tá processando
                     Console.WriteLine($"[Roleplay] Comando detectado: '{content}' por {user.Username}");
 
                     // COOLDOWN POR USUÁRIO + AÇÃO
@@ -121,7 +138,8 @@ namespace Botzinho.Roleplay
                 _ => "hug"
             };
 
-            string gifUrl = await BuscarGifAsync(endpoint);
+            // ★ Busca gif com retry e fallback (NUNCA retorna vazio agora!)
+            string gifUrl = await BuscarGifComFallbackAsync(endpoint);
 
             // Recompensa aleatória entre 50K e 500K
             var random = new Random();
@@ -156,29 +174,71 @@ namespace Botzinho.Roleplay
                 _ => ""
             };
 
-            // Embed limpo: só o gif
-            var embed = new EmbedBuilder()
-                .WithColor(VerdeSucesso)
-                .WithImageUrl(gifUrl ?? "")
-                .Build();
-
-            await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
-        }
-
-        private async Task<string> BuscarGifAsync(string endpoint)
-        {
+            // ★ CORRIGIDO: só monta o embed se tiver gif válido
             try
             {
-                string url = $"https://api.waifu.pics/sfw/{endpoint}";
-                var response = await _http.GetStringAsync(url);
-                using var doc = JsonDocument.Parse(response);
-                return doc.RootElement.GetProperty("url").GetString();
+                if (!string.IsNullOrWhiteSpace(gifUrl))
+                {
+                    var embed = new EmbedBuilder()
+                        .WithColor(VerdeSucesso)
+                        .WithImageUrl(gifUrl)
+                        .Build();
+
+                    await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
+                }
+                else
+                {
+                    // Sem gif, manda só a mensagem
+                    Console.WriteLine($"[Roleplay] Aviso: nenhum gif disponível, mandando só texto");
+                    await msg.Channel.SendMessageAsync(text: textoMsg);
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BuscarGif Error]: {ex.Message}");
-                return null;
+                Console.WriteLine($"[Roleplay SendMessage Error]: {ex.Message}");
+                // Última tentativa: manda só o texto
+                try
+                {
+                    await msg.Channel.SendMessageAsync(text: textoMsg);
+                }
+                catch { }
             }
+        }
+
+        // ★ Busca gif com retry: tenta API 3 vezes, depois usa fallback
+        private async Task<string> BuscarGifComFallbackAsync(string endpoint)
+        {
+            // Tenta a API 3 vezes
+            for (int tentativa = 1; tentativa <= 3; tentativa++)
+            {
+                try
+                {
+                    string url = $"https://api.waifu.pics/sfw/{endpoint}";
+                    var response = await _http.GetStringAsync(url);
+                    using var doc = JsonDocument.Parse(response);
+                    string gifUrl = doc.RootElement.GetProperty("url").GetString();
+
+                    if (!string.IsNullOrWhiteSpace(gifUrl))
+                    {
+                        return gifUrl;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[BuscarGif] Tentativa {tentativa}/3 falhou: {ex.Message}");
+                    if (tentativa < 3) await Task.Delay(500);
+                }
+            }
+
+            // Se todas as tentativas falharam, usa fallback
+            Console.WriteLine($"[BuscarGif] API falhou 3x, usando fallback para '{endpoint}'");
+            if (_gifsFallback.TryGetValue(endpoint, out var fallbacks) && fallbacks.Length > 0)
+            {
+                var random = new Random();
+                return fallbacks[random.Next(fallbacks.Length)];
+            }
+
+            return null;
         }
 
         // Formata tempo restante de forma amigável
