@@ -132,10 +132,9 @@ namespace Botzinho.Cassino
 
             if (isFaceDown)
             {
+                // Carta virada para baixo: Apenas o fundo liso vermelho sem logotipo
                 var innerRect = new SKRect(x + 6, y + 6, x + 94, y + 134);
-                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(110, 40, 180), IsAntialias = true });
-                var paintLogo = new SKPaint { Color = SKColors.White, TextSize = 40, Typeface = font, TextAlign = SKTextAlign.Center, IsAntialias = true };
-                canvas.DrawText("Z", x + 50, y + 85, paintLogo);
+                canvas.DrawRoundRect(innerRect, 4, 4, new SKPaint { Color = new SKColor(180, 20, 20), IsAntialias = true });
                 return;
             }
 
@@ -165,8 +164,8 @@ namespace Botzinho.Cassino
             using var surface = SKSurface.Create(new SKImageInfo(w, h));
             var canvas = surface.Canvas;
 
-            // CORES EXATAS DA PRINT
-            SKColor corFundo = status == "WIN" ? SKColor.Parse("#3dbb7e") : SKColor.Parse("#8c52ff");
+            // CORES EXATAS DA PRINT (Fundo vermelho substituindo o roxo)
+            SKColor corFundo = status == "WIN" ? SKColor.Parse("#3dbb7e") : SKColor.Parse("#b21f1f");
             SKColor corLinha = SKColors.White;
 
             canvas.Clear(SKColors.Transparent);
@@ -366,7 +365,7 @@ Escolha entre **Cara** ou **Coroa** e aposte. Se acertar, você ganha o dobro da
 <:erro:1493078898462949526> | **Desistir da aposta:**
 Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir da aposta.")
                     .WithFooter($"Apostador: {user.Username} • Hoje às {DateTime.Now:HH:mm}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Color(160, 80, 220));
+                    .WithColor(new Color(255, 71, 87));
 
                 var cb = new ComponentBuilder()
                     .WithButton("Cara", $"cf_cara_{user.Id}", ButtonStyle.Secondary, new Emoji("🙂"))
@@ -399,7 +398,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 BlackjackAtivo[user.Id] = (playerHand, dealerHand, deck, val);
 
-                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(140, 82, 198));
+                string imgPath = await CasinoImageHelper.GerarImagemBlackjack(playerHand, dealerHand, false, "BLACKJACK", new SKColor(180, 20, 20));
 
                 var eb = new EmbedBuilder()
                     .WithAuthor($"Blackjack | {user.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
@@ -407,7 +406,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
  ◦ 💵 **Possível ganho:** {EconomyHelper.FormatarSaldo(val * 2)}")
                     .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}")
                     .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithColor(new Color(160, 80, 220));
+                    .WithColor(new Color(255, 71, 87));
 
                 var cb = new ComponentBuilder()
                     .WithButton("Pedir Carta", $"bj_hit_{user.Id}", ButtonStyle.Primary, new Emoji("🃏"))
@@ -450,7 +449,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     .WithAuthor($"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
  ◦ <:dinheiro:1493360319928733838> **Possível ganho:** `{EconomyHelper.FormatarSaldo(aposta)}`")
-                    .WithColor(new Color(27, 28, 33)) // Cor Escura Idêntica ao fundo
+                    .WithColor(new Color(178, 31, 31)) // Fundo vermelho para combinar com o banner
                     .WithFooter($"Rodapé | Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}");
 
@@ -495,7 +494,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                         var newEb = new EmbedBuilder()
                         .WithAuthor(bateuCrash ? "CRASH!" : $"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                        .WithColor(bateuCrash ? Color.Red : new Color(27, 28, 33)) // Mantém a cor escura enquanto voa
+                        .WithColor(bateuCrash ? Color.Red : new Color(178, 31, 31)) 
                         .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                         .WithImageUrl($"attachment://upd.png");
 
@@ -603,7 +602,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 ◦ <:moedazoe:1493359715420340364> | **Prêmio ao Vencedor:** `{EconomyHelper.FormatarSaldo(val * 2)}`
 
 {alvo.Mention}, você tem coragem de aceitar?")
-                    .WithColor(new Color(160, 80, 220))
+                    .WithColor(new Color(255, 71, 87))
                     .WithFooter($"Desafiante: {user.Username} • O desafiante pode cancelar no X");
 
                 var cb = new ComponentBuilder()
@@ -751,14 +750,14 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         }
 
                         // Continua jogando
-                        string imgPlay = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, false, "BLACKJACK", new SKColor(140, 82, 198));
+                        string imgPlay = await CasinoImageHelper.GerarImagemBlackjack(game.Player, game.Dealer, false, "BLACKJACK", new SKColor(180, 20, 20));
                         var ebPlay = new EmbedBuilder()
                             .WithAuthor($"Blackjack | {component.User.Username}", _client.CurrentUser.GetAvatarUrl() ?? _client.CurrentUser.GetDefaultAvatarUrl())
                             .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** {EconomyHelper.FormatarSaldo(game.Bet)}
   ◦ <:dinheiro:1493360319928733838> **Possível ganho:** {EconomyHelper.FormatarSaldo(game.Bet * 2)}")
                             .WithImageUrl($"attachment://{Path.GetFileName(imgPlay)}")
                             .WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl())
-                            .WithColor(new Color(160, 80, 220));
+                            .WithColor(new Color(255, 71, 87));
 
                         using (var stream = File.OpenRead(imgPlay))
                         {
