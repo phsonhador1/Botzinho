@@ -96,7 +96,7 @@ client.Ready += async () =>
             }
             catch (Exception ex) { Console.WriteLine($"Erro status: {ex.Message}"); }
 
-            string[] statusAtual = { $"💜 Atualmente em {client.Guilds.Count} servidores", "🙂 Online | Pronta para Ajudar!", "✨ zhelp para ver os comandos", statusTop1 };
+            string[] statusAtual = { $"Estou em {client.Guilds.Count} servidores", "🙂 Online | zhelp", "discord.gg/senzala", statusTop1 };
             foreach (var st in statusAtual)
             {
                 await client.SetStatusAsync(UserStatus.Online);
