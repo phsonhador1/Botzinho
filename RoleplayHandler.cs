@@ -24,48 +24,23 @@ namespace Botzinho.Roleplay
         // Random global pro sorteio dos gifs
         private static readonly Random _random = new Random();
 
-        // ★★★ BIBLIOTECA DE GIFS PERMANENTES - SEM API ★★★
-        // URLs do Tenor que são CDN público e estáveis
+        // ★★★ BIBLIOTECA DE GIFS - URLs DIRETAS DO DISCORD CDN ★★★
+        // BEIJO: 1 gif por enquanto (adicione mais conforme upload no Discord)
         private static readonly string[] _gifsBeijo = new[]
         {
-            "https://media1.tenor.com/m/JZcfg2Ahg-IAAAAd/anime-kiss.gif",
-            "https://media1.tenor.com/m/4UCCuZ2QFXkAAAAd/anime-kiss.gif",
-            "https://media1.tenor.com/m/I8mzJzPABMcAAAAC/anime-kiss.gif",
-            "https://media1.tenor.com/m/6sPXIKDk6wgAAAAd/kiss-anime.gif",
-            "https://media1.tenor.com/m/V2mfOPjNK8MAAAAC/kiss-couple.gif",
-            "https://media1.tenor.com/m/HCbtRgZxEqsAAAAC/anime-kiss.gif",
-            "https://media1.tenor.com/m/KUmzPAt9aYsAAAAC/anime-kiss.gif",
-            "https://media1.tenor.com/m/zVK1IKlOj7IAAAAC/anime-kiss.gif",
-            "https://media1.tenor.com/m/Ds0wuKyz8rYAAAAC/anime-kiss.gif",
-            "https://media1.tenor.com/m/AbCxHvjk5J0AAAAC/anime-kiss.gif"
+            "https://cdn.discordapp.com/attachments/1496243404114235554/1498852930756018217/image0.gif"
         };
 
-        private static readonly string[] _gifsTapa = new[]
+        // TAPA: ainda vazio - adicione URLs do Discord CDN aqui depois
+        private static readonly string[] _gifsTapa = new string[]
         {
-            "https://media1.tenor.com/m/aPdRoavHd5oAAAAC/anime-slap.gif",
-            "https://media1.tenor.com/m/Pp2k9NNB5_8AAAAC/slap-anime.gif",
-            "https://media1.tenor.com/m/yC_OCIVTndsAAAAd/anime-slap.gif",
-            "https://media1.tenor.com/m/Gp8wMsiWZRgAAAAC/anime-slap.gif",
-            "https://media1.tenor.com/m/zIRjHpHnFVoAAAAC/anime-slap.gif",
-            "https://media1.tenor.com/m/UfF0ssMTyOcAAAAC/slap-anime.gif",
-            "https://media1.tenor.com/m/3qUbbgBwTQ4AAAAC/slap-anime.gif",
-            "https://media1.tenor.com/m/8s_3qbfcfO0AAAAC/anime-slap.gif",
-            "https://media1.tenor.com/m/RNOWOe6N4uIAAAAC/slap-anime.gif",
-            "https://media1.tenor.com/m/LEZTyiAZGPsAAAAC/anime-slap.gif"
+            // TODO: adicionar URLs do Discord CDN
         };
 
-        private static readonly string[] _gifsAbraco = new[]
+        // ABRAÇO: ainda vazio - adicione URLs do Discord CDN aqui depois
+        private static readonly string[] _gifsAbraco = new string[]
         {
-            "https://media1.tenor.com/m/kBtdh11_HHwAAAAC/hug-anime.gif",
-            "https://media1.tenor.com/m/QbWAm1uW3HQAAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/BPUiVnp9jkkAAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/AzHfbGiV7rIAAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/lXFPVZAhHN0AAAAd/anime-hug.gif",
-            "https://media1.tenor.com/m/1MwPBLKnX5UAAAAC/hug-anime.gif",
-            "https://media1.tenor.com/m/CHVDYmIkrukAAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/srpcMWLhSKwAAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/yFMgLibfMr8AAAAC/anime-hug.gif",
-            "https://media1.tenor.com/m/4_NvjYiBEbsAAAAC/anime-hug.gif"
+            // TODO: adicionar URLs do Discord CDN
         };
 
         public RoleplayHandler(DiscordSocketClient client)
@@ -153,7 +128,7 @@ namespace Botzinho.Roleplay
 
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
-            // ★ Sorteia gif local (SEM API!)
+            // Sorteia gif local
             string gifUrl = SortearGif(acao);
 
             // Recompensa aleatória entre 50K e 500K
@@ -167,7 +142,7 @@ namespace Botzinho.Roleplay
                 EconomyHelper.RegistrarTransacao(user.Guild.Id, _client.CurrentUser.Id, user.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
                 long saldoDepois = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
 
-                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{saldoDepois - saldoAntes})");
+                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} | Gif: {gifUrl ?? "(sem gif)"}");
             }
             catch (Exception ex)
             {
@@ -187,22 +162,29 @@ namespace Botzinho.Roleplay
 
             try
             {
-                var embed = new EmbedBuilder()
-                    .WithColor(VerdeSucesso)
-                    .WithImageUrl(gifUrl)
-                    .Build();
+                // Só monta embed se tiver gif. Sem gif, manda só texto
+                if (!string.IsNullOrWhiteSpace(gifUrl))
+                {
+                    var embed = new EmbedBuilder()
+                        .WithColor(VerdeSucesso)
+                        .WithImageUrl(gifUrl)
+                        .Build();
 
-                await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
+                    await msg.Channel.SendMessageAsync(text: textoMsg, embed: embed);
+                }
+                else
+                {
+                    await msg.Channel.SendMessageAsync(text: textoMsg);
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Roleplay SendMessage Error]: {ex.Message}");
-                // Última tentativa: manda só o texto
                 try { await msg.Channel.SendMessageAsync(text: textoMsg); } catch { }
             }
         }
 
-        // Sorteia gif aleatório da lista local
+        // Sorteia gif aleatório da lista local. Retorna null se a lista tá vazia
         private string SortearGif(string acao)
         {
             string[] lista = acao switch
@@ -210,9 +192,10 @@ namespace Botzinho.Roleplay
                 "beijar" => _gifsBeijo,
                 "tapa" => _gifsTapa,
                 "abracar" => _gifsAbraco,
-                _ => _gifsAbraco
+                _ => null
             };
 
+            if (lista == null || lista.Length == 0) return null;
             return lista[_random.Next(lista.Length)];
         }
 
