@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Discord.Commands; // <-- IMPORTANTE: Adicionado
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,6 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Reflection; // <-- IMPORTANTE: Adicionado para achar os comandos
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
@@ -37,7 +39,6 @@ var hostBuilder = Host.CreateDefaultBuilder()
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
-
 var host = hostBuilder.Build();
 var services = host.Services;
 
@@ -45,29 +46,59 @@ var services = host.Services;
 // INICIALIZAÇÃO DOS MÓDULOS
 // ==============================================================
 new Botzinho.Admin.AdminControleModule(client);
-var interactionService = new InteractionService(client);
-var adminModule = new AdminModule(client);
 
+// Serviços de Comandos: Slash e Texto
+var interactionService = new InteractionService(client); // Para Slash Commands
+var commandService = new CommandService();               // <-- NOVO: Para Comandos de Texto (zban, zmute)
+
+var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
-
 var cassino = new Botzinho.Cassino.CassinoModule(client);
 var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
-
 var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+
+// ==============================================================
+// MANIPULADOR DE MENSAGENS DE TEXTO (NOVO)
+// ==============================================================
+// Isso escuta tudo que enviam no chat e verifica se é um comando (zban, zmute, etc)
+client.MessageReceived += async messageParam =>
+{
+    var message = messageParam as SocketUserMessage;
+    // Ignora mensagens de bots
+    if (message == null || message.Author.IsBot) return;
+
+    var context = new SocketCommandContext(client, message);
+
+    // Começamos a ler a partir do índice 0, pois o seu prefixo ("z") já faz parte do nome do comando ("zban")
+    int argPos = 0;
+    
+    var result = await commandService.ExecuteAsync(context, argPos, services);
+
+    // Mostra erro no console apenas se não for "Comando Desconhecido" 
+    // (evita floodar o console quando o pessoal conversa normal no chat)
+    if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
+    {
+        Console.WriteLine($"Erro no comando de texto: {result.ErrorReason}");
+    }
+};
 
 // ==============================================================
 // EVENTO READY
 // ==============================================================
 client.Ready += async () =>
 {
+    // Carrega os módulos de Slash Commands
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
+
+    // <-- NOVO: Carrega os módulos de Comandos de Texto (Sua pasta Moderation)
+    await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
 
     foreach (var guild in client.Guilds)
         AdminModule.GarantirAcessoInicialConfigServer(guild);
@@ -107,6 +138,7 @@ client.Ready += async () =>
     });
 };
 
+// Manipulador de Slash Commands e Botões
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
@@ -118,17 +150,14 @@ client.InteractionCreated += async interaction =>
 // ==============================================================
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new Exception("TOKEN MISSING");
-
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
-
 await host.StartAsync();
 Console.WriteLine("[Boot] Host iniciado.");
 await host.WaitForShutdownAsync();
 
-
 // ==============================================================
-// CLASSES DE COMANDOS SLASH
+// CLASSES DE COMANDOS SLASH (MANTIDAS)
 // ==============================================================
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
