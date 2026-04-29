@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,9 +13,6 @@ namespace Botzinho.Roleplay
     {
         private readonly DiscordSocketClient _client;
 
-        // Cooldown POR comando: cada comando tem seu próprio timer
-        private static readonly Dictionary<string, DateTime> _cooldowns = new();
-
         // Tempo de cooldown: 1 HORA por comando
         private static readonly TimeSpan TempoEspera = TimeSpan.FromHours(1);
 
@@ -24,45 +22,98 @@ namespace Botzinho.Roleplay
         // Random global pro sorteio dos gifs
         private static readonly Random _random = new Random();
 
-        // ★★★ BIBLIOTECA DE GIFS - URLs DIRETAS DO DISCORD CDN ★★★
-        // BEIJO: 1 gif por enquanto (adicione mais conforme upload no Discord)
-        private static readonly string[] _gifsBeijo = new[]
+        // ★★★ CONFIGURAÇÃO DOS GIFS - APENAS MUDE OS NÚMEROS AQUI ★★★
+        // Pattern: https://cdn.zanybot.cc/gifs_gif/{nome}/{nome}_{numero}.gif
+        // Ex: https://cdn.zanybot.cc/gifs_gif/kiss/kiss_1.gif
+
+        private const string BASE_URL = "https://cdn.zanybot.cc/gifs_gif";
+
+        // Quantidade de gifs por categoria - se você adicionar mais, só aumenta o número!
+        private const int QTD_GIFS_BEIJO = 25;
+        private const int QTD_GIFS_TAPA = 25;
+        private const int QTD_GIFS_ABRACO = 25;
+
+        // Listas geradas automaticamente
+        private static readonly string[] _gifsBeijo = GerarLinks("kiss", QTD_GIFS_BEIJO);
+        private static readonly string[] _gifsTapa = GerarLinks("slap", QTD_GIFS_TAPA);
+        private static readonly string[] _gifsAbraco = GerarLinks("hug", QTD_GIFS_ABRACO);
+
+        // Gera os links automaticamente (kiss_1, kiss_2, ..., kiss_25)
+        private static string[] GerarLinks(string nome, int qtd)
         {
-            "https://cdn.discordapp.com/attachments/1496243404114235554/1498852930756018217/image0.gif",
-            "https://tenor.com/view/kiss-gif-26337089",
-            "https://tenor.com/view/kiss-josee-anime-gif-26581761",
-            "https://tenor.com/view/megumi-kato-kiss-saekano-aki-tomoya-gif-26277378",
-            "https://tenor.com/view/hyakkano-100-girlfriends-anime-kiss-kiss-anime-anime-kiss-cheek-gif-404363882587350736",
-            "https://tenor.com/pt/view/kiss-anime-anime-kiss-gif-3450693716425841973",
-            "https://tenor.com/pt/view/anime-kiss-anime-kiss-kiss-gif-cute-kiss-gif-9501930508666646141",
-            "https://tenor.com/pt/view/anime-kiss-gif-13537174501626980507",
-            "https://tenor.com/pt/view/kiss-gif-24686508",
-            "https://tenor.com/pt/view/cherry-magic-kiss-kissing-guys-kissing-handsy-gif-3259680351219263295",
-            ""
-
-
-        };
-
-        // TAPA: ainda vazio - adicione URLs do Discord CDN aqui depois
-        private static readonly string[] _gifsTapa = new string[]
-        {
-            // TODO: adicionar URLs do Discord CDN
-        };
-
-        // ABRAÇO: ainda vazio - adicione URLs do Discord CDN aqui depois
-        private static readonly string[] _gifsAbraco = new string[]
-        {
-            // TODO: adicionar URLs do Discord CDN
-        };
+            var lista = new string[qtd];
+            for (int i = 0; i < qtd; i++)
+                lista[i] = $"{BASE_URL}/{nome}/{nome}_{i + 1}.gif";
+            return lista;
+        }
 
         public RoleplayHandler(DiscordSocketClient client)
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
 
-            Console.WriteLine($"[Roleplay] Handler INICIALIZADO! {_gifsBeijo.Length} gifs de beijo, {_gifsTapa.Length} de tapa, {_gifsAbraco.Length} de abraço");
+            InicializarTabela();
+
+            Console.WriteLine($"[Roleplay] Handler INICIALIZADO! {_gifsBeijo.Length} gifs beijo, {_gifsTapa.Length} tapa, {_gifsAbraco.Length} abraço");
         }
 
+        // ============================================================
+        // BANCO DE DADOS - Cooldown persistente
+        // ============================================================
+        private static void InicializarTabela()
+        {
+            try
+            {
+                using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS roleplay_cooldowns (
+                        guild_id TEXT,
+                        user_id TEXT,
+                        acao TEXT,
+                        usado_em TIMESTAMP,
+                        PRIMARY KEY (guild_id, user_id, acao));";
+                cmd.ExecuteNonQuery();
+                Console.WriteLine("[Roleplay] Tabela 'roleplay_cooldowns' verificada.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Roleplay] Erro criando tabela: {ex.Message}");
+            }
+        }
+
+        private static DateTime? GetCooldown(ulong guildId, ulong userId, string acao)
+        {
+            using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT usado_em FROM roleplay_cooldowns WHERE guild_id = @gid AND user_id = @uid AND acao = @acao";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@acao", acao);
+            var res = cmd.ExecuteScalar();
+            if (res != null && res != DBNull.Value) return Convert.ToDateTime(res);
+            return null;
+        }
+
+        private static void SetCooldown(ulong guildId, ulong userId, string acao)
+        {
+            using var conn = new NpgsqlConnection(EconomyHelper.GetConnectionString());
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO roleplay_cooldowns (guild_id, user_id, acao, usado_em) VALUES (@gid, @uid, @acao, @dt)
+                                ON CONFLICT (guild_id, user_id, acao) DO UPDATE SET usado_em = @dt";
+            cmd.Parameters.AddWithValue("@gid", guildId.ToString());
+            cmd.Parameters.AddWithValue("@uid", userId.ToString());
+            cmd.Parameters.AddWithValue("@acao", acao);
+            cmd.Parameters.AddWithValue("@dt", DateTime.UtcNow);
+            cmd.ExecuteNonQuery();
+        }
+
+        // ============================================================
+        // HANDLER DE MENSAGENS
+        // ============================================================
         private Task HandleMessage(SocketMessage msg)
         {
             _ = Task.Run(async () => {
@@ -85,19 +136,17 @@ namespace Botzinho.Roleplay
                     else
                         return;
 
-                    Console.WriteLine($"[Roleplay] Comando detectado: '{content}' por {user.Username}");
+                    Console.WriteLine($"[Roleplay] Comando '{content}' por {user.Username} em {user.Guild.Name}");
 
-                    // COOLDOWN POR USUÁRIO + AÇÃO
-                    string chaveCd = $"{user.Id}:{acao}";
-                    if (_cooldowns.TryGetValue(chaveCd, out var lastUse))
+                    // Cooldown persistente no banco (por servidor + user + ação)
+                    var ultimoUso = GetCooldown(user.Guild.Id, user.Id, acao);
+                    if (ultimoUso.HasValue)
                     {
-                        var passou = DateTime.UtcNow - lastUse;
+                        var passou = DateTime.UtcNow - ultimoUso.Value;
                         if (passou < TempoEspera)
                         {
                             var falta = TempoEspera - passou;
                             string tempoFormatado = FormatarTempo(falta);
-
-                            Console.WriteLine($"[Roleplay] {user.Username} em cooldown ({tempoFormatado} restantes)");
 
                             var aviso = await msg.Channel.SendMessageAsync(
                                 $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
@@ -108,7 +157,6 @@ namespace Botzinho.Roleplay
                         }
                     }
 
-                    // Pega o mencionado
                     var mencionado = msg.MentionedUsers.FirstOrDefault() as SocketGuildUser;
                     if (mencionado == null)
                     {
@@ -128,8 +176,7 @@ namespace Botzinho.Roleplay
                         return;
                     }
 
-                    // Marca o cooldown só depois de validar tudo
-                    _cooldowns[chaveCd] = DateTime.UtcNow;
+                    SetCooldown(user.Guild.Id, user.Id, acao);
 
                     await ExecutarAcao(msg, user, mencionado, acao);
                 }
@@ -140,21 +187,14 @@ namespace Botzinho.Roleplay
 
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
-            // Sorteia gif local
             string gifUrl = SortearGif(acao);
-
-            // Recompensa aleatória entre 50K e 500K
             long recompensa = _random.NextInt64(50_000, 500_001);
 
-            // Adiciona o saldo
             try
             {
-                long saldoAntes = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
                 EconomyHelper.AdicionarSaldo(user.Guild.Id, user.Id, recompensa);
                 EconomyHelper.RegistrarTransacao(user.Guild.Id, _client.CurrentUser.Id, user.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
-                long saldoDepois = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
-
-                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} | Gif: {gifUrl ?? "(sem gif)"}");
+                Console.WriteLine($"[Roleplay] {user.Username} ganhou {recompensa} fazendo '{acao}' em {alvo.Username} | Gif: {gifUrl}");
             }
             catch (Exception ex)
             {
@@ -163,7 +203,6 @@ namespace Botzinho.Roleplay
                 return;
             }
 
-            // Monta a mensagem
             string textoMsg = acao switch
             {
                 "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
@@ -174,7 +213,6 @@ namespace Botzinho.Roleplay
 
             try
             {
-                // Só monta embed se tiver gif. Sem gif, manda só texto
                 if (!string.IsNullOrWhiteSpace(gifUrl))
                 {
                     var embed = new EmbedBuilder()
@@ -196,7 +234,6 @@ namespace Botzinho.Roleplay
             }
         }
 
-        // Sorteia gif aleatório da lista local. Retorna null se a lista tá vazia
         private string SortearGif(string acao)
         {
             string[] lista = acao switch
@@ -211,7 +248,6 @@ namespace Botzinho.Roleplay
             return lista[_random.Next(lista.Length)];
         }
 
-        // Formata tempo restante de forma amigável
         private string FormatarTempo(TimeSpan t)
         {
             if (t.TotalMinutes < 1)
