@@ -19,8 +19,8 @@ namespace Botzinho.Roleplay
         // Chave: "userId:acao" → última vez usado
         private static readonly Dictionary<string, DateTime> _cooldowns = new();
 
-        // Tempo de cooldown: 1 HORA por comando
-        private static readonly TimeSpan TempoEspera = TimeSpan.FromHours(1);
+        // Tempo de cooldown: 5 MINUTOS por comando (pra testar fácil)
+        private static readonly TimeSpan TempoEspera = TimeSpan.FromMinutes(5);
 
         // Cor verde estilo "sucesso"
         private static readonly Color VerdeSucesso = new Color(67, 181, 129);
@@ -29,6 +29,9 @@ namespace Botzinho.Roleplay
         {
             _client = client;
             _client.MessageReceived += HandleMessage;
+
+            // ★ Log de inicialização — pra confirmar nos logs do Railway
+            Console.WriteLine("[Roleplay] Handler INICIALIZADO! Comandos: zbeijar, ztapa, zabracar");
         }
 
         private Task HandleMessage(SocketMessage msg)
@@ -53,7 +56,10 @@ namespace Botzinho.Roleplay
                     else
                         return;
 
-                    // COOLDOWN POR USUÁRIO + AÇÃO (1 HORA)
+                    // ★ Log de detecção do comando — pra confirmar que o handler tá processando
+                    Console.WriteLine($"[Roleplay] Comando detectado: '{content}' por {user.Username}");
+
+                    // COOLDOWN POR USUÁRIO + AÇÃO
                     string chaveCd = $"{user.Id}:{acao}";
                     if (_cooldowns.TryGetValue(chaveCd, out var lastUse))
                     {
@@ -63,11 +69,13 @@ namespace Botzinho.Roleplay
                             var falta = TempoEspera - passou;
                             string tempoFormatado = FormatarTempo(falta);
 
+                            Console.WriteLine($"[Roleplay] {user.Username} tentou usar 'z{acao}' mas tá em cooldown ({tempoFormatado} restantes)");
+
                             var aviso = await msg.Channel.SendMessageAsync(
                                 $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
                                 $"Aguarde mais **{tempoFormatado}** pra usar de novo."
                             );
-                            _ = Task.Delay(5000).ContinueWith(_ => aviso.DeleteAsync());
+                            _ = Task.Delay(8000).ContinueWith(_ => aviso.DeleteAsync());
                             return;
                         }
                     }
@@ -119,7 +127,6 @@ namespace Botzinho.Roleplay
             var random = new Random();
             long recompensa = random.NextInt64(50_000, 500_001);
 
-            // ★★★ CORRIGIDO: AGORA QUEM GANHA É QUEM USOU O COMANDO ★★★
             // Pega o saldo ANTES pra confirmar que adicionou
             long saldoAntes = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
 
@@ -128,16 +135,10 @@ namespace Botzinho.Roleplay
                 EconomyHelper.AdicionarSaldo(user.Guild.Id, user.Id, recompensa);
                 EconomyHelper.RegistrarTransacao(user.Guild.Id, _client.CurrentUser.Id, user.Id, recompensa, $"ROLEPLAY_{acao.ToUpper()}");
 
-                // Verifica se realmente foi adicionado
                 long saldoDepois = EconomyHelper.GetSaldo(user.Guild.Id, user.Id);
                 long diff = saldoDepois - saldoAntes;
 
-                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{diff}) | Esperado: +{recompensa}");
-
-                if (diff != recompensa)
-                {
-                    Console.WriteLine($"[Roleplay AVISO] Diferença esperada não bate! Banco pode ter problema.");
-                }
+                Console.WriteLine($"[Roleplay] {user.Username} fez '{acao}' em {alvo.Username} | Saldo: {saldoAntes} → {saldoDepois} (+{diff})");
             }
             catch (Exception ex)
             {
@@ -146,7 +147,7 @@ namespace Botzinho.Roleplay
                 return;
             }
 
-            // Monta a mensagem (quem fez ganha o dinheiro)
+            // Monta a mensagem
             string textoMsg = acao switch
             {
                 "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
