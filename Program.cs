@@ -1,6 +1,6 @@
 using Discord;
 using Discord.Interactions;
-using Discord.Commands; // <-- IMPORTANTE: Adicionado
+using Discord.Commands; 
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +10,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Reflection; // <-- IMPORTANTE: Adicionado para achar os comandos
+using System.Reflection; 
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
@@ -48,8 +48,8 @@ var services = host.Services;
 new Botzinho.Admin.AdminControleModule(client);
 
 // Serviços de Comandos: Slash e Texto
-var interactionService = new InteractionService(client); // Para Slash Commands
-var commandService = new CommandService();               // <-- NOVO: Para Comandos de Texto (zban, zmute)
+var interactionService = new InteractionService(client); 
+var commandService = new CommandService();               
 
 var adminModule = new AdminModule(client);
 ModerationHelper.InicializarTabelas();
@@ -64,24 +64,18 @@ var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
 // ==============================================================
-// MANIPULADOR DE MENSAGENS DE TEXTO (NOVO)
+// MANIPULADOR DE MENSAGENS DE TEXTO
 // ==============================================================
-// Isso escuta tudo que enviam no chat e verifica se é um comando (zban, zmute, etc)
 client.MessageReceived += async messageParam =>
 {
     var message = messageParam as SocketUserMessage;
-    // Ignora mensagens de bots
     if (message == null || message.Author.IsBot) return;
 
     var context = new SocketCommandContext(client, message);
 
-    // Começamos a ler a partir do índice 0, pois o seu prefixo ("z") já faz parte do nome do comando ("zban")
     int argPos = 0;
-    
     var result = await commandService.ExecuteAsync(context, argPos, services);
 
-    // Mostra erro no console apenas se não for "Comando Desconhecido" 
-    // (evita floodar o console quando o pessoal conversa normal no chat)
     if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
     {
         Console.WriteLine($"Erro no comando de texto: {result.ErrorReason}");
@@ -93,11 +87,9 @@ client.MessageReceived += async messageParam =>
 // ==============================================================
 client.Ready += async () =>
 {
-    // Carrega os módulos de Slash Commands
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
-    // <-- NOVO: Carrega os módulos de Comandos de Texto (Sua pasta Moderation)
     await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
 
     foreach (var guild in client.Guilds)
@@ -105,7 +97,6 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
-    // Loop de status
     _ = Task.Run(async () =>
     {
         while (true)
@@ -138,7 +129,6 @@ client.Ready += async () =>
     });
 };
 
-// Manipulador de Slash Commands e Botões
 client.InteractionCreated += async interaction =>
 {
     var ctx = new SocketInteractionContext(client, interaction);
