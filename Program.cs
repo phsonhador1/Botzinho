@@ -1,6 +1,5 @@
 using Discord;
 using Discord.Interactions;
-using Discord.Commands; 
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +9,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Reflection; 
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
@@ -39,6 +37,7 @@ var hostBuilder = Host.CreateDefaultBuilder()
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
+
 var host = hostBuilder.Build();
 var services = host.Services;
 
@@ -46,41 +45,21 @@ var services = host.Services;
 // INICIALIZAÇÃO DOS MÓDULOS
 // ==============================================================
 new Botzinho.Admin.AdminControleModule(client);
-
-// Serviços de Comandos: Slash e Texto
-var interactionService = new InteractionService(client); 
-var commandService = new CommandService();               
-
+var interactionService = new InteractionService(client);
 var adminModule = new AdminModule(client);
+
 ModerationHelper.InicializarTabelas();
 var economyHandler = new Botzinho.Economy.EconomyHandler(client);
 Botzinho.Economy.EconomyHelper.InicializarTabelas();
+
 var cassino = new Botzinho.Cassino.CassinoModule(client);
 var help = new Botzinho.Core.HelpModule(client);
 Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
+
 var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-
-// ==============================================================
-// MANIPULADOR DE MENSAGENS DE TEXTO
-// ==============================================================
-client.MessageReceived += async messageParam =>
-{
-    var message = messageParam as SocketUserMessage;
-    if (message == null || message.Author.IsBot) return;
-
-    var context = new SocketCommandContext(client, message);
-
-    int argPos = 0;
-    var result = await commandService.ExecuteAsync(context, argPos, services);
-
-    if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-    {
-        Console.WriteLine($"Erro no comando de texto: {result.ErrorReason}");
-    }
-};
 
 // ==============================================================
 // EVENTO READY
@@ -90,13 +69,12 @@ client.Ready += async () =>
     await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
     await interactionService.RegisterCommandsGloballyAsync(true);
 
-    await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
-
     foreach (var guild in client.Guilds)
         AdminModule.GarantirAcessoInicialConfigServer(guild);
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
+    // Loop de status
     _ = Task.Run(async () =>
     {
         while (true)
@@ -140,14 +118,17 @@ client.InteractionCreated += async interaction =>
 // ==============================================================
 var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
     ?? throw new Exception("TOKEN MISSING");
+
 await client.LoginAsync(TokenType.Bot, token);
 await client.StartAsync();
+
 await host.StartAsync();
 Console.WriteLine("[Boot] Host iniciado.");
 await host.WaitForShutdownAsync();
 
+
 // ==============================================================
-// CLASSES DE COMANDOS SLASH (MANTIDAS)
+// CLASSES DE COMANDOS SLASH
 // ==============================================================
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
