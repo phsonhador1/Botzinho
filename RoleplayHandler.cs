@@ -16,36 +16,66 @@ namespace Botzinho.Roleplay
         // Tempo de cooldown: 1 HORA por comando
         private static readonly TimeSpan TempoEspera = TimeSpan.FromHours(1);
 
-        // Cor verde estilo "sucesso"
+        // Cores
         private static readonly Color VerdeSucesso = new Color(67, 181, 129);
+        private static readonly Color RoxoZoe = new Color(160, 80, 220);
 
-        // Random global pro sorteio dos gifs
+        // Random global
         private static readonly Random _random = new Random();
 
-        // ★★★ CONFIGURAÇÃO DOS GIFS - APENAS MUDE OS NÚMEROS AQUI ★★★
-        // Pattern: https://cdn.zanybot.cc/gifs_gif/{nome}/{nome}_{numero}.gif
-        // Ex: https://cdn.zanybot.cc/gifs_gif/kiss/kiss_1.gif
-
+        // ★★★ CONFIGURAÇÃO DOS GIFS ★★★
         private const string BASE_URL = "https://cdn.zanybot.cc/gifs_gif";
-
-        // Quantidade de gifs por categoria - se você adicionar mais, só aumenta o número!
         private const int QTD_GIFS_BEIJO = 25;
         private const int QTD_GIFS_TAPA = 25;
         private const int QTD_GIFS_ABRACO = 25;
 
-        // Listas geradas automaticamente
         private static readonly string[] _gifsBeijo = GerarLinks("kiss", QTD_GIFS_BEIJO);
         private static readonly string[] _gifsTapa = GerarLinks("slap", QTD_GIFS_TAPA);
         private static readonly string[] _gifsAbraco = GerarLinks("hug", QTD_GIFS_ABRACO);
 
-        // Gera os links automaticamente (kiss_1, kiss_2, ..., kiss_25)
-        private static string[] GerarLinks(string nome, int qtd)
+        // ★★★ MENSAGENS ALEATÓRIAS ★★★
+        // Use {alvo} pra mencionar o usuário e {valor} pra recompensa formatada
+        private static readonly string[] _msgsBeijo = new[]
         {
-            var lista = new string[qtd];
-            for (int i = 0; i < qtd; i++)
-                lista[i] = $"{BASE_URL}/{nome}/{nome}_{i + 1}.gif";
-            return lista;
-        }
+            "<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Beijo de cinema!** Você roubou um beijo de {alvo} e levou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Que beijo escandaloso!** {alvo} ficou sem reação e você ainda ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Beijo de novela!** Você selou os lábios em {alvo} e foi recompensado com: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Aff, arruma um quarto!** Você beijou {alvo} sem vergonha e ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Romance no ar!** Você deu um selinho em {alvo} e levou pra casa: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Tipo Bonnie & Clyde!** Você beijou {alvo} com paixão e faturou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Coração disparou!** Beijo trocado com {alvo} e bônus de: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Beijo de tirar o fôlego!** {alvo} ficou tonto e você lucrou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Que momento fofo!** Você beijou {alvo} e o universo te deu: <:maiszoe:1494070196871364689> **{valor}**"
+        };
+
+        private static readonly string[] _msgsTapa = new[]
+        {
+            "<a:sucess:1494692628372132013> **Tapa amigável!** Ao dar um tapinha em {alvo}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **PEGOU GERAL!** Você meteu uma na cara de {alvo} e ainda ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Mão pesada!** Você acertou um tapa em {alvo} e levou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Toma tapa!** {alvo} virou alvo da sua mão e você ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **PAFT!** O tapa em {alvo} ecoou pelo servidor e te rendeu: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Tapa educativo!** {alvo} aprendeu a lição e você lucrou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Cinco dedos no rosto!** {alvo} sentiu firme e você ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Tapa ou carinho?** Confundiu {alvo} e ainda ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Mão coçando!** Resolveu em {alvo} e foi premiado com: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Tapa cinematográfico!** {alvo} virou meme e você ganhou: <:maiszoe:1494070196871364689> **{valor}**"
+        };
+
+        private static readonly string[] _msgsAbraco = new[]
+        {
+            "<a:sucess:1494692628372132013> **Abraço fortinho!** Ao abraçar {alvo}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Abraço de urso!** Você apertou {alvo} com carinho e ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Que aconchego!** Abraço gostoso em {alvo} te rendeu: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Calorzinho do coração!** Você abraçou {alvo} e foi recompensado com: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Abraço apertado!** {alvo} sorriu de volta e você ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Que momento fofo!** Abraço com {alvo} e bônus de: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Abraço terapêutico!** Você acolheu {alvo} e levou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Sentiu o amor?** Abraço sincero em {alvo} e você lucrou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Conforto puro!** {alvo} se derreteu nos seus braços e você ganhou: <:maiszoe:1494070196871364689> **{valor}**",
+            "<a:sucess:1494692628372132013> **Aquele abraço!** Você grudou em {alvo} e ainda lucrou: <:maiszoe:1494070196871364689> **{valor}**"
+        };
 
         public RoleplayHandler(DiscordSocketClient client)
         {
@@ -126,6 +156,13 @@ namespace Botzinho.Roleplay
                     var content = msg.Content.Trim();
                     var contentLower = content.ToLower();
 
+                    // ★ COMANDO ZTEMPO
+                    if (contentLower == "ztempo")
+                    {
+                        await ExecutarZTempo(msg, user);
+                        return;
+                    }
+
                     string acao = null;
                     if (contentLower.StartsWith("zbeijar") || contentLower.StartsWith("zbeijo"))
                         acao = "beijar";
@@ -138,7 +175,7 @@ namespace Botzinho.Roleplay
 
                     Console.WriteLine($"[Roleplay] Comando '{content}' por {user.Username} em {user.Guild.Name}");
 
-                    // Cooldown persistente no banco (por servidor + user + ação)
+                    // Cooldown persistente
                     var ultimoUso = GetCooldown(user.Guild.Id, user.Id, acao);
                     if (ultimoUso.HasValue)
                     {
@@ -149,7 +186,7 @@ namespace Botzinho.Roleplay
                             string tempoFormatado = FormatarTempo(falta);
 
                             var aviso = await msg.Channel.SendMessageAsync(
-                                $"<:erro:1493078898462949526> {user.Mention}, você já usou **z{acao}** recentemente! " +
+                                $"<:erro:1493078898462949526> {user.Mention}, Ihhhhh calma ae Puta! você já usou **z{acao}** recentemente! " +
                                 $"Aguarde mais **{tempoFormatado}** pra usar de novo."
                             );
                             _ = Task.Delay(8000).ContinueWith(_ => aviso.DeleteAsync());
@@ -160,19 +197,19 @@ namespace Botzinho.Roleplay
                     var mencionado = msg.MentionedUsers.FirstOrDefault() as SocketGuildUser;
                     if (mencionado == null)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: `z{acao} @fulano`");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, mencione alguém! Exemplo: **z{acao} @putinhadoserver**");
                         return;
                     }
 
                     if (mencionado.Id == user.Id)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você não pode fazer isso consigo mesmo!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Hahaha ta de brincadeira ne viadinho?{user.Mention}, você não pode fazer isso consigo mesmo!");
                         return;
                     }
 
                     if (mencionado.IsBot)
                     {
-                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, não posso participar disso, sou apenas um bot!");
+                        await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention} Deixa de ser animal Filho da Puta! Bots não podem participar disso.");
                         return;
                     }
 
@@ -185,6 +222,52 @@ namespace Botzinho.Roleplay
             return Task.CompletedTask;
         }
 
+        // ============================================================
+        // COMANDO ZTEMPO - Mostra cooldown de cada comando
+        // ============================================================
+        private async Task ExecutarZTempo(SocketMessage msg, SocketGuildUser user)
+        {
+            string descricao = $"<a:carregandoportal:1492944498605686844> **Segue o Tempo restante dos **comandos** de roleplay** {user.Mention}\n\n";
+
+            string[] acoes = { "beijar", "tapa", "abracar" };
+            string[] emojis = { "💋", "✋", "🤗" };
+            string[] nomesComando = { "zbeijar", "ztapa", "zabracar" };
+
+            for (int i = 0; i < acoes.Length; i++)
+            {
+                var ultimoUso = GetCooldown(user.Guild.Id, user.Id, acoes[i]);
+
+                if (!ultimoUso.HasValue)
+                {
+                    descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível para uso!**\n";
+                }
+                else
+                {
+                    var passou = DateTime.UtcNow - ultimoUso.Value;
+                    if (passou >= TempoEspera)
+                    {
+                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível para uso!** \n";
+                    }
+                    else
+                    {
+                        var falta = TempoEspera - passou;
+                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <:erro:1493078898462949526> **{FormatarTempo(falta)}**\n";
+                    }
+                }
+            }
+
+            var embed = new EmbedBuilder()
+                .WithColor(RoxoZoe)
+                .WithDescription(descricao)
+                .WithFooter($"Comandos zerados a cada 1 hora • {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                .Build();
+
+            await msg.Channel.SendMessageAsync(embed: embed);
+        }
+
+        // ============================================================
+        // EXECUTA AÇÃO (beijar/tapa/abracar)
+        // ============================================================
         private async Task ExecutarAcao(SocketMessage msg, SocketGuildUser user, SocketGuildUser alvo, string acao)
         {
             string gifUrl = SortearGif(acao);
@@ -203,13 +286,10 @@ namespace Botzinho.Roleplay
                 return;
             }
 
-            string textoMsg = acao switch
-            {
-                "beijar" => $"<a:sucess:1494692628372132013> **Beijo apaixonado!** Ao beijar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
-                "tapa" => $"<a:sucess:1494692628372132013> **Tapa amigável!** Ao dar um tapinha em {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
-                "abracar" => $"<a:sucess:1494692628372132013> **Abraço fortinho!** Ao abraçar {alvo.Mention}, você recebeu carinho em dobro e ganhou: <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(recompensa)}**",
-                _ => ""
-            };
+            // ★ Sorteia mensagem aleatória
+            string textoMsg = SortearMensagem(acao)
+                .Replace("{alvo}", alvo.Mention)
+                .Replace("{valor}", EconomyHelper.FormatarSaldo(recompensa));
 
             try
             {
@@ -234,7 +314,10 @@ namespace Botzinho.Roleplay
             }
         }
 
-        private string SortearGif(string acao)
+        // ============================================================
+        // SORTEIOS
+        // ============================================================
+        private static string SortearGif(string acao)
         {
             string[] lista = acao switch
             {
@@ -246,6 +329,28 @@ namespace Botzinho.Roleplay
 
             if (lista == null || lista.Length == 0) return null;
             return lista[_random.Next(lista.Length)];
+        }
+
+        private static string SortearMensagem(string acao)
+        {
+            string[] lista = acao switch
+            {
+                "beijar" => _msgsBeijo,
+                "tapa" => _msgsTapa,
+                "abracar" => _msgsAbraco,
+                _ => null
+            };
+
+            if (lista == null || lista.Length == 0) return "";
+            return lista[_random.Next(lista.Length)];
+        }
+
+        private static string[] GerarLinks(string nome, int qtd)
+        {
+            var lista = new string[qtd];
+            for (int i = 0; i < qtd; i++)
+                lista[i] = $"{BASE_URL}/{nome}/{nome}_{i + 1}.gif";
+            return lista;
         }
 
         private string FormatarTempo(TimeSpan t)
