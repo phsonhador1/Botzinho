@@ -311,7 +311,7 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔓 Canal Destrancado", Context.Guild.IconUrl)
+                .WithAuthor("<:cadeado2zeus:1499127221707866343> Canal Destrancado", Context.Guild.IconUrl)
                 .WithDescription($"Este canal foi **destrancado** por `{user.Username}`.\n\nMembros podem enviar mensagens novamente.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
