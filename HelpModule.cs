@@ -50,8 +50,8 @@ namespace Botzinho.Core
           .WithAuthor($"Ajuda | Zeus Bot", botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
           .WithColor(new Color(160, 80, 220)) // Cor roxa da borda
                     .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl()) // Foto do Zeus Bot no canto
-                    .WithDescription($"• Bem-vindo(a) {user.Mention}, esse é o **painel de comandos/ajuda - Zeus Bot**\n\n↪️ **Selecione uma categoria abaixo** para ver os **comandos disponíveis** até o momento.")
-          .WithFooter($"Comando executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
+                    .WithDescription($"• Bem-vindo(a) {user.Username} ao **painel de comandos/ajuda - Zeus Bot**\n\n **Selecione uma categoria abaixo** para ver os **comandos disponíveis** do **bot**.")
+          .WithFooter($"executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
 
                 // Criação do Menu Dropdown (Select Menu)
                 var menuBuilder = new SelectMenuBuilder()
