@@ -289,8 +289,8 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("<:cadeadozeus:1499125871418802226> Canal Trancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **trancado** por `{user.Username}`.\n\nApenas membros com permissão poderão enviar mensagens.")
+                .WithAuthor(" Canal Trancado", Context.Guild.IconUrl)
+                .WithDescription($"Este canal foi **trancado** por **{user.Username}**.\n\nApenas membros com permissão poderão enviar mensagens.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
@@ -311,8 +311,8 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("<:cadeado2zeus:1499127221707866343> Canal Destrancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **destrancado** por `{user.Username}`.\n\nMembros podem enviar mensagens novamente.")
+                .WithAuthor("Canal Destrancado", Context.Guild.IconUrl)
+                .WithDescription($"Este canal foi **destrancado** por **{user.Username}**.\n\nMembros podem enviar mensagens novamente.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
