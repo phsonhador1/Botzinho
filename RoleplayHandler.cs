@@ -227,10 +227,9 @@ namespace Botzinho.Roleplay
         // ============================================================
         private async Task ExecutarZTempo(SocketMessage msg, SocketGuildUser user)
         {
-            string descricao = $"<a:carregandoportal:1492944498605686844> **Segue o Tempo restante dos **comandos** de roleplay** {user.Mention}\n\n";
+            string descricao = $"<a:carregandoportal:1492944498605686844> **Segue o Tempo restante dos **comandos** de roleplay** \n\n";
 
             string[] acoes = { "beijar", "tapa", "abracar" };
-            string[] emojis = { "💋", "✋", "🤗" };
             string[] nomesComando = { "zbeijar", "ztapa", "zabracar" };
 
             for (int i = 0; i < acoes.Length; i++)
@@ -239,19 +238,19 @@ namespace Botzinho.Roleplay
 
                 if (!ultimoUso.HasValue)
                 {
-                    descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível para uso!**\n";
+                    descricao += $" **{nomesComando[i]}** →  <a:sucess:1494692628372132013>  **Disponível para uso!**\n";
                 }
                 else
                 {
                     var passou = DateTime.UtcNow - ultimoUso.Value;
                     if (passou >= TempoEspera)
                     {
-                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <a:sucess:1494692628372132013> **Disponível para uso!** \n";
+                        descricao += $" **{nomesComando[i]}** →  <a:sucess:1494692628372132013>  **Disponível para uso!** \n";
                     }
                     else
                     {
                         var falta = TempoEspera - passou;
-                        descricao += $"{emojis[i]} `{nomesComando[i]}` → <:erro:1493078898462949526> **{FormatarTempo(falta)}**\n";
+                        descricao += $" **{nomesComando[i]}** →  <:erro:1493078898462949526>  **{FormatarTempo(falta)}**\n";
                     }
                 }
             }
