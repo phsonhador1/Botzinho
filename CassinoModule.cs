@@ -653,7 +653,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                     RoletaAtiva.Remove(userId);
                     await component.ModifyOriginalResponseAsync(x => {
-                        x.Embed = new EmbedBuilder().WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithDescription("<a:aaaa:1496244444922642493> **Girando roleta...**").WithImageUrl(GIF_ROLETA).WithColor(new Color(43, 45, 49)).Build();
+                        x.Embed = new EmbedBuilder().WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithDescription("<a:carregandoportal:1492944498605686844> **Girando roleta...**").WithImageUrl(GIF_ROLETA).WithColor(new Color(43, 45, 49)).Build();
                         x.Components = null;
                     });
 
@@ -671,18 +671,18 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     {
                         EconomyHelper.AdicionarBanco(guildId, userId, premio);
                         EconomyHelper.RegistrarTransacao(guildId, _client.CurrentUser.Id, userId, premio, "ROLETA_GANHO");
-                        embedFim.WithColor(Color.Green).WithDescription($@"<a:ganhador:1493088070923452599> **Parabéns! A sorte passou por aqui!**
+                        embedFim.WithColor(Color.Green).WithDescription($@"<a:raiozeus:1499129522786926653> **Parabéns! Temos um grande Sortudo por aqui!**
 
-🎡 A roleta parou no: **{corSorteada}**
-<:dinheiro:1493360319928733838> Você recebeu: `{EconomyHelper.FormatarSaldo(premio)}` cpoints no banco.");
+ A roleta parou no: **{corSorteada}**
+<:dinheiro:1493360319928733838> Você recebeu: <:maiszeus:1499129789909303306> **{EconomyHelper.FormatarSaldo(premio)}** cpoints no banco.");
                     }
                     else
                     {
                         EconomyHelper.RegistrarTransacao(guildId, userId, _client.CurrentUser.Id, valorAposta, "ROLETA_PERDA");
-                        embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **Não foi dessa vez...**
+                        embedFim.WithColor(Color.Red).WithDescription($@"<:erro:1493078898462949526> **kkkkkkkkkkkk Não foi dessa vez, perdeu otario.**
 
-🎡 A roleta parou no: **{corSorteada.ToLower()}**
-<:erro:1493078898462949526> Você perdeu: `{EconomyHelper.FormatarSaldo(valorAposta)}` cpoints do banco.");
+ A roleta parou no: **{corSorteada.ToLower()}**
+<:erro:1493078898462949526> Você perdeu: **{EconomyHelper.FormatarSaldo(valorAposta)}** cpoints do banco.");
                     }
 
                     await component.ModifyOriginalResponseAsync(x => { x.Embed = embedFim.Build(); x.Content = component.User.Mention; });
