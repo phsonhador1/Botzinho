@@ -987,7 +987,7 @@ namespace Botzinho.Economy
                 DateTime horaAviso = DateTime.Now.AddHours(24);
                 EconomyHelper.SalvarLembrete(component.GuildId ?? 0, component.User.Id, horaAviso);
 
-                await component.RespondAsync($"<a:sino:1495172950767173833> **Lembrete ativado!** Em breve a ZeusBot vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
+                await component.RespondAsync($"<a:sino:1495172950767173833> **Lembrete ativado!** Em breve o ZeusBot vai te chamar na DM quando seu **Daily** estiver pronto.", ephemeral: true);
                 return;
             }
 
@@ -1202,7 +1202,7 @@ namespace Botzinho.Economy
                         if (tempoPassado.TotalHours < 24)
                         {
                             TimeSpan tempoFalta = TimeSpan.FromHours(24) - tempoPassado;
-                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> {user.Mention}, você já coletou seu bônus diário! Volte em `{tempoFalta.Hours}h e {tempoFalta.Minutes}m`.");
+                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Aguarde {tempoFalta.Hours} {tempoFalta.Minutes} para coletar seu **Daily** novamente.");
                             return;
                         }
 
@@ -1220,10 +1220,10 @@ namespace Botzinho.Economy
                             .WithTitle("<:calendario:1495171666844713173> Daily")
                             .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
                                 $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
-                                $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
+                                $"• <:maiszeus:1499465239463465120> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
                                 $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
                                 $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
-                                $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
+                                $"<:setazeus:1499466096464363750> Utilize o comando **zdep all** para depositar seus coins!")
                             .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
 
                         var cb = new ComponentBuilder()
