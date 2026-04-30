@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -25,6 +27,14 @@ var client = new DiscordSocketClient(new DiscordSocketConfig
     MessageCacheSize = 100
 });
 
+// ★ CommandService para comandos com prefixo (zmute, zlock, etc)
+var commandService = new CommandService(new CommandServiceConfig
+{
+    DefaultRunMode = Discord.Commands.RunMode.Async,
+    CaseSensitiveCommands = false,
+    LogLevel = LogSeverity.Info
+});
+
 // ==============================================================
 // HOST (DI simples)
 // ==============================================================
@@ -34,6 +44,7 @@ var hostBuilder = Host.CreateDefaultBuilder()
         services.AddSingleton(client);
         services.AddSingleton<DiscordSocketClient>(client);
         services.AddSingleton<BaseSocketClient>(client);
+        services.AddSingleton(commandService);
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
     });
@@ -60,6 +71,30 @@ var apostas = new Botzinho.Cassino.ApostaModule(client);
 var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+commandService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+
+// ★ REGISTRA OS MÓDULOS DE COMANDO COM PREFIXO
+await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
+Console.WriteLine($"[CommandService] {commandService.Commands.Count()} comandos prefixo carregados.");
+
+// ★ HANDLER QUE PROCESSA MENSAGENS COM PREFIXO 'z'
+client.MessageReceived += async (rawMsg) =>
+{
+    if (rawMsg is not SocketUserMessage msg) return;
+    if (msg.Author.IsBot) return;
+
+    int argPos = 0;
+    if (!msg.HasCharPrefix('z', ref argPos) &&
+        !msg.HasCharPrefix('Z', ref argPos)) return;
+
+    var ctx = new SocketCommandContext(client, msg);
+    var result = await commandService.ExecuteAsync(ctx, argPos, services);
+
+    if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
+    {
+        Console.WriteLine($"[Cmd Error] {result.ErrorReason}");
+    }
+};
 
 // ==============================================================
 // EVENTO READY
@@ -74,7 +109,6 @@ client.Ready += async () =>
 
     Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
 
-    // Loop de status
     _ = Task.Run(async () =>
     {
         while (true)
@@ -128,7 +162,7 @@ await host.WaitForShutdownAsync();
 
 
 // ==============================================================
-// CLASSES DE COMANDOS SLASH
+// CLASSES DE COMANDOS SLASH (mantidos)
 // ==============================================================
 public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
 {
