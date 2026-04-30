@@ -11,7 +11,7 @@ namespace Botzinho.Handlers
         private readonly DiscordSocketClient _client;
 
         // ⚠️ Substitua pelo ID REAL do seu canal anônimo
-        private readonly ulong _canalAlvoId = 1497366111992418475;
+        private readonly ulong _canalAlvoId = 1498013207686811798;
 
         public AnonymousChannelHandler(DiscordSocketClient client)
         {
