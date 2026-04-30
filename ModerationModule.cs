@@ -190,7 +190,7 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed) // Usa a cor padrão (como o vermelho que você definiu antes)
                 .WithAuthor("Usuário Silenciado", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\nAplicado por: **{user.Username}**")
+                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\nAutor: **{user.Username}**")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -215,7 +215,7 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Mute Removido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAção removida por **{user.Username}**")
+                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAutor: **{user.Username}**")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -268,11 +268,10 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("Slowmode Ativado", Context.Guild.IconUrl)
+                .WithAuthor("Slowmode", Context.Guild.IconUrl)
                 .WithDescription(segundos > 0
                     ? $"O slowmode foi definido para **{segundos}s** neste canal."
                     : "O slowmode foi **desativado** neste canal.")
-                .AddField("Definido por","**{user.Username}**", true)
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
 
