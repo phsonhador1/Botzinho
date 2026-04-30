@@ -190,32 +190,32 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed) // Usa a cor padrão (como o vermelho que você definiu antes)
                 .WithAuthor("Usuário Silenciado", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\n*Aplicado por: **{user.Username}**")
+                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\nAplicado por: **{user.Username}**")
                 .Build();
 
             await ReplyAsync(embed: embed);
         }
 
         [Command("unmute")]
-        [Summary("Remove silenciamento")]
+        [Alias("zunmute")]
+        [Summary("Remove o silenciamento de um usuário")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task UnmuteAsync(SocketGuildUser alvo)
         {
             var user = (SocketGuildUser)Context.User;
             var guild = Context.Guild as SocketGuild;
+
+            // Mantive a checagem usando a key "mute" conforme o seu código original
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
             if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
 
             await alvo.RemoveTimeOutAsync();
 
+            // Embed com design limpo e premium, acompanhando o estilo do zmute
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("Silenciamento Removido", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` pode falar novamente.")
-                .AddField("👤 Usuário", $"`{alvo.Username}`", true)
-                .AddField("🛡️ Removido por", $"`{user.Username}`", true)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithAuthor("Mute Removido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAção removida por {user.Username}")
                 .Build();
 
             await ReplyAsync(embed: embed);
