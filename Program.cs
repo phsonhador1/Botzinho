@@ -77,6 +77,20 @@ commandService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask
 await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
 Console.WriteLine($"[CommandService] {commandService.Commands.Count()} comandos prefixo carregados.");
 
+// ★★★ DICIONÁRIO DE USOS CORRETOS DOS COMANDOS ★★★
+var usoCorreto = new Dictionary<string, string>
+{
+    { "ban", "zban @usuario (motivo)" },
+    { "unban", "zunban [ID do usuário]" },
+    { "kick", "zkick @usuario (motivo)" },
+    { "mute", "zmute @usuario [duração] (motivo)\n*Exemplo:* `zmute @fulano 10m spammer`\n*Durações:* `10m`, `1h`, `1d`" },
+    { "unmute", "zunmute @usuario" },
+    { "clear", "zclear [quantidade]\n*Exemplo:* `zclear 50`" },
+    { "slowmode", "zslowmode [segundos]\n*Exemplo:* `zslowmode 5`" },
+    { "lock", "zlock" },
+    { "unlock", "zunlock" }
+};
+
 // ★ HANDLER QUE PROCESSA MENSAGENS COM PREFIXO 'z'
 client.MessageReceived += async (rawMsg) =>
 {
@@ -90,11 +104,56 @@ client.MessageReceived += async (rawMsg) =>
     var ctx = new SocketCommandContext(client, msg);
     var result = await commandService.ExecuteAsync(ctx, argPos, services);
 
-    if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
+    if (result.IsSuccess) return;
+
+    // ★ TRATAMENTO DE ERROS COM EMBED BONITO ★
+    var guild = ctx.Guild as SocketGuild;
+    if (guild == null) return;
+
+    string nomeComando = ExtrairNomeComando(msg.Content);
+
+    switch (result.Error)
     {
-        Console.WriteLine($"[Cmd Error] {result.ErrorReason}");
+        // Argumentos errados ou faltando
+        case CommandError.BadArgCount:
+        case CommandError.ParseFailed:
+        case CommandError.ObjectNotFound:
+            if (usoCorreto.TryGetValue(nomeComando, out var uso))
+            {
+                var embedUso = new EmbedBuilder()
+                    .WithColor(ModerationHelper.CorEmbed)
+                    .WithDescription($"<:erro:1493078898462949526> **Uso incorreto do comando!**\n\n**Uso correto:** `{uso}`")
+                    .WithFooter(ModerationHelper.RodapePadrao(guild))
+                    .Build();
+
+                await msg.Channel.SendMessageAsync(embed: embedUso);
+            }
+            break;
+
+        // Comando não existe → ignora silenciosamente (pra não responder qualquer "z" digitado)
+        case CommandError.UnknownCommand:
+            break;
+
+        // Permissão do bot insuficiente
+        case CommandError.UnmetPrecondition:
+            await msg.Channel.SendMessageAsync(
+                embed: ModerationHelper.CriarEmbedErro($"Não foi possível executar: {result.ErrorReason}", guild));
+            break;
+
+        // Outros erros
+        default:
+            Console.WriteLine($"[Cmd Error] {result.Error}: {result.ErrorReason}");
+            break;
     }
 };
+
+// Extrai o nome do comando da mensagem (ex: "zmute @user" -> "mute")
+static string ExtrairNomeComando(string conteudo)
+{
+    if (string.IsNullOrEmpty(conteudo) || conteudo.Length < 2) return "";
+    var primeiraPalavra = conteudo.Split(' ')[0].ToLower();
+    return primeiraPalavra.StartsWith("z") ? primeiraPalavra.Substring(1) : primeiraPalavra;
+}
 
 // ==============================================================
 // EVENTO READY
