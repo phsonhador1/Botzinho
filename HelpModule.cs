@@ -29,7 +29,7 @@ namespace Botzinho.Core
             var content = msg.Content.ToLower().Trim();
 
             // Verifica se digitou zhelp ou zajuda
-            if (content == "zhelp" || content == "zajuda" || content == "top")
+            if (content == "zhelp" || content == "zajuda")
             {
                 var user = msg.Author;
 
@@ -51,7 +51,7 @@ namespace Botzinho.Core
           .WithColor(new Color(160, 80, 220)) // Cor roxa da borda
                     .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl()) // Foto do Zeus Bot no canto
                     .WithDescription($"• Bem-vindo(a) **{user.Username}** ao **painel de comandos/ajuda - Zeus Bot**\n\n **Selecione uma categoria abaixo** para ver os **comandos disponíveis** do **bot**.")
-          .WithFooter($"executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
+          .WithFooter($"Executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
 
                 // Criação do Menu Dropdown (Select Menu)
                 var menuBuilder = new SelectMenuBuilder()
@@ -103,37 +103,36 @@ namespace Botzinho.Core
                 {
                     eb.WithTitle("<:botportal:1492661012682248212> Economia")
                      .WithDescription(
-                       "`zsaldo` - Veja sua carteira e banco\n" +
-                       "`zdaily` - Resgate seu bônus diário\n" +
-                       "`zdep [valor/all]` - Guarde moedas no banco\n" +
-                       "`zpay [@user] [valor]` - Transfira dinheiro para alguém\n" +
-                       "`ztransacoes` - Veja seu extrato bancário detalhado\n" +
-                       "`zrank` - Veja os membros mais ricos do servidor\n" +
-                       "`zrifa` - Mostra o prêmio acumulado e suas chances\n" +
-                       "`zrifa comprar [valor]` - Compre participações na Rifa Semanal");
+                       "**zsaldo** - Veja sua carteira e banco\n" +
+                       "**zdaily** - Resgate seu bônus diário\n" +
+                       "**zdep [valor/all]** - Guarde moedas no banco\n" +
+                       "**zpay [@user] [valor]** - Transfira dinheiro para alguém\n" +
+                       "**ztransacoes** - Veja seu extrato bancário detalhado\n" +
+                       "**zrank** - Veja os membros mais ricos do servidor\n");
                 }
                 else if (selected == "help_cassino")
                 {
                     eb.WithTitle("<:botportal:1492661012682248212> Cassino")
                      .WithDescription(
-                       "`zroleta [valor/all]` - Aposte na roleta (Branco, Preto ou Vermelho)\n" +
-                       "`zcf [valor/all]` - Aposte no cara ou coroa (Coinflip)\n" +
-                       "`zbj [valor/all]` - Jogue Blackjack contra o Dealer (21)\n" +
-                       "`zapostar [@user] [valor]` - Desafie alguém para um Duelo (X1)");
+                       "**zroleta [valor/all]** - Aposte na roleta (Branco, Preto ou Vermelho)\n" +
+                       "**zcf [valor/all]** - Aposte no cara ou coroa (Coinflip)\n" +
+                       "**zbj [valor/all]** - Jogue Blackjack contra o Dealer (21)\n" +
+                       "**zapostar [@user] [valor]** - Desafie alguém para um Duelo\n" +
+                       "**zcrash [valor/all]** - Aposte no Crash do servidor");
                 }
                 else if (selected == "help_moderacao")
                 {
                     eb.WithTitle("<:botportal:1492661012682248212> Moderação")
                      .WithDescription(
                        "**Atenção:** Estes comandos usam `/` (Slash Commands).\n\n" +
-                       "`/clear [quant]` - Apaga mensagens do canal\n" +
-                       "`/lock` e `/unlock` - Tranca ou destranca o canal atual\n" +
-                       "`/slowmode [segundos]` - Define o modo lento do canal\n" +
-                       "`/ban [@user] [motivo]` - Bane um usuário\n" +
-                       "`/unban [id]` - Desbane um usuário\n" +
-                       "`/kick [@user] [motivo]` - Expulsa um usuário\n" +
-                       "`/mute [@user] [tempo]` - Silencia um usuário (ex: 10m, 1h)\n" +
-                       "`/unmute [@user]` - Remove o silenciamento");
+                       "`zclear [quant]` - Apaga mensagens do canal\n" +
+                       "**zlock** e **zunlock** - Tranca ou destranca o canal atual\n" +
+                       "**zslowmode [segundos]** - Define o modo lento do canal\n" +
+                       "**zban [@user] [motivo]** - Bane um usuário\n" +
+                       "**zunban [id]** - Desbane um usuário\n" +
+                       "**zkick [@user] [motivo]** - Expulsa um usuário\n" +
+                       "**zmute [@user] [tempo]** - Silencia um usuário (ex: 10m, 1h)\n" +
+                       "**zunmute [@user]** - Remove o silenciamento");
                 }
 
                 // Reconstrói o menu para ele continuar funcionando (Mantendo o texto atualizado se desejar)
