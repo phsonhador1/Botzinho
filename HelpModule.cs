@@ -101,7 +101,7 @@ namespace Botzinho.Core
                 // Muda o conteúdo do Embed de acordo com o que foi clicado
                 if (selected == "help_economia")
                 {
-                    eb.WithTitle("<:botzeus:1499548718377205921> Economia")
+                    eb.WithTitle("<:moneyzeus:1499549856036032622> Economia")
                      .WithDescription(
                        "**zsaldo** - Veja sua carteira e banco\n" +
                        "**zdaily** - Resgate seu bônus diário\n" +
