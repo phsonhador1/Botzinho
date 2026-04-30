@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using System;
 using System.Linq;
@@ -11,7 +11,7 @@ namespace Botzinho.Handlers
         private readonly DiscordSocketClient _client;
 
         // ⚠️ Substitua pelo ID REAL do seu canal anônimo
-        private readonly ulong _canalAlvoId = 123456789012345678;
+        private readonly ulong _canalAlvoId = 1490082208528990318;
 
         public AnonymousChannelHandler(DiscordSocketClient client)
         {
