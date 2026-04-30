@@ -1,330 +1,266 @@
 using Discord;
 using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
-using Botzinho.Admins;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using Botzinho.Admins;
+using Botzinho.Moderation;
+using Botzinho.Economy;
 
-namespace Botzinho.Moderation
+// ==============================================================
+// CLIENTE DISCORD
+// ==============================================================
+var client = new DiscordSocketClient(new DiscordSocketConfig
 {
-    public static class ModerationHelper
+    GatewayIntents = GatewayIntents.AllUnprivileged |
+                     GatewayIntents.MessageContent |
+                     GatewayIntents.GuildMembers,
+    AlwaysDownloadUsers = true,
+    MessageCacheSize = 100
+});
+
+// ★ CommandService para comandos com prefixo (zmute, zlock, etc)
+var commandService = new CommandService(new CommandServiceConfig
+{
+    DefaultRunMode = Discord.Commands.RunMode.Async,
+    CaseSensitiveCommands = false,
+    LogLevel = LogSeverity.Info
+});
+
+// ==============================================================
+// HOST (DI simples)
+// ==============================================================
+var hostBuilder = Host.CreateDefaultBuilder()
+    .ConfigureServices(services =>
     {
-        // ★ COR PADRÃO: VERMELHO em TODOS os embeds
-        public static readonly Color CorEmbed = new Color(255, 71, 87);
+        services.AddSingleton(client);
+        services.AddSingleton<DiscordSocketClient>(client);
+        services.AddSingleton<BaseSocketClient>(client);
+        services.AddSingleton(commandService);
 
-        public static string GetConnectionString()
-        {
-            return Environment.GetEnvironmentVariable("DATABASE_URL")
-                ?? throw new Exception("DATABASE_URL nao configurado!");
-        }
+        services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+    });
 
-        public static void InicializarTabelas() { /* sem tabelas */ }
+var host = hostBuilder.Build();
+var services = host.Services;
 
-        public static TimeSpan? ParseDuration(string input)
-        {
-            if (string.IsNullOrEmpty(input) || input.Length < 2) return null;
-            var unit = input[^1];
-            if (!int.TryParse(input[..^1], out var value) || value <= 0) return null;
-            return unit switch
+// ==============================================================
+// INICIALIZAÇÃO DOS MÓDULOS
+// ==============================================================
+new Botzinho.Admin.AdminControleModule(client);
+var interactionService = new InteractionService(client);
+var adminModule = new AdminModule(client);
+
+ModerationHelper.InicializarTabelas();
+var economyHandler = new Botzinho.Economy.EconomyHandler(client);
+Botzinho.Economy.EconomyHelper.InicializarTabelas();
+
+var cassino = new Botzinho.Cassino.CassinoModule(client);
+var help = new Botzinho.Core.HelpModule(client);
+Botzinho.Core.AutoRankService.Iniciar(client);
+var apostas = new Botzinho.Cassino.ApostaModule(client);
+
+var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
+
+client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+commandService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+
+// ★ REGISTRA OS MÓDULOS DE COMANDO COM PREFIXO
+await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
+Console.WriteLine($"[CommandService] {commandService.Commands.Count()} comandos prefixo carregados.");
+
+// ★★★ DICIONÁRIO DE USOS CORRETOS DOS COMANDOS ★★★
+var usoCorreto = new Dictionary<string, string>
+{
+    { "ban", "zban @usuario (motivo)" },
+    { "unban", "zunban [ID do usuário]" },
+    { "kick", "zkick @usuario (motivo)" },
+    { "mute", "zmute @usuario [duração] (motivo)\n*Exemplo:* `zmute @fulano 10m spammer`\n*Durações:* `10m`, `1h`, `1d`" },
+    { "unmute", "zunmute @usuario" },
+    { "clear", "zclear [quantidade]\n*Exemplo:* `zclear 50`" },
+    { "slowmode", "zslowmode [segundos]\n*Exemplo:* `zslowmode 5`" },
+    { "lock", "zlock" },
+    { "unlock", "zunlock" }
+};
+
+// ★ HANDLER QUE PROCESSA MENSAGENS COM PREFIXO 'z'
+client.MessageReceived += async (rawMsg) =>
+{
+    if (rawMsg is not SocketUserMessage msg) return;
+    if (msg.Author.IsBot) return;
+
+    int argPos = 0;
+    if (!msg.HasCharPrefix('z', ref argPos) &&
+        !msg.HasCharPrefix('Z', ref argPos)) return;
+
+    var ctx = new SocketCommandContext(client, msg);
+    var result = await commandService.ExecuteAsync(ctx, argPos, services);
+
+    if (result.IsSuccess) return;
+
+    // ★ TRATAMENTO DE ERROS COM EMBED BONITO ★
+    var guild = ctx.Guild as SocketGuild;
+    if (guild == null) return;
+
+    string nomeComando = ExtrairNomeComando(msg.Content);
+
+    switch (result.Error)
+    {
+        // Argumentos errados ou faltando
+        case CommandError.BadArgCount:
+        case CommandError.ParseFailed:
+        case CommandError.ObjectNotFound:
+            if (usoCorreto.TryGetValue(nomeComando, out var uso))
             {
-                'm' => TimeSpan.FromMinutes(value),
-                'h' => TimeSpan.FromHours(value),
-                'd' => TimeSpan.FromDays(value),
-                _ => null
-            };
-        }
-
-        // ★ Rodapé padrão: nome do servidor + data
-        public static EmbedFooterBuilder RodapePadrao(SocketGuild guild)
-        {
-            return new EmbedFooterBuilder()
-                .WithText($"Servidor {guild.Name} • Hoje às {DateTime.Now.AddHours(-3):HH:mm}")
-                .WithIconUrl(guild.IconUrl);
-        }
-
-        // ★ Helpers de embed de erro
-        public static Embed CriarEmbedErro(string mensagem, SocketGuild guild)
-        {
-            return new EmbedBuilder()
-                .WithColor(CorEmbed)
-                .WithDescription($"<:erro:1493078898462949526> {mensagem}")
-                .WithFooter(RodapePadrao(guild))
-                .Build();
-        }
-    }
-
-    public class BanModule : ModuleBase<SocketCommandContext>
-    {
-        [Command("ban")]
-        [Summary("Bane um usuario do servidor")]
-        [RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task BanAsync(SocketGuildUser alvo, [Remainder] string motivo = "Sem motivo informado")
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "ban", GuildPermission.BanMembers);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (alvo.Id == user.Id) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Você não pode se banir, otário kkk", guild)); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("O cargo desse usuário é igual ou maior que o seu.", guild)); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário, não consigo bani-lo.", guild)); return; }
-
-            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **banido** de **{Context.Guild.Name}**.\n**Motivo:** {motivo}"); } catch { }
-
-            await Context.Guild.AddBanAsync(alvo, pruneDays: 0, reason: motivo);
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("⛔ Usuário Banido", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **banido** do servidor.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("🛡️ Banido por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
-        }
-    }
-
-    public class UnbanModule : ModuleBase<SocketCommandContext>
-    {
-        [Command("unban")]
-        [Summary("Desbane um usuario")]
-        [RequireBotPermission(GuildPermission.BanMembers)]
-        public async Task UnbanAsync(string userId)
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "ban", GuildPermission.BanMembers);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (!ulong.TryParse(userId, out var id)) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("ID inválido.", guild)); return; }
-
-            try
-            {
-                await Context.Guild.RemoveBanAsync(id);
-
-                var embed = new EmbedBuilder()
+                var embedUso = new EmbedBuilder()
                     .WithColor(ModerationHelper.CorEmbed)
-                    .WithAuthor("✅ Usuário Desbanido", Context.Guild.IconUrl)
-                    .WithDescription($"O usuário com ID `{id}` foi **desbanido** com sucesso.")
-                    .AddField("🛡️ Desbanido por", $"`{user.Username}`", true)
+                    .WithDescription($"<:erro:1493078898462949526> **Uso incorreto do comando!**\n\n**Uso correto:** `{uso}`")
                     .WithFooter(ModerationHelper.RodapePadrao(guild))
                     .Build();
 
-                await ReplyAsync(embed: embed);
+                await msg.Channel.SendMessageAsync(embed: embedUso);
             }
-            catch
+            break;
+
+        // Comando não existe → ignora silenciosamente (pra não responder qualquer "z" digitado)
+        case CommandError.UnknownCommand:
+            break;
+
+        // Permissão do bot insuficiente
+        case CommandError.UnmetPrecondition:
+            await msg.Channel.SendMessageAsync(
+                embed: ModerationHelper.CriarEmbedErro($"Não foi possível executar: {result.ErrorReason}", guild));
+            break;
+
+        // Outros erros
+        default:
+            Console.WriteLine($"[Cmd Error] {result.Error}: {result.ErrorReason}");
+            break;
+    }
+};
+
+// Extrai o nome do comando da mensagem (ex: "zmute @user" -> "mute")
+static string ExtrairNomeComando(string conteudo)
+{
+    if (string.IsNullOrEmpty(conteudo) || conteudo.Length < 2) return "";
+    var primeiraPalavra = conteudo.Split(' ')[0].ToLower();
+    return primeiraPalavra.StartsWith("z") ? primeiraPalavra.Substring(1) : primeiraPalavra;
+}
+
+// ==============================================================
+// EVENTO READY
+// ==============================================================
+client.Ready += async () =>
+{
+    await interactionService.AddModulesAsync(typeof(NukeModule).Assembly, services);
+    await interactionService.RegisterCommandsGloballyAsync(true);
+
+    foreach (var guild in client.Guilds)
+        AdminModule.GarantirAcessoInicialConfigServer(guild);
+
+    Console.WriteLine($"Bot online como {client.CurrentUser.Username}");
+
+    _ = Task.Run(async () =>
+    {
+        while (true)
+        {
+            string statusTop1 = "👑 Top 1: Ninguém";
+            try
             {
-                await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Esse ID não está na lista de banidos.", guild));
+                var guildId = client.Guilds.FirstOrDefault()?.Id ?? 0;
+                if (guildId != 0)
+                {
+                    var top10 = EconomyHelper.GetTop10(guildId);
+                    if (top10 != null && top10.Any())
+                    {
+                        var top1 = top10.First();
+                        var usuario = client.GetUser(top1.UserId) as IUser ?? await client.Rest.GetUserAsync(top1.UserId);
+                        statusTop1 = $"👑 O Magnata Rico - {(usuario != null ? usuario.Username : "Desconhecido")} com {EconomyHelper.FormatarSaldo(top1.Total)}";
+                    }
+                }
             }
-        }
-    }
+            catch (Exception ex) { Console.WriteLine($"Erro status: {ex.Message}"); }
 
-    public class KickModule : ModuleBase<SocketCommandContext>
-    {
-        [Command("kick")]
-        [Summary("Expulsa um usuario")]
-        [RequireBotPermission(GuildPermission.KickMembers)]
-        public async Task KickAsync(SocketGuildUser alvo, [Remainder] string motivo = "Sem motivo informado")
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "kick", GuildPermission.KickMembers);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (alvo.Id == user.Id) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Você não pode se expulsar.", guild)); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("O cargo desse usuário é igual ou maior que o seu.", guild)); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário.", guild)); return; }
-
-            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **expulso** de **{Context.Guild.Name}**.\n**Motivo:** {motivo}"); } catch { }
-            await alvo.KickAsync(motivo);
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("👢 Usuário Expulso", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **expulso** do servidor.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("🛡️ Expulso por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
-        }
-    }
-
-    public class MuteModule : ModuleBase<SocketCommandContext>
-    {
-        [Command("mute")]
-        [Summary("Silencia um usuario")]
-        [RequireBotPermission(GuildPermission.ModerateMembers)]
-        public async Task MuteAsync(SocketGuildUser alvo, string duracao, [Remainder] string motivo = "Sem motivo informado")
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (alvo.Id == user.Id) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Você não pode se silenciar.", guild)); return; }
-            if (alvo.Hierarchy >= user.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("O cargo desse usuário é igual ou maior que o seu.", guild)); return; }
-            if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário.", guild)); return; }
-
-            var tempo = ModerationHelper.ParseDuration(duracao);
-            if (tempo == null || tempo.Value.TotalMinutes < 1 || tempo.Value.TotalDays > 28)
+            string[] statusAtual = { $"Estou em {client.Guilds.Count} servidores", "Online | Use zhelp", "discord.gg/senzala", statusTop1 };
+            foreach (var st in statusAtual)
             {
-                await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Duração inválida. Use: `10m`, `1h`, `1d` (máx 28d).", guild));
-                return;
+                await client.SetStatusAsync(UserStatus.Online);
+                await client.SetCustomStatusAsync(st);
+                await Task.Delay(TimeSpan.FromSeconds(15));
             }
-
-            await alvo.SetTimeOutAsync(tempo.Value, new RequestOptions { AuditLogReason = motivo });
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔇 Usuário Silenciado", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **silenciado** por `{duracao}`.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("⏱️ Duração", $"`{duracao}`", true)
-                .AddField("🛡️ Silenciado por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
         }
+    });
+};
 
-        [Command("unmute")]
-        [Summary("Remove silenciamento")]
-        [RequireBotPermission(GuildPermission.ModerateMembers)]
-        public async Task UnmuteAsync(SocketGuildUser alvo)
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
+client.InteractionCreated += async interaction =>
+{
+    var ctx = new SocketInteractionContext(client, interaction);
+    await interactionService.ExecuteCommandAsync(ctx, services);
+};
 
-            await alvo.RemoveTimeOutAsync();
+// ==============================================================
+// LOGIN & START
+// ==============================================================
+var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN")
+    ?? throw new Exception("TOKEN MISSING");
 
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔊 Silenciamento Removido", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` pode falar novamente.")
-                .AddField("👤 Usuário", $"`{alvo.Username}`", true)
-                .AddField("🛡️ Removido por", $"`{user.Username}`", true)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
+await client.LoginAsync(TokenType.Bot, token);
+await client.StartAsync();
 
-            await ReplyAsync(embed: embed);
-        }
-    }
+await host.StartAsync();
+Console.WriteLine("[Boot] Host iniciado.");
+await host.WaitForShutdownAsync();
 
-    public class ChannelModule : ModuleBase<SocketCommandContext>
+
+// ==============================================================
+// CLASSES DE COMANDOS SLASH (mantidos)
+// ==============================================================
+public class ConfigServerModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("configserver", "Configura permissoes do servidor")]
+    public async Task ConfigServerAsync()
     {
-        [Command("clear")]
-        [Summary("Apaga mensagens")]
-        [RequireBotPermission(ChannelPermission.ManageMessages)]
-        public async Task ClearAsync(int quantidade)
+        var user = (SocketGuildUser)Context.User;
+        if (!AdminModule.PodeUsarEconfigStatic(user))
         {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "clear", GuildPermission.ManageMessages);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (quantidade < 1 || quantidade > 100) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Coloca um valor entre 1 e 100.", guild)); return; }
-
-            var channel = (ITextChannel)Context.Channel;
-            var messages = await channel.GetMessagesAsync(quantidade + 1).FlattenAsync();
-            var deletable = messages.Where(m => (DateTimeOffset.UtcNow - m.Timestamp).TotalDays < 14).ToList();
-
-            if (deletable.Count == 0) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Nenhuma mensagem pra apagar.", guild)); return; }
-            await channel.DeleteMessagesAsync(deletable);
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithDescription($"<a:sucess:1494692628372132013> **{deletable.Count - 1}** mensagens foram apagadas com sucesso.")
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
+            await RespondAsync("<:erro:1493078898462949526> Sem permissão.", ephemeral: true);
+            return;
         }
+        await DeferAsync();
+        var embed = AdminModule.CriarEmbedPrincipal(Context.Guild as SocketGuild);
+        var components = AdminModule.CriarMenuPrincipal();
+        var msg = await FollowupAsync(embed: embed, components: components);
+        AdminModule.RegistrarPainel(Context.Guild.Id, msg.Channel.Id, msg.Id);
+    }
+}
 
-        [Command("slowmode")]
-        [Summary("Define slowmode")]
-        public async Task SlowmodeAsync(int segundos)
+public class NukeModule : InteractionModuleBase<SocketInteractionContext>
+{
+    [SlashCommand("nuke", "Limpa todas as mensagens do canal")]
+    public async Task NukeAsync()
+    {
+        var user = (SocketGuildUser)Context.User;
+        var resultado = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "nuke", GuildPermission.ManageChannels);
+        if (resultado != null) { await RespondAsync(resultado, ephemeral: true); return; }
+        await DeferAsync(ephemeral: true);
+        var channel = (ITextChannel)Context.Channel;
+        var newChannel = await channel.Guild.CreateTextChannelAsync(channel.Name, props =>
         {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "clear", GuildPermission.ManageChannels);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            if (segundos < 0 || segundos > 21600) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Valor inválido. Use entre 0 e 21600.", guild)); return; }
-
-            var channel = (ITextChannel)Context.Channel;
-            await channel.ModifyAsync(x => x.SlowModeInterval = segundos);
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("⏱️ Slowmode Atualizado", Context.Guild.IconUrl)
-                .WithDescription(segundos > 0
-                    ? $"O slowmode foi definido para `{segundos}s` neste canal."
-                    : "O slowmode foi **desativado** neste canal.")
-                .AddField("🛡️ Alterado por", $"`{user.Username}`", true)
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
-        }
-
-        [Command("lock")]
-        [Summary("Tranca o canal")]
-        public async Task LockAsync()
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "lock", GuildPermission.ManageChannels);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            var channel = (ITextChannel)Context.Channel;
-            await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Deny));
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔒 Canal Trancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **trancado** por **{user.Username}**.\n\nApenas membros com permissão poderão enviar mensagens.")
-                .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
-        }
-
-        [Command("unlock")]
-        [Summary("Destranca o canal")]
-        public async Task UnlockAsync()
-        {
-            var user = (SocketGuildUser)Context.User;
-            var guild = Context.Guild as SocketGuild;
-            var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "lock", GuildPermission.ManageChannels);
-            if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
-
-            var channel = (ITextChannel)Context.Channel;
-            await channel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(sendMessages: PermValue.Inherit));
-
-            var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔓 Canal Destrancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **destrancado** por **{user.Username}**.\n\nMembros podem enviar mensagens novamente.")
-                .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
-                .Build();
-
-            await ReplyAsync(embed: embed);
-        }
+            props.Topic = channel.Topic;
+            props.CategoryId = channel.CategoryId;
+            props.Position = channel.Position;
+            props.IsNsfw = channel.IsNsfw;
+            props.PermissionOverwrites = new Optional<IEnumerable<Overwrite>>(channel.PermissionOverwrites.ToList());
+        });
+        await channel.DeleteAsync();
+        await newChannel.SendMessageAsync($".");
     }
 }
