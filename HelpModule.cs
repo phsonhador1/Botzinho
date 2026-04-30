@@ -96,7 +96,7 @@ namespace Botzinho.Core
                     .WithFooter($"executado por: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl());
 
                 // Legenda padrão para o topo das categorias
-                string legenda = "• `[ ] = Obrigatório / ( ) = Opcional`\n\n";
+                string legenda = "**Confira os comandos abaixo:**\n\n";
 
                 // Design limpo com bolinha preenchida e vazada (sem setas)
                 if (selected == "help_economia")
