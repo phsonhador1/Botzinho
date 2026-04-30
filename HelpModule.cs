@@ -101,7 +101,7 @@ namespace Botzinho.Core
                 // Muda o conteúdo do Embed de acordo com o que foi clicado
                 if (selected == "help_economia")
                 {
-                    eb.WithTitle("<:botportal:1492661012682248212> Economia")
+                    eb.WithTitle("<:botzeus:1499548718377205921> Economia")
                      .WithDescription(
                        "**zsaldo** - Veja sua carteira e banco\n" +
                        "**zdaily** - Resgate seu bônus diário\n" +
@@ -112,7 +112,7 @@ namespace Botzinho.Core
                 }
                 else if (selected == "help_cassino")
                 {
-                    eb.WithTitle("<:botportal:1492661012682248212> Cassino")
+                    eb.WithTitle("<:botzeus:1499548718377205921> Cassino")
                      .WithDescription(
                        "**zroleta [valor/all]** - Aposte na roleta (Branco, Preto ou Vermelho)\n" +
                        "**zcf [valor/all]** - Aposte no cara ou coroa (Coinflip)\n" +
@@ -122,10 +122,10 @@ namespace Botzinho.Core
                 }
                 else if (selected == "help_moderacao")
                 {
-                    eb.WithTitle("<:botportal:1492661012682248212> Moderação")
+                    eb.WithTitle("<:botzeus:1499548718377205921> Moderação")
                      .WithDescription(
                        "**Atenção:** Estes comandos usam `/` (Slash Commands).\n\n" +
-                       "`zclear [quant]` - Apaga mensagens do canal\n" +
+                       "**zclear [quant]** - Apaga mensagens do canal\n" +
                        "**zlock** e **zunlock** - Tranca ou destranca o canal atual\n" +
                        "**zslowmode [segundos]** - Define o modo lento do canal\n" +
                        "**zban [@user] [motivo]** - Bane um usuário\n" +
