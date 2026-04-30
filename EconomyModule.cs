@@ -406,7 +406,7 @@ namespace Botzinho.Economy
     // --- 2. GERAÇÃO DE IMAGENS (SKIA DESIGN REFINADO PREMIUM) ---
     public static class EconomyImageHelper
     {
-        private static readonly SKColor PurpleTheme = new SKColor(160, 80, 220); // Roxo ZeusBot
+        private static readonly SKColor RedTheme = new SKColor(220, 40, 40);     // Vermelho ZeusBot
         private static readonly SKColor GoldTheme = new SKColor(255, 180, 0);    // Dourado para o Total
         private static readonly SKColor DarkBg = new SKColor(10, 8, 18);         // Fundo escuro
         private static readonly SKColor CardBg = new SKColor(22, 18, 35);        // Fundo do cartão central
@@ -428,7 +428,7 @@ namespace Botzinho.Economy
             using var surface = SKSurface.Create(new SKImageInfo(width, height));
             var canvas = surface.Canvas;
 
-            canvas.Clear(new SKColor(245, 243, 248));
+            canvas.Clear(new SKColor(248, 243, 243));
 
             var bannerRect = new SKRect(0, 0, width, 240);
 
@@ -437,22 +437,22 @@ namespace Botzinho.Economy
                 new SKPoint(0, 0),
                 new SKPoint(0, 240),
                 new[] {
-                    new SKColor(130, 90, 180),
-                    new SKColor(180, 120, 200),
-                    new SKColor(240, 180, 200)
+                    new SKColor(180, 50, 50),
+                    new SKColor(200, 80, 80),
+                    new SKColor(240, 120, 120)
                 },
                 new[] { 0f, 0.55f, 1f },
                 SKShaderTileMode.Clamp);
             canvas.DrawRect(bannerRect, skyPaint);
 
-            DrawCloud(canvas, 80, 60, 120, new SKColor(210, 160, 220, 200));
-            DrawCloud(canvas, 260, 40, 100, new SKColor(180, 130, 200, 220));
-            DrawCloud(canvas, 420, 80, 140, new SKColor(220, 170, 230, 190));
-            DrawCloud(canvas, 600, 50, 110, new SKColor(170, 120, 195, 210));
-            DrawCloud(canvas, 150, 140, 90, new SKColor(140, 90, 180, 230));
-            DrawCloud(canvas, 350, 160, 130, new SKColor(160, 100, 190, 220));
-            DrawCloud(canvas, 540, 170, 100, new SKColor(130, 80, 170, 240));
-            DrawCloud(canvas, 720, 130, 120, new SKColor(180, 130, 205, 210));
+            DrawCloud(canvas, 80, 60, 120, new SKColor(220, 120, 120, 200));
+            DrawCloud(canvas, 260, 40, 100, new SKColor(200, 100, 100, 220));
+            DrawCloud(canvas, 420, 80, 140, new SKColor(230, 130, 130, 190));
+            DrawCloud(canvas, 600, 50, 110, new SKColor(195, 90, 90, 210));
+            DrawCloud(canvas, 150, 140, 90, new SKColor(180, 60, 60, 230));
+            DrawCloud(canvas, 350, 160, 130, new SKColor(190, 70, 70, 220));
+            DrawCloud(canvas, 540, 170, 100, new SKColor(170, 50, 50, 240));
+            DrawCloud(canvas, 720, 130, 120, new SKColor(205, 90, 90, 210));
 
             float avX = 700;
             float avY = 260;
@@ -514,7 +514,7 @@ namespace Botzinho.Economy
             float pillNameY = 400;
             var pillNameRect = new SKRect(avX - pillNameW / 2, pillNameY, avX + pillNameW / 2, pillNameY + pillNameH);
 
-            using var pillBg = new SKPaint { Color = new SKColor(225, 222, 232), IsAntialias = true };
+            using var pillBg = new SKPaint { Color = new SKColor(232, 222, 222), IsAntialias = true };
             canvas.DrawRoundRect(pillNameRect, pillNameH / 2, pillNameH / 2, pillBg);
             canvas.DrawText(displayName, avX, pillNameY + 34, namePaint);
 
@@ -532,7 +532,7 @@ namespace Botzinho.Economy
             };
             canvas.DrawRoundRect(mainCardRect, 22, 22, cardShadow);
 
-            using var cardPaint = new SKPaint { Color = new SKColor(235, 232, 240), IsAntialias = true };
+            using var cardPaint = new SKPaint { Color = new SKColor(240, 232, 232), IsAntialias = true };
             canvas.DrawRoundRect(mainCardRect, 22, 22, cardPaint);
 
             using var bioPaint = new SKPaint
@@ -559,26 +559,26 @@ namespace Botzinho.Economy
 
             DrawProfilePill(canvas, pilStartX, pilStartY, pilW, pilH,
                 IconType.Coin, EconomyHelper.FormatarSaldo(totalCoins), "Coins",
-                PurpleTheme, fontBold, fontReg);
+                RedTheme, fontBold, fontReg);
 
             DrawProfilePill(canvas, pilStartX + pilW + gapX, pilStartY, pilW, pilH,
                 IconType.Star, $"Nível: {nivel}", $"{xpAtual}/{xpTotal} XP",
-                PurpleTheme, fontBold, fontReg);
+                RedTheme, fontBold, fontReg);
 
             DrawProfilePill(canvas, pilStartX, pilStartY + pilH + gapY, pilW, pilH,
                 IconType.Medal, "Badges", badgesText,
-                PurpleTheme, fontBold, fontReg);
+                RedTheme, fontBold, fontReg);
 
             DrawProfilePill(canvas, pilStartX + pilW + gapX, pilStartY + pilH + gapY, pilW, pilH,
                 IconType.ThumbUp, "Reps", reps.ToString(),
-                PurpleTheme, fontBold, fontReg);
+                RedTheme, fontBold, fontReg);
 
             string amigoExibido = string.IsNullOrEmpty(amigoNome) ? "Nenhum" : amigoNome;
             if (amigoExibido.Length > 14) amigoExibido = amigoExibido.Substring(0, 12) + "..";
 
             DrawProfilePill(canvas, pilStartX, pilStartY + (pilH + gapY) * 2, pilW, pilH,
                 IconType.Heart, "Amigo(a)", amigoExibido,
-                PurpleTheme, fontBold, fontReg);
+                RedTheme, fontBold, fontReg);
 
             var p = Path.Combine(Path.GetTempPath(), $"perfil_{user.Id}_{DateTime.Now.Ticks}.png");
             using (var img = surface.Snapshot())
@@ -799,7 +799,7 @@ namespace Botzinho.Economy
             {
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 6,
-                Color = PurpleTheme,
+                Color = RedTheme,
                 IsAntialias = true
             };
             canvas.DrawOval(avRect, ringPaint);
@@ -819,8 +819,8 @@ namespace Botzinho.Economy
             canvas.DrawText(displayName, width / 2, pillY + 38, namePaint);
 
             float startY = 370;
-            DrawModernPanel(canvas, "Carteira", wallet, width, startY, PurpleTheme, fontBold, "C");
-            DrawModernPanel(canvas, "Banco", bank, width, startY + 95, PurpleTheme, fontBold, "B");
+            DrawModernPanel(canvas, "Carteira", wallet, width, startY, RedTheme, fontBold, "C");
+            DrawModernPanel(canvas, "Banco", bank, width, startY + 95, RedTheme, fontBold, "B");
             DrawModernPanel(canvas, "Total", wallet + bank, width, startY + 190, GoldTheme, fontBold, "T");
 
             var p = Path.Combine(Path.GetTempPath(), $"saldo_{user.Id}_{DateTime.Now.Ticks}.png");
@@ -873,9 +873,9 @@ namespace Botzinho.Economy
             var boldFont = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
 
             var paintWhite = new SKPaint { Color = SKColors.White, TextSize = 48, Typeface = boldFont, IsAntialias = true };
-            var paintPurple = new SKPaint { Color = PurpleTheme, TextSize = 48, Typeface = boldFont, IsAntialias = true };
+            var paintRed = new SKPaint { Color = RedTheme, TextSize = 48, Typeface = boldFont, IsAntialias = true };
             canvas.DrawText("Top", 40, 80, paintWhite);
-            canvas.DrawText("Coins", 140, 80, paintPurple);
+            canvas.DrawText("Coins", 140, 80, paintRed);
 
             using var http = new HttpClient();
             for (int i = 0; i < top.Count; i++)
@@ -890,7 +890,7 @@ namespace Botzinho.Economy
                     1 => new SKColor(255, 215, 0),
                     2 => new SKColor(192, 192, 192),
                     3 => new SKColor(205, 127, 50),
-                    _ => new SKColor(35, 32, 55)
+                    _ => new SKColor(55, 32, 35)
                 };
 
                 SKColor textColor = (pos <= 3) ? SKColors.Black : SKColors.White;
@@ -1216,18 +1216,18 @@ namespace Botzinho.Economy
                         int subiu = EconomyHelper.AdicionarXp(guildId, user.Id, xpGanho);
 
                         var eb = new EmbedBuilder()
-              .WithColor(new Color(160, 80, 220))
+                            .WithColor(new Color(220, 40, 40))
                             .WithTitle("<:calendario:1495171666844713173> Daily")
-              .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
-                      $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
-                      $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
-                      $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
-                      $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
-                      $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
-              .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
+                            .WithDescription($"Você coletou sua **recompensa diária** com sucesso!\n\n" +
+                                $"<a:trofeu:1493063952060387479> **Recompensas:**\n" +
+                                $"• <:maiszoe:1494070196871364689> **{EconomyHelper.FormatarSaldo(g)}** cpoints\n" +
+                                $"• <:levelup:1495174376885063841> **+{xpGanho}XP**\n\n" +
+                                $"<:seta:1493089125979656385> Você pode ver seu **saldo** utilizando o comando **zsaldo**.\n\n" +
+                                $"<a:teste:1490570407307378712> Utilize o comando **zdep all** para depositar seus coins!")
+                            .WithThumbnailUrl("https://media.discordapp.net/attachments/1077714940745502750/1104440347586732082/tempo-e-dinheiro.png?width=460&height=460&ex=69e4feba&is=69e3ad3a&hm=46d03ad8e45a3857341c79bc40ff9243ca9241bd0dcc420ea713123a99104e68&");
 
                         var cb = new ComponentBuilder()
-              .WithButton("Definir lembrete", "btn_lembrete_daily", ButtonStyle.Secondary, Emote.Parse("<a:sino:1495172950767173833>"));
+                            .WithButton("Definir lembrete", "btn_lembrete_daily", ButtonStyle.Secondary, Emote.Parse("<a:sino:1495172950767173833>"));
 
                         await msg.Channel.SendMessageAsync(embed: eb.Build(), components: cb.Build());
 
