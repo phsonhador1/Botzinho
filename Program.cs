@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using Botzinho.Admins;
 using Botzinho.Moderation;
 using Botzinho.Economy;
+using Botzinho.Handlers;
 
 // ==============================================================
 // CLIENTE DISCORD
@@ -69,6 +70,8 @@ Botzinho.Core.AutoRankService.Iniciar(client);
 var apostas = new Botzinho.Cassino.ApostaModule(client);
 
 var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
+
+var anonymousHandler = new AnonymousChannelHandler(client);
 
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 commandService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
