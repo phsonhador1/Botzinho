@@ -1175,13 +1175,13 @@ namespace Botzinho.Economy
                         var amigo = msg.MentionedUsers.FirstOrDefault();
                         if (amigo == null)
                         {
-                            await msg.Channel.SendMessageAsync("❓ **Uso:** `zamigo @usuario` para definir seu melhor amigo\n*Ou: `zamigo remover` para remover.*");
+                            await msg.Channel.SendMessageAsync("❓ **Uso:** **zamigo @usuario** para definir seu melhor amigo\n*Ou: **zamigo remover** para remover.*");
                             return;
                         }
 
                         if (amigo.Id == user.Id)
                         {
-                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo, solitário kkk");
+                            await msg.Channel.SendMessageAsync("<:erro:1493078898462949526> Você não pode ser seu próprio amigo");
                             return;
                         }
 
@@ -1192,7 +1192,7 @@ namespace Botzinho.Economy
                         }
 
                         EconomyHelper.DefinirAmigo(guildId, user.Id, amigo.Id);
-                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Mention}, agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
+                        await msg.Channel.SendMessageAsync($"<a:sucess:1494692628372132013> {user.Username}, agora **{amigo.Username}** é seu melhor amigo(a) no perfil!");
                     }
                     else if (content == "zdaily")
                     {
@@ -1202,7 +1202,7 @@ namespace Botzinho.Economy
                         if (tempoPassado.TotalHours < 24)
                         {
                             TimeSpan tempoFalta = TimeSpan.FromHours(24) - tempoPassado;
-                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Aguarde **{tempoFalta.Hours} Horas {tempoFalta.Minutes} minutos** para coletar seu **Daily** novamente.");
+                            await msg.Channel.SendMessageAsync($"<:relogiozeus:1499518426069209148> Aguarde **{tempoFalta.Hours} Horas {tempoFalta.Minutes} minutos** para coletar seu **daily** novamente.");
                             return;
                         }
 
