@@ -10,8 +10,8 @@ namespace Botzinho.Handlers
     {
         private readonly DiscordSocketClient _client;
 
-        // ⚠️ Substitua pelo ID REAL do seu canal anônimo
-        private readonly ulong _canalAlvoId = 1499481009039872060;
+        // ID do seu canal anônimo
+        private readonly ulong _canalAlvoId = 1497366111992418475;
 
         public AnonymousChannelHandler(DiscordSocketClient client)
         {
@@ -21,56 +21,52 @@ namespace Botzinho.Handlers
 
         private async Task InterceptarMensagemAsync(SocketMessage msg)
         {
-            // 1. Prevenção de loop: Ignora bots e Webhooks
             if (msg.Author.IsBot || msg.Author.IsWebhook) return;
-
-            // 2. Valida o canal e o tipo de mensagem
             if (msg.Channel.Id != _canalAlvoId || msg is not SocketUserMessage userMsg) return;
 
             try
             {
-                // 3. Apaga a mensagem do usuário imediatamente
-                await userMsg.DeleteAsync();
-
-                // 4. Constrói o Embed Premium (Barrinha Vermelha de separação)
                 var embed = new EmbedBuilder()
-                    .WithColor(new Color(220, 40, 40)); // Vermelho ZeusBot
+                    .WithColor(new Color(220, 40, 40));
 
                 bool temConteudo = false;
 
-                // 5. Verifica se tem texto e adiciona
                 if (!string.IsNullOrWhiteSpace(userMsg.Content))
                 {
                     embed.WithDescription(userMsg.Content);
                     temConteudo = true;
                 }
 
-                // 6. Verifica se o usuário mandou alguma imagem/anexo
                 if (userMsg.Attachments.Any())
                 {
                     var anexo = userMsg.Attachments.First();
 
-                    // Se for imagem, exibe grandona no embed
                     if (anexo.ContentType != null && anexo.ContentType.StartsWith("image/"))
                     {
                         embed.WithImageUrl(anexo.Url);
                     }
                     else
                     {
-                        // Se for um arquivo (ex: .zip, .txt), coloca como link
                         embed.AddField("📎 Anexo", $"[Clique aqui para baixar o arquivo]({anexo.Url})");
                     }
                     temConteudo = true;
                 }
 
-                // 7. Só envia se a mensagem não for um "fantasma"
                 if (temConteudo)
                 {
+                    // 1. O bot envia o embed PRIMEIRO
                     await msg.Channel.SendMessageAsync(embed: embed.Build());
+
+                    // 2. Micro-atraso de meio segundo (500ms) para evitar o bug de tela do Discord
+                    await Task.Delay(500);
+
+                    // 3. O bot apaga a mensagem original DEPOIS
+                    await userMsg.DeleteAsync();
                 }
             }
             catch (Exception ex)
             {
+                // Se der erro aqui, 99% de chance de faltar a permissão "Gerenciar Mensagens" para o bot no canal
                 Console.WriteLine($"[Erro Canal Anonimo]: {ex.Message}");
             }
         }
