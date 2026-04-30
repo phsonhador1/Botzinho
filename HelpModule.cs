@@ -98,58 +98,58 @@ namespace Botzinho.Core
                 // Legenda padrão para o topo das categorias
                 string legenda = "• `[ ] = Obrigatório / ( ) = Opcional`\n\n";
 
-                // Design idêntico à imagem nas descrições
+                // Design limpo com bolinha preenchida e vazada (sem setas)
                 if (selected == "help_economia")
                 {
                     eb.WithTitle("Economia")
                       .WithDescription(legenda +
-                        "• ➥ **zsaldo**:\n" +
+                        "• **zsaldo**:\n" +
                         " ◦ Veja sua carteira e banco.\n" +
-                        "• ➥ **zdaily**:\n" +
+                        "• **zdaily**:\n" +
                         " ◦ Resgate seu bônus diário.\n" +
-                        "• ➥ **zdep [valor/all]**:\n" +
+                        "• **zdep [valor/all]**:\n" +
                         " ◦ Guarde moedas no banco.\n" +
-                        "• ➥ **zpay [@user] [valor]**:\n" +
+                        "• **zpay [@user] [valor]**:\n" +
                         " ◦ Transfira dinheiro para alguém.\n" +
-                        "• ➥ **ztransacoes**:\n" +
+                        "• **ztransacoes**:\n" +
                         " ◦ Veja seu extrato bancário detalhado.\n" +
-                        "• ➥ **zrank**:\n" +
+                        "• **zrank**:\n" +
                         " ◦ Veja os membros mais ricos do servidor.\n");
                 }
                 else if (selected == "help_cassino")
                 {
                     eb.WithTitle("Cassino")
                       .WithDescription(legenda +
-                        "• ➥ **zroleta [valor/all]**:\n" +
+                        "• **zroleta [valor/all]**:\n" +
                         " ◦ Aposte na roleta (Branco, Preto ou Vermelho).\n" +
-                        "• ➥ **zcf [valor/all]**:\n" +
+                        "• **zcf [valor/all]**:\n" +
                         " ◦ Aposte no cara ou coroa (Coinflip).\n" +
-                        "• ➥ **zbj [valor/all]**:\n" +
+                        "• **zbj [valor/all]**:\n" +
                         " ◦ Jogue Blackjack contra o Dealer (21).\n" +
-                        "• ➥ **zapostar [@user] [valor]**:\n" +
+                        "• **zapostar [@user] [valor]**:\n" +
                         " ◦ Desafie alguém para um Duelo.\n" +
-                        "• ➥ **zcrash [valor/all]**:\n" +
+                        "• **zcrash [valor/all]**:\n" +
                         " ◦ Aposte no Crash do servidor.\n");
                 }
                 else if (selected == "help_moderacao")
                 {
                     eb.WithTitle("Moderação")
                       .WithDescription(legenda +
-                        "• ➥ **zclear [quant]**:\n" +
+                        "• **zclear [quant]**:\n" +
                         " ◦ Apaga mensagens do canal.\n" +
-                        "• ➥ **zlock** e **zunlock**:\n" +
+                        "• **zlock** e **zunlock**:\n" +
                         " ◦ Tranca ou destranca o canal atual.\n" +
-                        "• ➥ **zslowmode [segundos]**:\n" +
+                        "• **zslowmode [segundos]**:\n" +
                         " ◦ Define o modo lento do canal.\n" +
-                        "• ➥ **zban [@user] (motivo)**:\n" +
+                        "• **zban [@user] (motivo)**:\n" +
                         " ◦ Bane um usuário.\n" +
-                        "• ➥ **zunban [id]**:\n" +
+                        "• **zunban [id]**:\n" +
                         " ◦ Desbane um usuário.\n" +
-                        "• ➥ **zkick [@user] (motivo)**:\n" +
+                        "• **zkick [@user] (motivo)**:\n" +
                         " ◦ Expulsa um usuário.\n" +
-                        "• ➥ **zmute [@user] [tempo]**:\n" +
+                        "• **zmute [@user] [tempo]**:\n" +
                         " ◦ Silencia um usuário (ex: 10m, 1h).\n" +
-                        "• ➥ **zunmute [@user]**:\n" +
+                        "• **zunmute [@user]**:\n" +
                         " ◦ Remove o silenciamento.\n");
                 }
 
