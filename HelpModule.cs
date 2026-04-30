@@ -109,7 +109,7 @@ namespace Botzinho.Core
                         " ◦ Resgate seu bônus diário.\n\n" +
                         "• **zdep [valor/all]**:\n\n" +
                         " ◦ Guarde moedas no banco.\n\n" +
-                        "• **zpay [@user] [valor]**:\n\n" +
+                        "• **zpay [@user] [valor]**:\n" +
                         " ◦ Transfira dinheiro para alguém.\n\n" +
                         "• **ztransacoes**:\n" +
                         " ◦ Veja seu extrato bancário detalhado.\n\n" +
@@ -121,13 +121,13 @@ namespace Botzinho.Core
                     eb.WithTitle("Cassino")
                       .WithDescription(legenda +
                         "• **zroleta [valor/all]**:\n" +
-                        " ◦ Aposte na roleta (Branco, Preto ou Vermelho).\n" +
+                        " ◦ Aposte na roleta (Branco, Preto ou Vermelho).\n\n" +
                         "• **zcf [valor/all]**:\n" +
-                        " ◦ Aposte no cara ou coroa (Coinflip).\n" +
+                        " ◦ Aposte no cara ou coroa (Coinflip).\n\n" +
                         "• **zbj [valor/all]**:\n" +
-                        " ◦ Jogue Blackjack contra o Dealer (21).\n" +
+                        " ◦ Jogue Blackjack contra o Dealer (21).\n\n" +
                         "• **zapostar [@user] [valor]**:\n" +
-                        " ◦ Desafie alguém para um Duelo.\n" +
+                        " ◦ Desafie alguém para um Duelo.\n\n" +
                         "• **zcrash [valor/all]**:\n" +
                         " ◦ Aposte no Crash do servidor.\n");
                 }
@@ -136,19 +136,19 @@ namespace Botzinho.Core
                     eb.WithTitle("Moderação")
                       .WithDescription(legenda +
                         "• **zclear [quant]**:\n" +
-                        " ◦ Apaga mensagens do canal.\n" +
+                        " ◦ Apaga mensagens do canal.\n\n" +
                         "• **zlock** e **zunlock**:\n" +
-                        " ◦ Tranca ou destranca o canal atual.\n" +
+                        " ◦ Tranca ou destranca o canal atual.\n\n" +
                         "• **zslowmode [segundos]**:\n" +
                         " ◦ Define o modo lento do canal.\n" +
                         "• **zban [@user] (motivo)**:\n" +
-                        " ◦ Bane um usuário.\n" +
+                        " ◦ Bane um usuário.\n\n" +
                         "• **zunban [id]**:\n" +
-                        " ◦ Desbane um usuário.\n" +
+                        " ◦ Desbane um usuário.\n\n" +
                         "• **zkick [@user] (motivo)**:\n" +
-                        " ◦ Expulsa um usuário.\n" +
+                        " ◦ Expulsa um usuário.\n\n" +
                         "• **zmute [@user] [tempo]**:\n" +
-                        " ◦ Silencia um usuário (ex: 10m, 1h).\n" +
+                        " ◦ Silencia um usuário (ex: 10m, 1h).\n\n" +
                         "• **zunmute [@user]**:\n" +
                         " ◦ Remove o silenciamento.\n");
                 }
