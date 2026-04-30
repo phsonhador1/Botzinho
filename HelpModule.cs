@@ -138,9 +138,9 @@ namespace Botzinho.Core
                 var menuBuilder = new SelectMenuBuilder()
           .WithCustomId($"help_menu_{user.Id}")
           .WithPlaceholder("Selecione uma categoria")
-          .AddOption("Economia", "help_economia", "Comandos de economia", Emote.Parse("<:botportal:1492661012682248212>"))
-          .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", Emote.Parse("<:botportal:1492661012682248212>"))
-          .AddOption("Moderação", "help_moderacao", "Comandos de moderação", Emote.Parse("<:botportal:1492661012682248212>"));
+          .AddOption("Economia", "help_economia", "Comandos de economia", Emote.Parse("<:moneyzeus:1499549856036032622>))
+          .AddOption("Cassino", "help_cassino", "Comandos de apostas e jogos", Emote.Parse("<:botzeus:1499548718377205921>"))
+          .AddOption("Moderação", "help_moderacao", "Comandos de moderação", Emote.Parse("<:botzeus:1499548718377205921>"));
 
                 var cb = new ComponentBuilder().WithSelectMenu(menuBuilder);
 
