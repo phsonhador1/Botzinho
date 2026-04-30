@@ -10,8 +10,8 @@ namespace Botzinho.Moderation
 {
     public static class ModerationHelper
     {
-        // ★ COR PADRÃO: VERMELHO em TODOS os embeds
-        public static readonly Color CorEmbed = new Color(255, 71, 87);
+        // ★ COR PADRÃO: VERMELHO FORTE em TODOS os embeds
+        public static readonly Color CorEmbed = new Color(255, 0, 0);
 
         public static string GetConnectionString()
         {
@@ -70,19 +70,14 @@ namespace Botzinho.Moderation
             if (alvo.Hierarchy >= user.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("O cargo desse usuário é igual ou maior que o seu.", guild)); return; }
             if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário, não consigo bani-lo.", guild)); return; }
 
-            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **banido** de **{Context.Guild.Name}**.\n**Motivo:** {motivo}"); } catch { }
+            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **banido** de **{Context.Guild.Name}**"); } catch { }
 
             await Context.Guild.AddBanAsync(alvo, pruneDays: 0, reason: motivo);
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("⛔ Usuário Banido", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **banido** do servidor.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("🛡️ Banido por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithAuthor("Usuário Banido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                .WithDescription($"O usuário **{alvo.Username}** foi banido do servidor.\n\n*Autor: {user.Username}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -109,10 +104,8 @@ namespace Botzinho.Moderation
 
                 var embed = new EmbedBuilder()
                     .WithColor(ModerationHelper.CorEmbed)
-                    .WithAuthor("✅ Usuário Desbanido", Context.Guild.IconUrl)
-                    .WithDescription($"O usuário com ID `{id}` foi **desbanido** com sucesso.")
-                    .AddField("🛡️ Desbanido por", $"`{user.Username}`", true)
-                    .WithFooter(ModerationHelper.RodapePadrao(guild))
+                    .WithAuthor("Usuário Desbanido", Context.Guild.IconUrl)
+                    .WithDescription($"O **usuário** com ID **{id}** foi desbanido com sucesso.\n\n*Autor: {user.Username}*")
                     .Build();
 
                 await ReplyAsync(embed: embed);
@@ -140,18 +133,14 @@ namespace Botzinho.Moderation
             if (alvo.Hierarchy >= user.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("O cargo desse usuário é igual ou maior que o seu.", guild)); return; }
             if (alvo.Hierarchy >= Context.Guild.CurrentUser.Hierarchy) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Meu cargo é menor que o desse usuário.", guild)); return; }
 
-            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **expulso** de **{Context.Guild.Name}**.\n**Motivo:** {motivo}"); } catch { }
+            try { await alvo.SendMessageAsync($"<:erro:1493078898462949526> Você foi **expulso** de **{Context.Guild.Name}**"); } catch { }
+
             await alvo.KickAsync(motivo);
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("👢 Usuário Expulso", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **expulso** do servidor.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("🛡️ Expulso por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithAuthor("Kick bem Sucedido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                .WithDescription($"O usuário **{alvo.Username}** foi kickado do servidor.\n\n*Autor: {user.Username}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -161,7 +150,7 @@ namespace Botzinho.Moderation
     public class MuteModule : ModuleBase<SocketCommandContext>
     {
         [Command("mute")]
-        [Alias("zmute")] // Adicionado um alias caso você costume chamar direto por zmute
+        [Alias("zmute")]
         [Summary("Silencia um usuário")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task MuteAsync(SocketGuildUser alvo, string duracao, [Remainder] string motivo = "Não informado")
@@ -183,14 +172,13 @@ namespace Botzinho.Moderation
                 return;
             }
 
-            // Aplica o timeout no usuário. O motivo vai silenciosamente para as configurações de auditoria do Discord.
+            // Aplica o timeout no usuário
             await alvo.SetTimeOutAsync(tempo.Value, new RequestOptions { AuditLogReason = motivo });
 
-            // Embed com design limpo, premium e direto ao ponto
             var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed) // Usa a cor padrão (como o vermelho que você definiu antes)
-                .WithAuthor("Usuário Silenciado", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\nAutor: **{user.Username}**")
+                .WithColor(ModerationHelper.CorEmbed)
+                .WithAuthor("Mute Aplicado", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\n*Autor: {user.Username}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -205,17 +193,15 @@ namespace Botzinho.Moderation
             var user = (SocketGuildUser)Context.User;
             var guild = Context.Guild as SocketGuild;
 
-            // Mantive a checagem usando a key "mute" conforme o seu código original
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
             if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
 
             await alvo.RemoveTimeOutAsync();
 
-            // Embed com design limpo e premium, acompanhando o estilo do zmute
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Mute Removido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAutor: **{user.Username}**")
+                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode falar novamente.\n\n*Autor {user.Username}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -246,7 +232,6 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithDescription($"<a:sucess:1494692628372132013>  **{deletable.Count - 1}** mensagens foram **apagadas** com sucesso.")
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -270,9 +255,8 @@ namespace Botzinho.Moderation
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Slowmode", Context.Guild.IconUrl)
                 .WithDescription(segundos > 0
-                    ? $"O slowmode foi definido para **{segundos}s** neste canal."
-                    : "O slowmode foi **desativado** neste canal.")
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                    ? $"O slowmode foi definido para **{segundos}s** neste canal.\n\n*Ação aplicada por {user.Mention}*"
+                    : $"O slowmode foi **desativado** neste canal.\n\n*Ação removida por {user.Mention}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -293,9 +277,7 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Canal Trancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **trancado** por **{user.Username}**\n\nApenas membros com permissão poderão enviar mensagens.")
-                .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithDescription($"Este canal foi trancado. Apenas membros com permissão poderão enviar mensagens.\n\n*Ação aplicada por {user.Mention}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -316,9 +298,7 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Canal Destrancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **destrancado** por **{user.Username}**\n\nMembros podem enviar mensagens novamente.")
-                .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithDescription($"Este canal foi destrancado. Membros podem enviar mensagens novamente.\n\n*Ação removida por {user.Mention}*")
                 .Build();
 
             await ReplyAsync(embed: embed);
