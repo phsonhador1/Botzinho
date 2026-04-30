@@ -104,17 +104,17 @@ namespace Botzinho.Core
                     eb.WithTitle("Economia")
                       .WithDescription(legenda +
                         "• **zsaldo**:\n" +
-                        " ◦ Veja sua carteira e banco.\n" +
+                        " ◦ Veja sua carteira e banco.\n\n" +
                         "• **zdaily**:\n" +
-                        " ◦ Resgate seu bônus diário.\n" +
-                        "• **zdep [valor/all]**:\n" +
-                        " ◦ Guarde moedas no banco.\n" +
-                        "• **zpay [@user] [valor]**:\n" +
-                        " ◦ Transfira dinheiro para alguém.\n" +
+                        " ◦ Resgate seu bônus diário.\n\n" +
+                        "• **zdep [valor/all]**:\n\n" +
+                        " ◦ Guarde moedas no banco.\n\n" +
+                        "• **zpay [@user] [valor]**:\n\n" +
+                        " ◦ Transfira dinheiro para alguém.\n\n" +
                         "• **ztransacoes**:\n" +
-                        " ◦ Veja seu extrato bancário detalhado.\n" +
+                        " ◦ Veja seu extrato bancário detalhado.\n\n" +
                         "• **zrank**:\n" +
-                        " ◦ Veja os membros mais ricos do servidor.\n");
+                        " ◦ Veja os membros mais ricos do servidor.\n\n");
                 }
                 else if (selected == "help_cassino")
                 {
