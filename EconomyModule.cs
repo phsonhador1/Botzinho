@@ -1202,7 +1202,7 @@ namespace Botzinho.Economy
                         if (tempoPassado.TotalHours < 24)
                         {
                             TimeSpan tempoFalta = TimeSpan.FromHours(24) - tempoPassado;
-                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Aguarde {tempoFalta.Hours} {tempoFalta.Minutes} para coletar seu **Daily** novamente.");
+                            await msg.Channel.SendMessageAsync($"<:erro:1493078898462949526> Aguarde **{tempoFalta.Hours} Horas {tempoFalta.Minutes} minutos** para coletar seu **Daily** novamente.");
                             return;
                         }
 
