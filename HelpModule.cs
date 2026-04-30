@@ -124,14 +124,14 @@ namespace Botzinho.Core
                 {
                     eb.WithTitle("Moderação")
                       .WithDescription(
-                        "**zclear [quant]** - Apaga mensagens do canal\n" +
-                        "**zlock** e **zunlock** - Tranca ou destranca o canal atual\n" +
-                        "**zslowmode [segundos]** - Define o modo lento do canal\n" +
-                        "**zban [@user] [motivo]** - Bane um usuário\n" +
-                        "**zunban [id]** - Desbane um usuário\n" +
-                        "**zkick [@user] [motivo]** - Expulsa um usuário\n" +
-                        "**zmute [@user] [tempo]** - Silencia um usuário (ex: 10m, 1h)\n" +
-                        "**zunmute [@user]** - Remove o silenciamento");
+                        "• **zclear [quant]**\n ⚬ Apaga mensagens do canal\n" +
+                        "• **zlock** e **zunlock**\n ⚬ Tranca ou destranca o canal atual\n" +
+                        "• **zslowmode [segundos]**\n ⚬ Define o modo lento do canal\n" +
+                        "• **zban [@user] [motivo]**\n ⚬ Bane um usuário\n" +
+                        "• **zunban [id]**\n ⚬Desbane um usuário\n" +
+                        "• **zkick [@user] [motivo]**\n ⚬ Expulsa um usuário\n" +
+                        "• **zmute [@user] [tempo]**\n ⚬ Silencia um usuário (ex: 10m, 1h)\n" +
+                        "• **zunmute [@user]**\n⚬ Remove o silenciamento");
                 }
 
                 // Reconstrói o menu para ele continuar funcionando (Mantendo o texto atualizado se desejar)
