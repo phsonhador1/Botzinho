@@ -140,7 +140,7 @@ namespace Botzinho.Core
                         "• **zlock** e **zunlock**:\n" +
                         " ◦ Tranca ou destranca o canal atual.\n\n" +
                         "• **zslowmode [segundos]**:\n" +
-                        " ◦ Define o modo lento do canal.\n" +
+                        " ◦ Define o modo lento do canal.\n\n" +
                         "• **zban [@user] (motivo)**:\n" +
                         " ◦ Bane um usuário.\n\n" +
                         "• **zunban [id]**:\n" +
