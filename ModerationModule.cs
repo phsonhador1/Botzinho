@@ -215,7 +215,7 @@ namespace Botzinho.Moderation
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
                 .WithAuthor("Mute Removido", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAção removida por {user.Username}")
+                .WithDescription($"O mute de **{alvo.Username}** foi retirado e ele já pode digitar novamente.\n\nAção removida por **{user.Username}**")
                 .Build();
 
             await ReplyAsync(embed: embed);
