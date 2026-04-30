@@ -26,7 +26,13 @@ namespace Botzinho.Moderation
             if (string.IsNullOrEmpty(input) || input.Length < 2) return null;
             var unit = input[^1];
             if (!int.TryParse(input[..^1], out var value) || value <= 0) return null;
-            return unit switch { 'm' => TimeSpan.FromMinutes(value), 'h' => TimeSpan.FromHours(value), 'd' => TimeSpan.FromDays(value), _ => null };
+            return unit switch
+            {
+                'm' => TimeSpan.FromMinutes(value),
+                'h' => TimeSpan.FromHours(value),
+                'd' => TimeSpan.FromDays(value),
+                _ => null
+            };
         }
 
         // ★ Rodapé padrão: nome do servidor + data
@@ -37,7 +43,7 @@ namespace Botzinho.Moderation
                 .WithIconUrl(guild.IconUrl);
         }
 
-        // ★ Helpers de embed de erro/aviso
+        // ★ Helpers de embed de erro
         public static Embed CriarEmbedErro(string mensagem, SocketGuild guild)
         {
             return new EmbedBuilder()
@@ -50,7 +56,7 @@ namespace Botzinho.Moderation
 
     public class BanModule : ModuleBase<SocketCommandContext>
     {
-        [Command("zban")]
+        [Command("ban")]
         [Summary("Bane um usuario do servidor")]
         [RequireBotPermission(GuildPermission.BanMembers)]
         public async Task BanAsync(SocketGuildUser alvo, [Remainder] string motivo = "Sem motivo informado")
@@ -85,7 +91,7 @@ namespace Botzinho.Moderation
 
     public class UnbanModule : ModuleBase<SocketCommandContext>
     {
-        [Command("zunban")]
+        [Command("unban")]
         [Summary("Desbane um usuario")]
         [RequireBotPermission(GuildPermission.BanMembers)]
         public async Task UnbanAsync(string userId)
@@ -120,7 +126,7 @@ namespace Botzinho.Moderation
 
     public class KickModule : ModuleBase<SocketCommandContext>
     {
-        [Command("zkick")]
+        [Command("kick")]
         [Summary("Expulsa um usuario")]
         [RequireBotPermission(GuildPermission.KickMembers)]
         public async Task KickAsync(SocketGuildUser alvo, [Remainder] string motivo = "Sem motivo informado")
@@ -154,7 +160,7 @@ namespace Botzinho.Moderation
 
     public class MuteModule : ModuleBase<SocketCommandContext>
     {
-        [Command("zmute")]
+        [Command("mute")]
         [Summary("Silencia um usuario")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task MuteAsync(SocketGuildUser alvo, string duracao, [Remainder] string motivo = "Sem motivo informado")
@@ -192,7 +198,7 @@ namespace Botzinho.Moderation
             await ReplyAsync(embed: embed);
         }
 
-        [Command("zunmute")]
+        [Command("unmute")]
         [Summary("Remove silenciamento")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
         public async Task UnmuteAsync(SocketGuildUser alvo)
@@ -220,7 +226,7 @@ namespace Botzinho.Moderation
 
     public class ChannelModule : ModuleBase<SocketCommandContext>
     {
-        [Command("zclear")]
+        [Command("clear")]
         [Summary("Apaga mensagens")]
         [RequireBotPermission(ChannelPermission.ManageMessages)]
         public async Task ClearAsync(int quantidade)
@@ -248,7 +254,7 @@ namespace Botzinho.Moderation
             await ReplyAsync(embed: embed);
         }
 
-        [Command("zslowmode")]
+        [Command("slowmode")]
         [Summary("Define slowmode")]
         public async Task SlowmodeAsync(int segundos)
         {
@@ -275,7 +281,7 @@ namespace Botzinho.Moderation
             await ReplyAsync(embed: embed);
         }
 
-        [Command("zlock")]
+        [Command("lock")]
         [Summary("Tranca o canal")]
         public async Task LockAsync()
         {
@@ -289,15 +295,16 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor(" Canal Trancado", Context.Guild.IconUrl)
+                .WithAuthor("🔒 Canal Trancado", Context.Guild.IconUrl)
                 .WithDescription($"Este canal foi **trancado** por **{user.Username}**.\n\nApenas membros com permissão poderão enviar mensagens.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
 
             await ReplyAsync(embed: embed);
         }
 
-        [Command("zunlock")]
+        [Command("unlock")]
         [Summary("Destranca o canal")]
         public async Task UnlockAsync()
         {
@@ -311,7 +318,7 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("Canal Destrancado", Context.Guild.IconUrl)
+                .WithAuthor("🔓 Canal Destrancado", Context.Guild.IconUrl)
                 .WithDescription($"Este canal foi **destrancado** por **{user.Username}**.\n\nMembros podem enviar mensagens novamente.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
