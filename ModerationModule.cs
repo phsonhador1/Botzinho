@@ -39,7 +39,7 @@ namespace Botzinho.Moderation
         public static EmbedFooterBuilder RodapePadrao(SocketGuild guild)
         {
             return new EmbedFooterBuilder()
-                .WithText($"Servidor {guild.Name} • Hoje às {DateTime.Now.AddHours(-3):HH:mm}")
+                .WithText($"Hoje às {DateTime.Now.AddHours(-3):HH:mm}")
                 .WithIconUrl(guild.IconUrl);
         }
 
@@ -161,12 +161,14 @@ namespace Botzinho.Moderation
     public class MuteModule : ModuleBase<SocketCommandContext>
     {
         [Command("mute")]
-        [Summary("Silencia um usuario")]
+        [Alias("zmute")] // Adicionado um alias caso você costume chamar direto por zmute
+        [Summary("Silencia um usuário")]
         [RequireBotPermission(GuildPermission.ModerateMembers)]
-        public async Task MuteAsync(SocketGuildUser alvo, string duracao, [Remainder] string motivo = "Sem motivo informado")
+        public async Task MuteAsync(SocketGuildUser alvo, string duracao, [Remainder] string motivo = "Não informado")
         {
             var user = (SocketGuildUser)Context.User;
             var guild = Context.Guild as SocketGuild;
+
             var erro = AdminModule.ChecarPermissaoCompleta(Context.Guild.Id, user, "mute", GuildPermission.ModerateMembers);
             if (erro != null) { await ReplyAsync(embed: ModerationHelper.CriarEmbedErro(erro, guild)); return; }
 
@@ -177,22 +179,18 @@ namespace Botzinho.Moderation
             var tempo = ModerationHelper.ParseDuration(duracao);
             if (tempo == null || tempo.Value.TotalMinutes < 1 || tempo.Value.TotalDays > 28)
             {
-                await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Duração inválida. Use: `10m`, `1h`, `1d` (máx 28d).", guild));
+                await ReplyAsync(embed: ModerationHelper.CriarEmbedErro("Duração inválida. Use: **10m**, **1h**, **1d** **(máx 28d)**.", guild));
                 return;
             }
 
+            // Aplica o timeout no usuário. O motivo vai silenciosamente para as configurações de auditoria do Discord.
             await alvo.SetTimeOutAsync(tempo.Value, new RequestOptions { AuditLogReason = motivo });
 
+            // Embed com design limpo, premium e direto ao ponto
             var embed = new EmbedBuilder()
-                .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔇 Usuário Silenciado", Context.Guild.IconUrl)
-                .WithDescription($"O usuário `{alvo.Username}` foi **silenciado** por `{duracao}`.")
-                .AddField("👤 Usuário", $"`{alvo.Username}` (`{alvo.Id}`)", true)
-                .AddField("⏱️ Duração", $"`{duracao}`", true)
-                .AddField("🛡️ Silenciado por", $"`{user.Username}`", true)
-                .AddField("📝 Motivo", $"```{motivo}```", false)
-                .WithThumbnailUrl(alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                .WithFooter(ModerationHelper.RodapePadrao(guild))
+                .WithColor(ModerationHelper.CorEmbed) // Usa a cor padrão (como o vermelho que você definiu antes)
+                .WithAuthor("Usuário Silenciado", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
+                .WithDescription($"O usuário **{alvo.Username}** foi mutado por **{duracao}**.\n\n*Aplicado por: **{user.Username}**")
                 .Build();
 
             await ReplyAsync(embed: embed);
@@ -212,7 +210,7 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔊 Silenciamento Removido", Context.Guild.IconUrl)
+                .WithAuthor("Silenciamento Removido", Context.Guild.IconUrl)
                 .WithDescription($"O usuário `{alvo.Username}` pode falar novamente.")
                 .AddField("👤 Usuário", $"`{alvo.Username}`", true)
                 .AddField("🛡️ Removido por", $"`{user.Username}`", true)
@@ -247,7 +245,7 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithDescription($"<a:sucess:1494692628372132013> **{deletable.Count - 1}** mensagens foram apagadas com sucesso.")
+                .WithDescription($"<a:sucess:1494692628372132013>  **{deletable.Count - 1}** mensagens foram **apagadas** com sucesso.")
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
 
@@ -270,11 +268,11 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("⏱️ Slowmode Atualizado", Context.Guild.IconUrl)
+                .WithAuthor("Slowmode Ativado", Context.Guild.IconUrl)
                 .WithDescription(segundos > 0
-                    ? $"O slowmode foi definido para `{segundos}s` neste canal."
+                    ? $"O slowmode foi definido para **{segundos}s** neste canal."
                     : "O slowmode foi **desativado** neste canal.")
-                .AddField("🛡️ Alterado por", $"`{user.Username}`", true)
+                .AddField("Definido por","**{user.Username}**", true)
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
 
@@ -295,8 +293,8 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔒 Canal Trancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **trancado** por **{user.Username}**.\n\nApenas membros com permissão poderão enviar mensagens.")
+                .WithAuthor("Canal Trancado", Context.Guild.IconUrl)
+                .WithDescription($"Este canal foi **trancado** por **{user.Username}**\n\nApenas membros com permissão poderão enviar mensagens.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
@@ -318,8 +316,8 @@ namespace Botzinho.Moderation
 
             var embed = new EmbedBuilder()
                 .WithColor(ModerationHelper.CorEmbed)
-                .WithAuthor("🔓 Canal Destrancado", Context.Guild.IconUrl)
-                .WithDescription($"Este canal foi **destrancado** por **{user.Username}**.\n\nMembros podem enviar mensagens novamente.")
+                .WithAuthor("Canal Destrancado", Context.Guild.IconUrl)
+                .WithDescription($"Este canal foi **destrancado** por **{user.Username}**\n\nMembros podem enviar mensagens novamente.")
                 .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                 .WithFooter(ModerationHelper.RodapePadrao(guild))
                 .Build();
