@@ -305,19 +305,19 @@ namespace Botzinho.Cassino
                 EconomyHelper.RemoverBanco(guildId, user.Id, valorAposta);
 
                 var embed = new EmbedBuilder()
-                    .WithAuthor("Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png")
+                    .WithAuthor("Roleta")
                     .WithThumbnailUrl("https://media.discordapp.net/attachments/1168256801981079632/1168536905399406592/gambling_5458667.png?ex=69e8c84c&is=69e776cc&hm=acd4a36afc7040e01b3a7d5716b60e2c96e2938bf9e7db0fcdd111661a661508&")
                     .WithDescription($@" **Olá, {user.Mention}! Bem-vindo(a) à Roleta do {_client.CurrentUser.Username}.**
 
- | **Valor em aposta:** **{EconomyHelper.FormatarSaldo(valorAposta)}**
+ **Valor em aposta:** **{EconomyHelper.FormatarSaldo(valorAposta)}**
 
-<:seta:1493089125979656385> | **Como funciona:** Ao escolher uma cor abaixo, representada pelos botões, você terá a chance de 
+<:setazeus:1499466096464363750> | **Como funciona:** Ao escolher uma cor abaixo, representada pelos botões, você terá a chance de 
 ganhar com base nos multiplicadores. Cada cor tem 
 seu próprio multiplicador. Se a roleta parar na cor escolhida, você 
 receberá uma recompensa de acordo com o multiplicador
 correspondente.
 
-| **Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
+**Desistir da aposta:** Clique no <:erro:1493078898462949526> para recuperar seu dinheiro agora.")
                     .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl())
                     .WithColor(new Color(43, 45, 49)).Build();
 
@@ -329,7 +329,7 @@ correspondente.
 
                 await msg.Channel.SendMessageAsync(embed: embed, components: components.Build());
             }
-            
+
             // --- ZCF / ZCOINFLIP ---
             else if (content.StartsWith("zcf") || content.StartsWith("zcoinflip"))
             {
@@ -494,7 +494,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                         var newEb = new EmbedBuilder()
                         .WithAuthor(bateuCrash ? "CRASH!" : $"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                        .WithColor(bateuCrash ? Color.Red : new Color(178, 31, 31)) 
+                        .WithColor(bateuCrash ? Color.Red : new Color(178, 31, 31))
                         .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                         .WithImageUrl($"attachment://upd.png");
 
@@ -524,7 +524,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 long ganhoAtual = (long)(aposta * currentMult);
                                 newEb.WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`   
 
-  ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`"); 
+  ◦ <:dinheiro:1493360319928733838> **Ganhos:** `{EconomyHelper.FormatarSaldo(ganhoAtual)}`");
 
                                 var cbPlay = new ComponentBuilder()
                                     .WithButton($"Retirar {EconomyHelper.FormatarSaldo(ganhoAtual)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
@@ -661,7 +661,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                     long premio = (long)(valorAposta * (corSorteada == "branco" ? 6.0 : 1.5));
                     string emojiCor = corSorteada switch { "branco" => "⚪", "preto" => "⚫", _ => "🔴" };
 
-                    var embedFim = new EmbedBuilder().WithAuthor("Resultado da Roleta", "https://cdn-icons-png.flaticon.com/512/1055/1055823.png").WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl()).WithTimestamp(DateTime.Now);
+                    var embedFim = new EmbedBuilder().WithAuthor("Resultado da Roleta").WithFooter($"Apostador: {component.User.Username}", component.User.GetAvatarUrl() ?? component.User.GetDefaultAvatarUrl()).WithTimestamp(DateTime.Now);
 
                     if (ganhou)
                     {
@@ -670,7 +670,7 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                         embedFim.WithColor(Color.Green).WithDescription($@"<a:raiozeus:1499129522786926653> **Parabéns! Temos um grande Sortudo por aqui!**
 
  A roleta parou no: **{corSorteada}**
-<:dinheiro:1493360319928733838> Você recebeu: <:maiszeus:1499129789909303306> **{EconomyHelper.FormatarSaldo(premio)}** cpoints no banco.");
+<:dinheiro:1493360319928733838> Você recebeu: <:maiszeus:1499465239463465120> **{EconomyHelper.FormatarSaldo(premio)}** cpoints no banco.");
                     }
                     else
                     {
