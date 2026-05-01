@@ -177,7 +177,13 @@ namespace Botzinho.Cassino
             var fontBold = SKTypeface.FromFamilyName("Sans-Serif", SKFontStyle.Bold);
 
             // TEXTO SUPERIOR
-            string textoTopo = status == "WIN" ? "✦ VITÓRIA!" : "✦ EM JOGO";
+            string textoTopo = status switch
+            {
+                "WIN" => "VITÓRIA!",
+                "CRASH" => "CRASHOU KKKKKKKKKKKKKKK",
+                _ => "EM JOGO"
+            };
+
             canvas.DrawText(textoTopo, 40, 60, new SKPaint
             {
                 Color = new SKColor(255, 255, 255, 200),
@@ -447,14 +453,15 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
 
                 var eb = new EmbedBuilder()
                     .WithAuthor($"Crash {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-                    .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** `{EconomyHelper.FormatarSaldo(aposta)}`
- ◦ <:dinheiro:1493360319928733838> **Possível ganho:** `{EconomyHelper.FormatarSaldo(aposta)}`")
+                    .WithDescription($@"• <:moedazoe:1493359715420340364> **Aposta:** **{EconomyHelper.FormatarSaldo(aposta)}**
+
+ ◦ <:dinheiro:1493360319928733838> **Possível ganho:** **{EconomyHelper.FormatarSaldo(aposta)}**")
                     .WithColor(new Color(178, 31, 31)) // Fundo vermelho para combinar com o banner
-                    .WithFooter($"Rodapé | Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
+                    .WithFooter($"Apostador: {user.Username}", user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
                     .WithImageUrl($"attachment://{Path.GetFileName(imgPath)}");
 
                 var cb = new ComponentBuilder()
-                    .WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, new Emoji("💸"))
+                    .WithButton($"Retirar {EconomyHelper.FormatarSaldo(aposta)}", $"crash_retirar_{user.Id}", ButtonStyle.Success, Emote.Parse("<:cedulazeus:1499832865603453222>"))
                     .WithButton("1.00x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
                 Discord.Rest.RestUserMessage jogoMsg;
@@ -507,14 +514,14 @@ Se decidir não continuar, clique no <:erro:1493078898462949526> para desistir d
                                 CrashGamesAtivos.Remove(user.Id);
                                 EconomyHelper.RegistrarTransacao(guildId, user.Id, _client.CurrentUser.Id, aposta, "CRASH_PERDA");
 
-                                newEb.WithDescription($@"<:perdeu:1493361130075328754> **RESULTADO - CRASHOU PORRA!**
+                                newEb.WithDescription($@"<:perdeu:1493361130075328754> **RESULTADO - CRASHOU OTARIO!**
 
 ◦ <:seta:1493089125979656385> Multiplicador Final: **{currentMult:F2}x**
 
-• <:moedazoe:1493359715420340364> **Aposta perdida:** `{EconomyHelper.FormatarSaldo(aposta)}`");
+•  **Aposta perdida:** **{EconomyHelper.FormatarSaldo(aposta)}**");
 
                                 var cbFim = new ComponentBuilder()
-                                    .WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: new Emoji("💥"))
+                                    .WithButton($"Perdeu {EconomyHelper.FormatarSaldo(aposta)}", "btn_disabled", ButtonStyle.Danger, disabled: true, emote: Emote.Parse("<:erro:1493078898462949526>"))
                                     .WithButton($"{currentMult:F2}x", "btn_mult_fake", ButtonStyle.Secondary, disabled: true);
 
                                 try { await jogoMsg.ModifyAsync(x => { x.Embed = newEb.Build(); x.Attachments = new[] { attachment }; x.Components = cbFim.Build(); }); } catch { }
