@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using System;
 using System.Linq;
@@ -37,24 +37,20 @@ namespace Botzinho.Utility
 
                     string[] partes = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                    IUser alvo = autor; // padrão = quem usou
+                    IUser alvo = autor;
 
-                    // 1. Se mencionou alguém
                     if (msg.MentionedUsers.Count > 0)
                     {
                         alvo = msg.MentionedUsers.First();
                     }
-                    // 2. Se passou um ID (busca em qualquer servidor via API)
                     else if (partes.Length >= 2 && ulong.TryParse(partes[1], out ulong idFornecido))
                     {
                         try
                         {
-                            // tenta no servidor primeiro
                             var noServer = autor.Guild.GetUser(idFornecido);
                             if (noServer != null) alvo = noServer;
                             else
                             {
-                                // busca via REST (funciona pra qualquer user, mesmo fora do server)
                                 var rest = await _client.Rest.GetUserAsync(idFornecido);
                                 if (rest != null) alvo = rest;
                                 else
@@ -73,20 +69,12 @@ namespace Botzinho.Utility
                         }
                     }
 
-                    // Pega URL do avatar em alta resolução
                     string avatarUrl = alvo.GetAvatarUrl(ImageFormat.Auto, 1024)
                                        ?? alvo.GetDefaultAvatarUrl();
 
-                    string nomeExibicao = (alvo as SocketGuildUser)?.DisplayName ?? alvo.GlobalName ?? alvo.Username;
-
                     var embed = new EmbedBuilder()
                         .WithColor(CorEmbed)
-                        .WithAuthor($"Avatar de {nomeExibicao}", alvo.GetAvatarUrl() ?? alvo.GetDefaultAvatarUrl())
-                        .WithDescription($"<:seta:1493089125979656385> [Clique aqui para baixar]({avatarUrl})")
                         .WithImageUrl(avatarUrl)
-                        .WithFooter($"ID: {alvo.Id} • Solicitado por {autor.Username}",
-                                    autor.GetAvatarUrl() ?? autor.GetDefaultAvatarUrl())
-                        .WithCurrentTimestamp()
                         .Build();
 
                     await msg.Channel.SendMessageAsync(embed: embed);
