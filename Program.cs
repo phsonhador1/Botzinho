@@ -73,6 +73,8 @@ var roleplay = new Botzinho.Roleplay.RoleplayHandler(client);
 
 var anonymousHandler = new AnonymousChannelHandler(client);
 
+var utility = new Botzinho.Utility.UtilityHandler(client);
+
 client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 commandService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
 
